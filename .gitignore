@@ -1,0 +1,83 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+.venv/
+venv/
+env/
+ENV/
+
+# Packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE/editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment/config secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+logs/
+
+# Test/cache
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Data and outputs
+data/raw/
+data/processed/
+outputs/
+results/
+cache/
+
+# Large simulation/result files
+*.parquet
+*.zarr/
+*.h5
+*.hdf5
+*.nc
+*.sqlite
+*.db
+*.gpkg
+
+# Weather / GIS / raster heavy files
+*.epw
+*.tif
+*.tiff
+*.shp
+*.shx
+*.dbf
+*.prj
+*.cpg
+*.geojson
+*.gpjson
+
+# Keep folder placeholders
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/databases/.gitkeep
+!data/weather/.gitkeep
+!outputs/.gitkeep
