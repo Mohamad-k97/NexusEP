@@ -1,0 +1,852 @@
+{
+  "_meta": {
+    "name": "ABBEY default behavioral configuration",
+    "version": "0.1",
+    "state_range": "Most internal states are smooth variables intended to stay between 0 and 1.",
+    "pressure_units": "per hour",
+    "scale_explanation": "In the smooth update x_next = x + dt * (up * (1 - x) - down * x), a pressure of 1.0 is strong. With dt=0.25 h and x=0.5, up=1.0 increases x by about +0.125 in one timestep. A pressure of 0.05 is weak and slow."
+  },
+
+  "hunger": {
+    // Natural hunger accumulation while awake.
+    // 0.045 = weak hourly hunger growth.
+    "base_up": 0.045,
+
+    // Hunger grows slower during sleep.
+    // 0.35 means only 35% of normal hunger growth while sleeping.
+    "sleep_multiplier": 0.35,
+
+    // Fatigue can mildly increase hunger/food urge.
+    // If fatigue=1, this adds +0.015 per hour.
+    "fatigue_to_hunger_up": 0.015,
+
+    // Eating strongly reduces hunger.
+    // 1.20 is strong: with dt=0.25 and hunger=0.5, it reduces hunger by about -0.15.
+    "eat_simple_down": 1.20,
+    "cook_down": 1.10,
+    "emergency_eat_down": 0.90,
+    // Cooking implies eating, but slower/less immediate than eat_simple.
+    "cook_down": 0.80
+  },
+
+  "fatigue": {
+    // Baseline fatigue drift.
+    "base_up": 0.010,
+
+    // Extra fatigue accumulation when awake.
+    "awake_up": 0.025,
+
+    // If hunger=1, adds +0.070 per hour to fatigue pressure.
+    "hunger_to_fatigue_up": 0.030,
+
+    // Sickness is a strong fatigue driver.
+    // If sickness_severity=1, adds +0.180 per hour.
+    "sickness_to_fatigue_up": 0.180,
+
+    "thermal_discomfort_to_fatigue_up": 0.025,
+    "air_quality_discomfort_to_fatigue_up": 0.020,
+    "acoustic_discomfort_to_fatigue_up": 0.010,
+
+    // Active actions increase fatigue.
+    // Multiplied by action.activity_intensity.
+    "activity_intensity_to_fatigue_up": 0.025,
+
+    // Sleeping strongly reduces fatigue.
+    "sleep_down": 0.550,
+
+    // Doing nothing gives mild fatigue recovery.
+    "rest_down": 0.050
+  },
+
+  "sleep_pressure": {
+    "base_up": 0.010,
+
+    // Fatigue is the main driver of sleep pressure.
+    "fatigue_to_sleep_up": 0.160,
+
+    // Night signal is between 0 and 1.
+    "night_to_sleep_up": 0.260,
+    "awake_duration_to_sleep_up": 0.85,
+    "awake_duration_center_minutes": 960,
+    "awake_duration_width_minutes": 180,
+
+    // Sickness increases sleep pressure.
+    "sickness_to_sleep_up": 0.120,
+
+    // Sleeping reduces sleep pressure.
+    "sleep_down": 0.650,
+
+    // Daytime wakefulness reduces sleep pressure slightly.
+    "daytime_awake_down": 0.120
+  },
+
+  "sickness": {
+    // For v0.1, sickness does not appear randomly yet.
+    // It only recovers if initial sickness_severity > 0.
+    "spontaneous_up": 0.000,
+
+    // 0.035 = slow recovery over days.
+    "recovery_down": 0.035
+  },
+
+  "dirty_clothes": {
+    // Natural accumulation of dirty clothes.
+    "base_up": 0.012,
+
+    // Being home creates slightly more dirty clothes.
+    "home_up": 0.006,
+
+    // Sickness can increase dirty clothes generation.
+    "sickness_to_dirty_clothes_up": 0.010,
+
+    // Washing machine strongly reduces dirty clothes.
+    "washing_machine_down": 0.900
+  },
+
+  "action_friction": {
+    // Fatigue increases resistance to initiating actions.
+    "fatigue_to_friction_up": 0.180,
+
+    // Sickness also increases action friction.
+    "sickness_to_friction_up": 0.140,
+
+    // Sleep pressure makes effortful actions less attractive.
+    "sleep_pressure_to_friction_up": 0.080,
+
+    // Natural recovery of action friction.
+    "base_down": 0.030,
+
+    // Sleeping recovers action friction faster.
+    "sleep_down": 0.120
+  },
+  "space_exit_rules": {
+      "auto_turn_lights_off_when_empty": true
+    },
+  "perception": {
+        "thermal": {
+          // Fanger PMV-based thermal perception.
+          // PMV = 0 means neutral.
+          // PMV = -1 means slightly cold.
+          // PMV = +1 means slightly warm.
+          // PPD is derived from PMV and gives predicted dissatisfaction percentage.
+        
+          "met": 1.1,
+          "clo": 0.8,
+          "air_velocity_m_s": 0.1,
+          "relative_humidity_percent": 50.0,
+        
+          // For v0.1, MRT is assumed equal to indoor air temperature.
+          "mean_radiant_temp_equals_air_temp": true,
+        
+          // If sickness_severity=1, perceived PMV shifts by -0.5,
+          // meaning the person feels colder.
+          "sickness_pmv_cold_shift": 0.5,
+        
+          // How fast thermal_discomfort follows PPD-derived dissatisfaction.
+          "response_up": 0.80,
+          "response_down": 0.70
+        },
+
+        "air_quality": {
+          "comfortable_co2_ppm": 800.0,
+          "co2_stress_scale_ppm": 700.0,
+          "sickness_sensitivity_multiplier": 0.50,
+          "response_up": 0.90,
+          "response_down": 0.80
+        },
+    
+        "visual": {
+          "required_daylight": 0.40,
+          "artificial_light_equivalent": 0.80,
+          "daylight_stress_scale": 0.30,
+          "response_up": 0.70,
+          "response_down": 0.90
+        },
+    
+        "acoustic": {
+          "comfortable_noise": 0.35,
+          "noise_stress_scale": 0.30,
+          "response_up": 0.70,
+          "response_down": 0.60
+        }
+  },
+  
+  "circadian": {
+      // Simplified melatonin-like signal.
+      // 0 = no biological night pressure, 1 = strong night pressure.
+    
+      "melatonin_onset_hour": 21.5,
+      "melatonin_peak_hour": 2.5,
+      "melatonin_offset_hour": 7.5,
+    
+      // Higher = sharper transition between day/night.
+      "transition_steepness": 2.5,
+    
+      // Chronotype shift in hours.
+      // Positive = later sleeper, negative = earlier sleeper.
+      "chronotype_shift_h": 0.0,
+    
+      // Work obligation is not forced. It only increases pressure to be awake/leave.
+      "work_start_hour": 8.5,
+      "work_end_hour": 18.0,
+      "work_transition_h": 1.0
+    },
+    
+    "idle_movement_profiles": {
+  "_meta": {
+    "description": "Ambient/random room movement when occupant is home, awake, idle, and not blocked by a foreground action.",
+    "transition_probability_per_hour": "Base probability per hour that an idle person considers changing space.",
+    "minimum_dwell_minutes": "Minimum time before another random room change is allowed.",
+    "role_transition_matrix": "Markov matrix between semantic space roles, not building-specific room IDs."
+  },
+
+  "normal": {
+    "transition_probability_per_hour": 0.35,
+    "minimum_dwell_minutes": 20,
+
+    "role_transition_matrix": {
+      "idle": {
+        "idle": 0.65,
+        "kitchen": 0.20,
+        "sleep": 0.10,
+        "bathroom": 0.05
+      },
+
+      "kitchen": {
+        "idle": 0.80,
+        "kitchen": 0.10,
+        "bathroom": 0.05,
+        "sleep": 0.05
+      },
+
+      "sleep": {
+        "idle": 0.75,
+        "sleep": 0.20,
+        "bathroom": 0.05
+      },
+
+      "work": {
+        "work": 0.70,
+        "idle": 0.20,
+        "kitchen": 0.10
+      },
+
+      "bathroom": {
+        "idle": 0.85,
+        "bathroom": 0.05,
+        "kitchen": 0.05,
+        "sleep": 0.05
+      },
+
+      "laundry": {
+        "idle": 0.90,
+        "laundry": 0.10
+      },
+
+      "entrance": {
+        "idle": 1.0
+      }
+    }
+  },
+
+  "restless": {
+    "transition_probability_per_hour": 0.75,
+    "minimum_dwell_minutes": 8,
+
+    "role_transition_matrix": {
+      "idle": {
+        "idle": 0.40,
+        "kitchen": 0.30,
+        "sleep": 0.15,
+        "bathroom": 0.15
+      },
+
+      "kitchen": {
+        "idle": 0.65,
+        "kitchen": 0.15,
+        "bathroom": 0.10,
+        "sleep": 0.10
+      },
+
+      "sleep": {
+        "idle": 0.70,
+        "sleep": 0.15,
+        "bathroom": 0.15
+      },
+
+      "work": {
+        "work": 0.55,
+        "idle": 0.25,
+        "kitchen": 0.20
+      },
+
+      "bathroom": {
+        "idle": 0.80,
+        "kitchen": 0.10,
+        "sleep": 0.10
+      },
+
+      "laundry": {
+        "idle": 0.85,
+        "laundry": 0.15
+      },
+
+      "entrance": {
+        "idle": 1.0
+      }
+    }
+  },
+
+  "sedentary": {
+    "transition_probability_per_hour": 0.15,
+    "minimum_dwell_minutes": 45,
+
+    "role_transition_matrix": {
+      "idle": {
+        "idle": 0.85,
+        "kitchen": 0.10,
+        "bathroom": 0.05
+      },
+
+      "kitchen": {
+        "idle": 0.85,
+        "kitchen": 0.10,
+        "bathroom": 0.05
+      },
+
+      "sleep": {
+        "idle": 0.70,
+        "sleep": 0.25,
+        "bathroom": 0.05
+      },
+
+      "work": {
+        "work": 0.85,
+        "idle": 0.10,
+        "kitchen": 0.05
+      },
+
+      "bathroom": {
+        "idle": 0.95,
+        "bathroom": 0.05
+      },
+
+      "laundry": {
+        "idle": 0.95,
+        "laundry": 0.05
+      },
+
+      "entrance": {
+        "idle": 1.0
+      }
+    }
+  }
+},
+"actions": {
+  "_meta": {
+    "duration_minutes": "Real duration of the action. The simulation converts it to timestep chunks.",
+    "execution_type": "control = changes system/person state; foreground = occupies the actor; background = runs while actor can do other things; passive = filler/rest.",
+    "blocks_actor": "If true, the person cannot start another foreground action during this action.",
+    "background_process": "If true, the action continues in parallel, e.g. washing machine.",
+    "can_continue_without_actor": "If true, the process can continue even if the person leaves home.",
+    "can_be_interrupted": "If true, the action/process can be stopped before completion.",
+    "activity_intensity": "0 = no physical/mental effort, 1 = very intense.",
+    "effort": "0 = no initiation resistance, 1 = very hard to initiate.",
+    "power_w": "Direct appliance/control power during the action. Building-performance module may add HVAC/lighting/etc separately."
+  },
+
+  "do_nothing": {
+    "category": "passive",
+    "execution_type": "passive",
+    "duration_minutes": 1,
+    "power_w": 0.0,
+    "activity_intensity": 0.0,
+    "effort": 0.0,
+    "requires_home": false,
+    "requires_awake": false,
+    "blocks_actor": false,
+    "background_process": false,
+    "can_continue_without_actor": true,
+    "can_be_interrupted": true,
+    "can_fill_remaining_time": true,
+    "system_effects": {},
+    "person_effects": {},
+    "target_zone_role": "current",
+    "post_action_zone_role": "current"
+  },
+
+  "sleep": {
+    "category": "rest",
+    "execution_type": "foreground",
+    "duration_minutes": 15,
+    "power_w": 0.0,
+    "activity_intensity": 0.0,
+    "effort": 0.0,
+    "requires_home": true,
+    "requires_awake": false,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": true,
+    "can_repeat": true,
+    "system_effects": {},
+    "person_effects": {
+      "is_sleeping": true
+    },
+    "action_cooldowns_on_start": {
+    },
+    "target_zone_role": "sleep",
+    "post_action_zone_role": "sleep"
+  },
+
+  "wake_up": {
+    "category": "state_change",
+    "execution_type": "control",
+    "duration_minutes": 1,
+    "power_w": 0.0,
+    "activity_intensity": 0.05,
+    "effort": 0.05,
+    "requires_home": true,
+    "requires_awake": false,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {},
+    "person_effects": {
+      "is_sleeping": false
+    },
+    "action_cooldowns_on_start": {
+      "sleep": 120
+    },
+    "target_zone_role": "idle",
+    "post_action_zone_role": "idle"
+  },
+
+    "go_to_work": {
+      "category": "mobility",
+      "execution_type": "control",
+      "duration_minutes": 5,
+      "power_w": 0.0,
+      "activity_intensity": 0.30,
+      "effort": 0.40,
+      "requires_home": true,
+      "requires_awake": true,
+      "blocks_actor": true,
+      "background_process": false,
+      "can_continue_without_actor": false,
+      "can_be_interrupted": false,
+      "system_effects": {},
+      "person_effects": {
+        "is_home": false,
+        "away_reason": "work"
+      },
+      "action_cooldowns_on_start": {
+        "return_home": 120
+      },
+      "target_zone_role": "door",
+    "post_action_zone_role": "outside"
+    },
+
+  "return_home": {
+    "category": "mobility",
+    "execution_type": "control",
+    "duration_minutes": 5,
+    "power_w": 0.0,
+    "activity_intensity": 0.20,
+    "effort": 0.20,
+    "requires_home": false,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {},
+    "person_effects": {
+      "is_home": true,
+      "away_reason":"none"
+    },
+    "action_cooldowns_on_start": {
+      "go_to_work": 60
+    },
+    "target_zone_role": "idle",
+    "post_action_zone_role": "idle"
+  },
+
+  "open_window": {
+    "category": "control",
+    "execution_type": "control",
+    "duration_minutes": 1,
+    "power_w": 0.0,
+    "activity_intensity": 0.03,
+    "effort": 0.05,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {
+      "window_open": true
+    },
+    "person_effects": {},
+    "action_cooldowns_on_start": {
+      "close_window": 20
+    },
+    "target_zone_role": "current",
+    "post_action_zone_role": "current"
+  },
+
+  "close_window": {
+    "category": "control",
+    "execution_type": "control",
+    "duration_minutes": 1,
+    "power_w": 0.0,
+    "activity_intensity": 0.03,
+    "effort": 0.05,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {
+      "window_open": false
+    },
+    "person_effects": {},
+    "action_cooldowns_on_start": {
+      "open_window": 20
+    },
+    "target_zone_role": "current",
+    "post_action_zone_role": "current"
+  },
+
+  "turn_heating_on": {
+    "category": "control",
+    "execution_type": "control",
+    "duration_minutes": 1,
+    "power_w": 0.0,
+    "activity_intensity": 0.01,
+    "effort": 0.02,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {
+      "heating_on": true
+    },
+    "person_effects": {},
+    "target_zone_role": "current",
+    "post_action_zone_role": "current"
+  },
+
+  "turn_heating_off": {
+    "category": "control",
+    "execution_type": "control",
+    "duration_minutes": 1,
+    "power_w": 0.0,
+    "activity_intensity": 0.01,
+    "effort": 0.02,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {
+      "heating_on": false
+    },
+    "person_effects": {},
+    "target_zone_role": "current",
+    "post_action_zone_role": "current"
+  },
+
+  "turn_lights_on": {
+    "category": "control",
+    "execution_type": "control",
+    "duration_minutes": 1,
+    "power_w": 0.0,
+    "activity_intensity": 0.01,
+    "effort": 0.01,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {
+      "lights_on": true
+    },
+    "person_effects": {},
+    "action_cooldowns_on_start": {
+      "turn_lights_off": 30
+    },
+    "target_zone_role": "current",
+    "post_action_zone_role": "current"
+  },
+
+  "turn_lights_off": {
+    "category": "control",
+    "execution_type": "control",
+    "duration_minutes": 1,
+    "power_w": 0.0,
+    "activity_intensity": 0.01,
+    "effort": 0.01,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {
+      "lights_on": false
+    },
+    "person_effects": {},
+    "action_cooldowns_on_start": {
+      "turn_lights_on": 30
+    },
+    "target_zone_role": "current",
+    "post_action_zone_role": "current"
+  },
+
+  "close_curtain": {
+    "category": "control",
+    "execution_type": "control",
+    "duration_minutes": 1,
+    "power_w": 0.0,
+    "activity_intensity": 0.02,
+    "effort": 0.03,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {
+      "curtain_closed": true
+    },
+    "person_effects": {},
+    "target_zone_role": "current",
+    "post_action_zone_role": "current"
+  },
+
+  "open_curtain": {
+    "category": "control",
+    "execution_type": "control",
+    "duration_minutes": 1,
+    "power_w": 0.0,
+    "activity_intensity": 0.02,
+    "effort": 0.03,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {
+      "curtain_closed": false
+    },
+    "person_effects": {},
+    "target_zone_role": "current",
+    "post_action_zone_role": "current"
+  },
+
+  "use_laptop": {
+    "category": "appliance",
+    "execution_type": "foreground",
+    "duration_minutes": 15,
+    "power_w": 60.0,
+    "activity_intensity": 0.15,
+    "effort": 0.15,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": true,
+    "can_repeat": true,
+    "system_effects": {},
+    "person_effects": {},
+    "target_zone_role": "work",
+    "post_action_zone_role": "idle"
+  },
+
+  "make_hot_drink": {
+    "category": "appliance",
+    "execution_type": "foreground",
+    "duration_minutes": 10,
+    "power_w": 1500.0,
+    "activity_intensity": 0.15,
+    "effort": 0.15,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {},
+    "person_effects": {},
+    "target_zone_role": "kitchen",
+    "post_action_zone_role": "idle"
+  },
+
+  "cook": {
+    "category": "appliance",
+    "execution_type": "foreground",
+    "duration_minutes": 30,
+    "power_w": 1200.0,
+    "activity_intensity": 0.50,
+    "effort": 0.55,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {},
+    "person_effects": {},
+    "target_zone_role": "kitchen",
+    "post_action_zone_role": "idle"
+  },
+
+    "emergency_eat": {
+      "category": "need",
+      "execution_type": "foreground",
+      "duration_minutes": 10,
+      "power_w": 0.0,
+      "activity_intensity": 0.08,
+      "effort": 0.05,
+      "requires_home": true,
+      "requires_awake": true,
+      "blocks_actor": true,
+      "background_process": false,
+      "can_continue_without_actor": false,
+      "can_be_interrupted": true,
+      "system_effects": {},
+      "person_effects": {},
+      "target_zone_role": "current",
+      "post_action_zone_role": "idle"
+    },
+    "cook": {
+      "category": "appliance",
+      "execution_type": "foreground",
+      "duration_minutes": 30,
+      "power_w": 1200.0,
+      "activity_intensity": 0.50,
+      "effort": 0.45,
+      "requires_home": true,
+      "requires_awake": true,
+      "blocks_actor": true,
+      "background_process": false,
+      "can_continue_without_actor": false,
+      "can_be_interrupted": false,
+      "system_effects": {},
+      "person_effects": {},
+      "target_zone_role": "kitchen",
+      "post_action_zone_role": "idle"
+    },
+  "shower": {
+    "category": "hygiene",
+    "execution_type": "foreground",
+    "duration_minutes": 10,
+    "power_w": 0.0,
+    "activity_intensity": 0.25,
+    "effort": 0.25,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": true,
+    "background_process": false,
+    "can_continue_without_actor": false,
+    "can_be_interrupted": false,
+    "system_effects": {},
+    "person_effects": {},
+    "post_action_zone_role": "idle"
+  },
+
+  "run_washing_machine": {
+    "category": "deferrable_appliance",
+    "execution_type": "background",
+    "duration_minutes": 90,
+    "power_w": 500.0,
+    "activity_intensity": 0.05,
+    "effort": 0.65,
+    "requires_home": true,
+    "requires_awake": true,
+    "blocks_actor": false,
+    "background_process": true,
+    "can_continue_without_actor": true,
+    "can_be_interrupted": false,
+    "system_effects": {},
+    "person_effects": {},
+    "post_action_zone_role": "idle"
+  }
+},
+"decision": {
+  "_meta": {
+    "scale": "Scores are relative. Higher score means the action is more likely to be chosen. Values around 0.1 are weak, 1.0 is meaningful, 3.0 is strong."
+  },
+
+  "do_nothing_bias": 0.01,
+
+  "hunger_food_weight": 3.0,
+  "cook_hunger_threshold": 0.55,
+  "cook_bonus_above_threshold": 2.00,
+  "eat_simple_bonus": 0.25,
+  "hot_drink_sickness_weight": 0.80,
+  "sleep_initiation_melatonin_gate": 0.75,
+    "early_sleep_penalty": 3.0,
+    "early_sleep_end_hour": 21.5,
+    "extreme_fatigue_for_early_sleep": 0.85,
+    "extreme_sleep_pressure_for_early_sleep": 0.90,
+    "sleep_after_long_sleep_penalty": 2.5,
+    "long_sleep_threshold_fatigue": 0.25,
+    "long_sleep_threshold_sleep_pressure": 0.25,
+    "force_return_home_after_work": true,
+"return_home_work_pressure_threshold": 0.20,
+"return_home_after_work_bonus": 50.0,
+  "sleep_drive_weight": 3.0,
+  "wake_drive_weight": 3.0,
+  "sleep_work_obligation_penalty": 2.5,
+  "sleep_daytime_penalty": 1.0,
+  "minimum_sleep_minutes_before_wake": 300,
+    "target_sleep_minutes": 450,
+    "maximum_sleep_minutes": 540,
+    
+    "sleep_continuation_before_min_bonus": 4.0,
+    "wake_after_target_weight": 4.0,
+    "oversleep_penalty_weight": 8.0,
+    "forced_wake_after_max_bonus": 50.0,
+
+  "heating_off_hot_bonus": 3.0,
+  "open_window_while_heating_penalty": 3.0,
+  "close_window_while_heating_bonus": 1.5,
+
+  "leave_work_weight": 2.5,
+  "return_home_weight": 2.0,
+  "sickness_leave_penalty": 2.0,
+  "fatigue_leave_penalty": 1.0,
+
+  "thermal_control_weight": 2.5,
+  "heating_off_penalty_when_cold": 2.0,
+  "cooling_off_penalty_when_hot": 2.0,
+
+  "air_quality_window_weight": 2.5,
+  "window_cold_penalty": 1.5,
+  "window_noise_penalty": 1.5,
+
+  "visual_light_weight": 2.0,
+  "visual_curtain_weight": 1.2,
+
+  "dirty_clothes_laundry_weight": 2.5,
+  "laundry_tariff_reference": 0.25,
+  "tariff_penalty_weight": 2.0,
+
+  "effort_penalty_weight": 1.5,
+  "background_process_bonus": 0.10
+  
+  
+}
+}
+
