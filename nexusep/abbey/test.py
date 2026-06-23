@@ -1,18 +1,19 @@
 """
-ABBEY Phase 5 airflow / CO2 architecture test.
+ABBEY Phase 6 moisture / humidity architecture test.
 
 Tests:
-1. 1 zone, no people, outdoor ventilation -> CO2 moves toward outdoor baseline.
-2. 1 zone, people inside, no ventilation -> CO2 rises.
-3. 1 zone, people + ventilation -> CO2 rises slower.
-4. 2 zones with open door -> CO2 mixes between zones.
-5. Window open + wind -> outdoor airflow increases.
-6. Wind direction affects window airflow.
-7. CO2 never goes negative / below physical lower bound.
+1. 1 zone, dry indoor air + humid outdoor ventilation -> indoor humidity rises.
+2. 1 zone, humid indoor air + dry outdoor ventilation -> indoor humidity falls.
+3. 1 zone, people moisture + no ventilation -> humidity rises.
+4. 1 zone, people moisture + ventilation -> humidity rises slower.
+5. 2 zones with open door -> humidity ratios move toward each other.
+6. RH is derived from temperature and humidity ratio.
+7. Humidity ratio never goes negative.
 8. No thermal solver is calculated here.
+9. No airflow solver is recalculated here if airflow network is passed in.
 
 Expected:
-    PHASE 5 AIRFLOW CO2 ARCHITECTURE OK ✅
+    PHASE 6 HUMIDITY ARCHITECTURE OK ✅
 """
 
 from datetime import datetime as DateTime
@@ -23,39 +24,86 @@ from nexusep.abbey.building.model import (
     ZoneModel,
 )
 
-from nexusep.abbey.building.physics.graph import (
-    BuildingPhysicsGraph,
-    BoundaryConnection,
-    ZoneConnection,
-)
-
 from nexusep.abbey.building.physics.weather import WeatherState
 
 from nexusep.abbey.building.physics.airflow import (
-    AirCO2Model,
-    AirCO2StepResult,
-    BuildingAirState,
-    BuildingAirflowControlInputs,
-    DoorOpeningInput,
-    WindowOpeningInput,
-    ZoneAirState,
-    ZoneOccupancyInput,
-    calculate_building_window_outdoor_airflows,
+    BuildingAirflowNetwork,
+    ZoneOutdoorAirflowRecord,
+    InterzoneAirflowLink,
+    InterzoneAirflowRecord,
+)
+
+from nexusep.abbey.building.physics.moisture import (
+    DEFAULT_MOISTURE_GENERATION_PER_PERSON_KG_H,
+    DEFAULT_ATMOSPHERIC_PRESSURE_PA,
+    MOISTURE_AIR_DENSITY_KG_M3,
+    MOISTURE_SOURCE_PEOPLE,
+    MoistureModel,
+    ZoneMoistureState,
+    BuildingMoistureSourceInputs,
+    ZoneMoistureSourceInput,
+    humidity_ratio_from_rh,
+    relative_humidity_from_humidity_ratio,
 )
 
 
 DT_MINUTES = 15.0
+ZONE_VOLUME_M3 = 50.0
+ZONE_TEMPERATURE_C = 20.0
+PRESSURE_PA = DEFAULT_ATMOSPHERIC_PRESSURE_PA
+
+
+class FakeThermalZoneState:
+    def __init__(self, zone_id, air_temperature_c):
+        self.zone_id = zone_id
+        self.air_temperature_c = air_temperature_c
+
+
+class FakeThermalState:
+    def __init__(self, temperatures_by_zone):
+        self.zone_states = {
+            zone_id: FakeThermalZoneState(
+                zone_id=zone_id,
+                air_temperature_c=temperature_c,
+            )
+            for zone_id, temperature_c in temperatures_by_zone.items()
+        }
+
+    def has_zone(self, zone_id):
+        return zone_id in self.zone_states
+
+    def get_zone_state(self, zone_id):
+        return self.zone_states[zone_id]
+
+
+class SuppliedAirflowNetwork:
+    """
+    Minimal duck-typed airflow network.
+
+    Used to prove moisture.py reads an already-supplied airflow network
+    and does not need to recalculate airflow.
+    """
+
+    def __init__(self, outdoor_airflows_by_zone, interzone_airflow_links=None):
+        self.outdoor_airflows_by_zone = outdoor_airflows_by_zone
+        self.interzone_airflow_links = interzone_airflow_links or {}
+
+    def interzone_links_for_zone(self, zone_id):
+        out = []
+
+        for link in self.interzone_airflow_links.values():
+            if link.zone_a_id == zone_id or link.zone_b_id == zone_id:
+                out.append(link)
+
+        return out
 
 
 def make_zone(
     zone_id,
-    initial_co2_ppm=600.0,
-    air_volume_m3=50.0,
-    infiltration_ach=0.0,
-    mechanical_available=False,
-    mechanical_flow_m3_h=0.0,
+    initial_rh_percent=50.0,
+    air_volume_m3=ZONE_VOLUME_M3,
 ):
-    return ZoneModel(
+    zone = ZoneModel(
         zone_id=zone_id,
         zone_name=zone_id,
         dwelling_id="dwelling_1",
@@ -66,13 +114,16 @@ def make_zone(
         height_m=2.7,
         volume_m3=air_volume_m3,
         air_volume_m3=air_volume_m3,
-        default_infiltration_ach=infiltration_ach,
-        mechanical_ventilation_available=mechanical_available,
-        mechanical_ventilation_flow_m3_h=mechanical_flow_m3_h,
-        co2_initial_ppm=initial_co2_ppm,
-        initial_co2_ppm=initial_co2_ppm,
-        initial_temp_c=20.0,
+        initial_temp_c=ZONE_TEMPERATURE_C,
     )
+
+    # Moisture Phase 6 attributes.
+    # ZoneModel may not define these in its constructor, so attach them here.
+    zone.initial_relative_humidity_percent = initial_rh_percent
+    zone.relative_humidity_percent = initial_rh_percent
+    zone.initial_rh_percent = initial_rh_percent
+
+    return zone
 
 
 def make_building(zone_models):
@@ -93,538 +144,475 @@ def make_building(zone_models):
     )
 
 
-def make_graph(
-    building,
-    zone_connections=None,
-    boundary_connections=None,
-):
-    return BuildingPhysicsGraph(
-        building_model=building,
-        zone_connections=zone_connections or {},
-        boundary_connections=boundary_connections or {},
-    )
-
-
 def make_weather(
-    outdoor_co2_ppm=420.0,
-    wind_speed_m_s=0.0,
-    wind_direction_deg=0.0,
+    outdoor_rh_percent=50.0,
+    outdoor_temperature_c=ZONE_TEMPERATURE_C,
 ):
     return WeatherState(
         datetime=DateTime(2021, 1, 1, 12, 0, 0),
-        outdoor_temperature_c=20.0,
-        wind_speed_m_s=wind_speed_m_s,
-        wind_direction_deg=wind_direction_deg,
+        outdoor_temperature_c=outdoor_temperature_c,
+        wind_speed_m_s=0.0,
+        wind_direction_deg=0.0,
         direct_normal_radiation_w_m2=0.0,
         diffuse_horizontal_radiation_w_m2=0.0,
         global_horizontal_radiation_w_m2=0.0,
         outdoor_illuminance_lux=0.0,
         sky_condition="clear",
-        outdoor_co2_ppm=outdoor_co2_ppm,
+        outdoor_co2_ppm=420.0,
         outdoor_noise_db=45.0,
+        relative_humidity_percent=outdoor_rh_percent,
+        atmospheric_pressure_pa=PRESSURE_PA,
     )
 
 
-def make_window_connection(
-    connection_id,
-    zone_id,
-    orientation_deg=180.0,
-    area_m2=2.0,
-    max_opening_area_m2=1.0,
-):
-    return BoundaryConnection(
-        connection_id=connection_id,
+def make_thermal_state(zone_ids, temperature_c=ZONE_TEMPERATURE_C):
+    return FakeThermalState({
+        zone_id: temperature_c
+        for zone_id in zone_ids
+    })
+
+
+def make_moisture_state(zone_id, rh_percent, temperature_c=ZONE_TEMPERATURE_C):
+    humidity_ratio = humidity_ratio_from_rh(
+        relative_humidity_percent=rh_percent,
+        temperature_c=temperature_c,
+        atmospheric_pressure_pa=PRESSURE_PA,
+    )
+
+    derived_rh = relative_humidity_from_humidity_ratio(
+        humidity_ratio_kg_kg=humidity_ratio,
+        temperature_c=temperature_c,
+        atmospheric_pressure_pa=PRESSURE_PA,
+    )
+
+    return ZoneMoistureState(
         zone_id=zone_id,
-        connection_type="window",
-        area_m2=area_m2,
-        orientation_deg=orientation_deg,
-        is_window=True,
-        is_openable=True,
-        open_fraction=0.0,
-        max_opening_area_m2=max_opening_area_m2,
-        discharge_coefficient=0.60,
+        humidity_ratio_kg_kg=humidity_ratio,
+        relative_humidity_percent=derived_rh,
     )
 
 
-def make_zone_connection(
-    connection_id,
-    zone_a_id,
-    zone_b_id,
-    max_opening_area_m2=2.0,
-    base_airflow_m3_h=0.0,
-):
-    """
-    Compatibility helper.
-
-    Current graph versions may use:
-        from_zone_id / to_zone_id
-
-    Some code paths may look for:
-        zone_a_id / zone_b_id
-
-    We set both safely.
-    """
-
-    try:
-        connection = ZoneConnection(
-            connection_id=connection_id,
-            from_zone_id=zone_a_id,
-            to_zone_id=zone_b_id,
-            connection_type="door",
-            area_m2=max_opening_area_m2,
-            max_opening_area_m2=max_opening_area_m2,
-            discharge_coefficient=0.60,
-            base_airflow_m3_h=base_airflow_m3_h,
-        )
-    except TypeError:
-        connection = ZoneConnection(
-            connection_id=connection_id,
-            zone_a_id=zone_a_id,
-            zone_b_id=zone_b_id,
-            connection_type="door",
-            area_m2=max_opening_area_m2,
-        )
-
-        connection.max_opening_area_m2 = max_opening_area_m2
-        connection.discharge_coefficient = 0.60
-        connection.base_airflow_m3_h = base_airflow_m3_h
-
-    connection.zone_a_id = zone_a_id
-    connection.zone_b_id = zone_b_id
-
-    return connection
-
-
-def make_controls(
-    occupancy_by_zone=None,
-    window_openings=None,
-    door_openings=None,
-):
-    return BuildingAirflowControlInputs(
-        occupancy_by_zone=occupancy_by_zone or {},
-        window_openings=window_openings or {},
-        door_openings=door_openings or {},
+def make_network_with_outdoor_flow(zone_id, outdoor_flow_m3_h):
+    return BuildingAirflowNetwork(
+        outdoor_airflows_by_zone={
+            zone_id: ZoneOutdoorAirflowRecord(
+                zone_id=zone_id,
+                infiltration_flow_m3_h=outdoor_flow_m3_h,
+                mechanical_ventilation_flow_m3_h=0.0,
+                window_airflow_m3_h=0.0,
+            )
+        },
+        interzone_airflow_links={},
+        interzone_airflow_records={},
     )
 
 
-def assert_ventilation_moves_co2_toward_outdoor_baseline():
+def make_network_no_flow(zone_id):
+    return make_network_with_outdoor_flow(
+        zone_id=zone_id,
+        outdoor_flow_m3_h=0.0,
+    )
+
+
+def make_people_sources(zone_id, number_of_people=1.0):
+    return BuildingMoistureSourceInputs(
+        sources_by_zone={
+            zone_id: [
+                ZoneMoistureSourceInput(
+                    zone_id=zone_id,
+                    moisture_generation_kg_h=(
+                        number_of_people
+                        * DEFAULT_MOISTURE_GENERATION_PER_PERSON_KG_H
+                    ),
+                    source_type=MOISTURE_SOURCE_PEOPLE,
+                )
+            ]
+        }
+    )
+
+
+def make_empty_sources():
+    return BuildingMoistureSourceInputs(
+        sources_by_zone={},
+    )
+
+
+def assert_dry_indoor_humid_outdoor_ventilation_raises_humidity():
     zone = make_zone(
         zone_id="living_room",
-        initial_co2_ppm=1200.0,
-        infiltration_ach=2.0,
+        initial_rh_percent=30.0,
     )
 
     building = make_building({
         "living_room": zone,
     })
 
-    graph = make_graph(building)
-    weather = make_weather(outdoor_co2_ppm=420.0)
+    moisture_model = MoistureModel()
 
-    model = AirCO2Model()
-    air_state = model.make_initial_state(building)
-
-    old_co2 = air_state.get_zone_state("living_room").co2_ppm
-
-    result = model.step(
+    moisture_state = moisture_model.make_initial_state(
         building_model=building,
-        physics_graph=graph,
-        air_state=air_state,
-        weather_state=weather,
-        airflow_control_inputs=make_controls(),
+        thermal_state=make_thermal_state(["living_room"]),
+    )
+
+    old_w = moisture_state.get_zone_state("living_room").humidity_ratio_kg_kg
+
+    result = moisture_model.step(
+        building_model=building,
+        moisture_state=moisture_state,
+        thermal_state=make_thermal_state(["living_room"]),
+        airflow_network=make_network_with_outdoor_flow(
+            zone_id="living_room",
+            outdoor_flow_m3_h=100.0,
+        ),
+        weather_state=make_weather(outdoor_rh_percent=80.0),
+        moisture_source_inputs=make_empty_sources(),
         dt_minutes=DT_MINUTES,
     )
 
-    new_co2 = result.updated_air_state.get_zone_state("living_room").co2_ppm
+    new_w = (
+        result
+        .updated_moisture_state
+        .get_zone_state("living_room")
+        .humidity_ratio_kg_kg
+    )
 
-    assert isinstance(result, AirCO2StepResult)
-    assert new_co2 < old_co2
-    assert new_co2 > 420.0
+    assert new_w > old_w
 
-    print("OK: ventilation moves CO2 toward outdoor baseline")
+    print("OK: dry indoor air plus humid outdoor ventilation raises humidity")
 
 
-def assert_people_no_ventilation_co2_rises():
+def assert_humid_indoor_dry_outdoor_ventilation_lowers_humidity():
     zone = make_zone(
         zone_id="living_room",
-        initial_co2_ppm=600.0,
-        infiltration_ach=0.0,
+        initial_rh_percent=80.0,
     )
 
     building = make_building({
         "living_room": zone,
     })
 
-    graph = make_graph(building)
-    weather = make_weather(outdoor_co2_ppm=420.0)
+    moisture_model = MoistureModel()
 
-    controls = make_controls(
-        occupancy_by_zone={
-            "living_room": ZoneOccupancyInput(
-                zone_id="living_room",
-                number_of_people=1.0,
-            )
-        }
-    )
-
-    model = AirCO2Model()
-    air_state = model.make_initial_state(building)
-
-    old_co2 = air_state.get_zone_state("living_room").co2_ppm
-
-    result = model.step(
+    moisture_state = moisture_model.make_initial_state(
         building_model=building,
-        physics_graph=graph,
-        air_state=air_state,
-        weather_state=weather,
-        airflow_control_inputs=controls,
+        thermal_state=make_thermal_state(["living_room"]),
+    )
+
+    old_w = moisture_state.get_zone_state("living_room").humidity_ratio_kg_kg
+
+    result = moisture_model.step(
+        building_model=building,
+        moisture_state=moisture_state,
+        thermal_state=make_thermal_state(["living_room"]),
+        airflow_network=make_network_with_outdoor_flow(
+            zone_id="living_room",
+            outdoor_flow_m3_h=100.0,
+        ),
+        weather_state=make_weather(outdoor_rh_percent=30.0),
+        moisture_source_inputs=make_empty_sources(),
         dt_minutes=DT_MINUTES,
     )
 
-    new_co2 = result.updated_air_state.get_zone_state("living_room").co2_ppm
-
-    assert new_co2 > old_co2
-
-    print("OK: people inside with no ventilation raise CO2")
-
-
-def assert_people_with_ventilation_rises_slower():
-    no_vent_zone = make_zone(
-        zone_id="living_room",
-        initial_co2_ppm=600.0,
-        infiltration_ach=0.0,
+    new_w = (
+        result
+        .updated_moisture_state
+        .get_zone_state("living_room")
+        .humidity_ratio_kg_kg
     )
 
-    vent_zone = make_zone(
+    assert new_w < old_w
+
+    print("OK: humid indoor air plus dry outdoor ventilation lowers humidity")
+
+
+def assert_people_moisture_no_ventilation_raises_humidity():
+    zone = make_zone(
         zone_id="living_room",
-        initial_co2_ppm=600.0,
-        infiltration_ach=0.5,
+        initial_rh_percent=45.0,
     )
 
-    no_vent_building = make_building({
-        "living_room": no_vent_zone,
+    building = make_building({
+        "living_room": zone,
     })
 
-    vent_building = make_building({
-        "living_room": vent_zone,
+    moisture_model = MoistureModel()
+
+    moisture_state = moisture_model.make_initial_state(
+        building_model=building,
+        thermal_state=make_thermal_state(["living_room"]),
+    )
+
+    old_w = moisture_state.get_zone_state("living_room").humidity_ratio_kg_kg
+
+    result = moisture_model.step(
+        building_model=building,
+        moisture_state=moisture_state,
+        thermal_state=make_thermal_state(["living_room"]),
+        airflow_network=make_network_no_flow("living_room"),
+        weather_state=make_weather(outdoor_rh_percent=45.0),
+        moisture_source_inputs=make_people_sources(
+            zone_id="living_room",
+            number_of_people=1.0,
+        ),
+        dt_minutes=DT_MINUTES,
+    )
+
+    new_w = (
+        result
+        .updated_moisture_state
+        .get_zone_state("living_room")
+        .humidity_ratio_kg_kg
+    )
+
+    assert new_w > old_w
+
+    print("OK: people moisture with no ventilation raises humidity")
+
+
+def assert_people_moisture_with_ventilation_rises_slower():
+    zone = make_zone(
+        zone_id="living_room",
+        initial_rh_percent=45.0,
+    )
+
+    building = make_building({
+        "living_room": zone,
     })
 
-    no_vent_graph = make_graph(no_vent_building)
-    vent_graph = make_graph(vent_building)
+    moisture_model = MoistureModel()
 
-    weather = make_weather(outdoor_co2_ppm=420.0)
-
-    controls = make_controls(
-        occupancy_by_zone={
-            "living_room": ZoneOccupancyInput(
-                zone_id="living_room",
-                number_of_people=1.0,
-            )
-        }
+    initial_state_no_vent = moisture_model.make_initial_state(
+        building_model=building,
+        thermal_state=make_thermal_state(["living_room"]),
     )
 
-    model = AirCO2Model()
+    initial_state_vent = moisture_model.make_initial_state(
+        building_model=building,
+        thermal_state=make_thermal_state(["living_room"]),
+    )
 
-    no_vent_state = model.make_initial_state(no_vent_building)
-    vent_state = model.make_initial_state(vent_building)
-
-    no_vent_result = model.step(
-        building_model=no_vent_building,
-        physics_graph=no_vent_graph,
-        air_state=no_vent_state,
-        weather_state=weather,
-        airflow_control_inputs=controls,
+    no_vent_result = moisture_model.step(
+        building_model=building,
+        moisture_state=initial_state_no_vent,
+        thermal_state=make_thermal_state(["living_room"]),
+        airflow_network=make_network_no_flow("living_room"),
+        weather_state=make_weather(outdoor_rh_percent=45.0),
+        moisture_source_inputs=make_people_sources(
+            zone_id="living_room",
+            number_of_people=1.0,
+        ),
         dt_minutes=DT_MINUTES,
     )
 
-    vent_result = model.step(
-        building_model=vent_building,
-        physics_graph=vent_graph,
-        air_state=vent_state,
-        weather_state=weather,
-        airflow_control_inputs=controls,
+    vent_result = moisture_model.step(
+        building_model=building,
+        moisture_state=initial_state_vent,
+        thermal_state=make_thermal_state(["living_room"]),
+        airflow_network=make_network_with_outdoor_flow(
+            zone_id="living_room",
+            outdoor_flow_m3_h=25.0,
+        ),
+        weather_state=make_weather(outdoor_rh_percent=45.0),
+        moisture_source_inputs=make_people_sources(
+            zone_id="living_room",
+            number_of_people=1.0,
+        ),
         dt_minutes=DT_MINUTES,
     )
 
-    no_vent_co2 = (
+    no_vent_w = (
         no_vent_result
-        .updated_air_state
+        .updated_moisture_state
         .get_zone_state("living_room")
-        .co2_ppm
+        .humidity_ratio_kg_kg
     )
 
-    vent_co2 = (
+    vent_w = (
         vent_result
-        .updated_air_state
+        .updated_moisture_state
         .get_zone_state("living_room")
-        .co2_ppm
+        .humidity_ratio_kg_kg
     )
 
-    assert no_vent_co2 > vent_co2
-    assert vent_co2 > 600.0
+    initial_w = (
+        initial_state_no_vent
+        .get_zone_state("living_room")
+        .humidity_ratio_kg_kg
+    )
 
-    print("OK: people plus ventilation raises CO2 slower")
+    assert no_vent_w > vent_w
+    assert vent_w > initial_w
+
+    print("OK: people moisture plus ventilation raises humidity slower")
 
 
-def assert_two_zones_open_door_mix_co2():
+def assert_two_zones_open_door_mix_humidity():
     high_zone = make_zone(
-        zone_id="high_co2_room",
-        initial_co2_ppm=1600.0,
-        infiltration_ach=0.0,
+        zone_id="humid_room",
+        initial_rh_percent=80.0,
     )
 
     low_zone = make_zone(
-        zone_id="low_co2_room",
-        initial_co2_ppm=500.0,
-        infiltration_ach=0.0,
+        zone_id="dry_room",
+        initial_rh_percent=30.0,
     )
 
     building = make_building({
-        "high_co2_room": high_zone,
-        "low_co2_room": low_zone,
+        "humid_room": high_zone,
+        "dry_room": low_zone,
     })
 
-    connection = make_zone_connection(
-        connection_id="door_between_rooms",
-        zone_a_id="high_co2_room",
-        zone_b_id="low_co2_room",
-        max_opening_area_m2=4.0,
-        base_airflow_m3_h=0.0,
+    moisture_model = MoistureModel()
+
+    moisture_state = moisture_model.make_initial_state(
+        building_model=building,
+        thermal_state=make_thermal_state(["humid_room", "dry_room"]),
     )
 
-    graph = make_graph(
-        building=building,
-        zone_connections={
-            "door_between_rooms": connection,
+    old_high = moisture_state.get_zone_state("humid_room").humidity_ratio_kg_kg
+    old_low = moisture_state.get_zone_state("dry_room").humidity_ratio_kg_kg
+    old_difference = old_high - old_low
+
+    link = InterzoneAirflowLink(
+        link_id="door_between_rooms",
+        zone_connection_id="door_between_rooms",
+        zone_a_id="humid_room",
+        zone_b_id="dry_room",
+        connection_type="door",
+        base_airflow_m3_h=0.0,
+        max_opening_area_m2=4.0,
+        discharge_coefficient=0.60,
+        opening_fraction=1.0,
+        assumed_mixing_air_speed_m_s=0.20,
+    )
+
+    record = InterzoneAirflowRecord(
+        link_id=link.link_id,
+        zone_connection_id=link.zone_connection_id,
+        zone_a_id=link.zone_a_id,
+        zone_b_id=link.zone_b_id,
+        flow_a_to_b_m3_h=link.mixing_flow_m3_h,
+        flow_b_to_a_m3_h=link.mixing_flow_m3_h,
+    )
+
+    network = BuildingAirflowNetwork(
+        outdoor_airflows_by_zone={
+            "humid_room": ZoneOutdoorAirflowRecord(zone_id="humid_room"),
+            "dry_room": ZoneOutdoorAirflowRecord(zone_id="dry_room"),
+        },
+        interzone_airflow_links={
+            link.link_id: link,
+        },
+        interzone_airflow_records={
+            record.link_id: record,
         },
     )
 
-    weather = make_weather(outdoor_co2_ppm=420.0)
-
-    controls = make_controls(
-        door_openings={
-            "door_between_rooms": DoorOpeningInput(
-                zone_connection_id="door_between_rooms",
-                zone_a_id="high_co2_room",
-                zone_b_id="low_co2_room",
-                opening_fraction=1.0,
-            )
-        }
-    )
-
-    model = AirCO2Model()
-    air_state = model.make_initial_state(building)
-
-    old_high = air_state.get_zone_state("high_co2_room").co2_ppm
-    old_low = air_state.get_zone_state("low_co2_room").co2_ppm
-    old_difference = old_high - old_low
-
-    result = model.step(
+    result = moisture_model.step(
         building_model=building,
-        physics_graph=graph,
-        air_state=air_state,
-        weather_state=weather,
-        airflow_control_inputs=controls,
+        moisture_state=moisture_state,
+        thermal_state=make_thermal_state(["humid_room", "dry_room"]),
+        airflow_network=network,
+        weather_state=make_weather(outdoor_rh_percent=50.0),
+        moisture_source_inputs=make_empty_sources(),
         dt_minutes=DT_MINUTES,
     )
 
-    new_high = result.updated_air_state.get_zone_state("high_co2_room").co2_ppm
-    new_low = result.updated_air_state.get_zone_state("low_co2_room").co2_ppm
+    new_high = (
+        result
+        .updated_moisture_state
+        .get_zone_state("humid_room")
+        .humidity_ratio_kg_kg
+    )
+
+    new_low = (
+        result
+        .updated_moisture_state
+        .get_zone_state("dry_room")
+        .humidity_ratio_kg_kg
+    )
+
     new_difference = new_high - new_low
 
     assert new_high < old_high
     assert new_low > old_low
     assert abs(new_difference) < abs(old_difference)
-    assert result.airflow_network.all_interzone_records_symmetric()
 
-    print("OK: two zones with open door mix CO2")
+    print("OK: two zones with open door mix humidity ratios")
 
 
-def assert_window_open_wind_increases_outdoor_airflow():
-    zone = make_zone(
-        zone_id="living_room",
-        initial_co2_ppm=800.0,
-        infiltration_ach=0.0,
+def assert_rh_is_derived_from_temperature_and_humidity_ratio():
+    humidity_ratio = humidity_ratio_from_rh(
+        relative_humidity_percent=50.0,
+        temperature_c=20.0,
+        atmospheric_pressure_pa=PRESSURE_PA,
     )
 
-    building = make_building({
-        "living_room": zone,
-    })
-
-    window = make_window_connection(
-        connection_id="south_window",
-        zone_id="living_room",
-        orientation_deg=180.0,
-        max_opening_area_m2=1.5,
+    rh_at_20 = relative_humidity_from_humidity_ratio(
+        humidity_ratio_kg_kg=humidity_ratio,
+        temperature_c=20.0,
+        atmospheric_pressure_pa=PRESSURE_PA,
     )
 
-    graph = make_graph(
-        building=building,
-        boundary_connections={
-            "south_window": window,
-        },
+    rh_at_25 = relative_humidity_from_humidity_ratio(
+        humidity_ratio_kg_kg=humidity_ratio,
+        temperature_c=25.0,
+        atmospheric_pressure_pa=PRESSURE_PA,
     )
 
-    weather = make_weather(
-        outdoor_co2_ppm=420.0,
-        wind_speed_m_s=4.0,
-        wind_direction_deg=180.0,
-    )
+    assert abs(rh_at_20 - 50.0) < 0.5
+    assert rh_at_25 < rh_at_20
 
-    closed_controls = make_controls(
-        window_openings={
-            "south_window": WindowOpeningInput(
-                boundary_connection_id="south_window",
-                zone_id="living_room",
-                opening_fraction=0.0,
-            )
-        }
-    )
-
-    open_controls = make_controls(
-        window_openings={
-            "south_window": WindowOpeningInput(
-                boundary_connection_id="south_window",
-                zone_id="living_room",
-                opening_fraction=1.0,
-            )
-        }
-    )
-
-    closed_flow = calculate_building_window_outdoor_airflows(
-        physics_graph=graph,
-        weather_state=weather,
-        airflow_control_inputs=closed_controls,
-    )
-
-    open_flow = calculate_building_window_outdoor_airflows(
-        physics_graph=graph,
-        weather_state=weather,
-        airflow_control_inputs=open_controls,
-    )
-
-    assert closed_flow.total_airflow_m3_h() == 0.0
-    assert open_flow.total_airflow_m3_h() > closed_flow.total_airflow_m3_h()
-
-    print("OK: window open plus wind increases outdoor airflow")
+    print("OK: RH is derived from temperature and humidity ratio")
 
 
-def assert_wind_direction_affects_window_airflow():
-    zone = make_zone(
-        zone_id="living_room",
-        initial_co2_ppm=800.0,
-        infiltration_ach=0.0,
-    )
-
-    building = make_building({
-        "living_room": zone,
-    })
-
-    window = make_window_connection(
-        connection_id="south_window",
-        zone_id="living_room",
-        orientation_deg=180.0,
-        max_opening_area_m2=1.5,
-    )
-
-    graph = make_graph(
-        building=building,
-        boundary_connections={
-            "south_window": window,
-        },
-    )
-
-    controls = make_controls(
-        window_openings={
-            "south_window": WindowOpeningInput(
-                boundary_connection_id="south_window",
-                zone_id="living_room",
-                opening_fraction=1.0,
-            )
-        }
-    )
-
-    aligned_weather = make_weather(
-        outdoor_co2_ppm=420.0,
-        wind_speed_m_s=4.0,
-        wind_direction_deg=180.0,
-    )
-
-    perpendicular_weather = make_weather(
-        outdoor_co2_ppm=420.0,
-        wind_speed_m_s=4.0,
-        wind_direction_deg=90.0,
-    )
-
-    aligned_flow = calculate_building_window_outdoor_airflows(
-        physics_graph=graph,
-        weather_state=aligned_weather,
-        airflow_control_inputs=controls,
-    )
-
-    perpendicular_flow = calculate_building_window_outdoor_airflows(
-        physics_graph=graph,
-        weather_state=perpendicular_weather,
-        airflow_control_inputs=controls,
-    )
-
-    assert aligned_flow.total_airflow_m3_h() > perpendicular_flow.total_airflow_m3_h()
-
-    print("OK: wind direction affects window airflow")
-
-
-def assert_co2_never_goes_negative():
-    state = ZoneAirState(
+def assert_humidity_ratio_never_negative():
+    state = ZoneMoistureState(
         zone_id="bad_room",
-        co2_ppm=-100.0,
-        air_volume_m3=50.0,
+        humidity_ratio_kg_kg=-0.01,
+        relative_humidity_percent=50.0,
     )
 
-    assert state.co2_ppm >= 300.0
+    assert state.humidity_ratio_kg_kg >= 0.0
 
-    building_state = BuildingAirState(
-        zone_states={
-            "bad_room": state,
-        }
-    )
-
-    assert building_state.get_zone_state("bad_room").co2_ppm >= 300.0
-
-    print("OK: CO2 is physically bounded")
+    print("OK: humidity ratio is physically bounded")
 
 
 def assert_no_thermal_solver_calculated():
     zone = make_zone(
         zone_id="living_room",
-        initial_co2_ppm=800.0,
-        infiltration_ach=1.0,
+        initial_rh_percent=45.0,
     )
 
     building = make_building({
         "living_room": zone,
     })
 
-    graph = make_graph(building)
-    weather = make_weather(outdoor_co2_ppm=420.0)
+    moisture_model = MoistureModel()
 
-    model = AirCO2Model()
-    air_state = model.make_initial_state(building)
-
-    result = model.step(
+    moisture_state = moisture_model.make_initial_state(
         building_model=building,
-        physics_graph=graph,
-        air_state=air_state,
-        weather_state=weather,
-        airflow_control_inputs=make_controls(),
+        thermal_state=make_thermal_state(["living_room"]),
+    )
+
+    result = moisture_model.step(
+        building_model=building,
+        moisture_state=moisture_state,
+        thermal_state=make_thermal_state(["living_room"]),
+        airflow_network=make_network_with_outdoor_flow(
+            zone_id="living_room",
+            outdoor_flow_m3_h=25.0,
+        ),
+        weather_state=make_weather(outdoor_rh_percent=50.0),
+        moisture_source_inputs=make_empty_sources(),
         dt_minutes=DT_MINUTES,
     )
 
     result_text = str(result.to_dict())
 
     forbidden_terms = [
-        "air_temperature_c",
+        "updated_thermal_state",
         "mass_temperature_c",
-        "thermal_state",
         "heating_energy_wh",
         "cooling_energy_wh",
         "hvac_gain_w",
@@ -635,24 +623,81 @@ def assert_no_thermal_solver_calculated():
     for term in forbidden_terms:
         assert term not in result_text
 
-    assert "co2_ppm" in result_text
-    assert "air_volume_m3" in result_text
+    assert "humidity_ratio" in result_text
+    assert "relative_humidity" in result_text
 
     print("OK: no thermal solver calculated")
 
 
+def assert_no_airflow_solver_recalculated_when_network_passed():
+    zone = make_zone(
+        zone_id="living_room",
+        initial_rh_percent=45.0,
+    )
+
+    building = make_building({
+        "living_room": zone,
+    })
+
+    moisture_model = MoistureModel()
+
+    moisture_state = moisture_model.make_initial_state(
+        building_model=building,
+        thermal_state=make_thermal_state(["living_room"]),
+    )
+
+    supplied_flow_m3_h = 42.0
+
+    supplied_network = SuppliedAirflowNetwork(
+        outdoor_airflows_by_zone={
+            "living_room": ZoneOutdoorAirflowRecord(
+                zone_id="living_room",
+                infiltration_flow_m3_h=supplied_flow_m3_h,
+            )
+        },
+        interzone_airflow_links={},
+    )
+
+    result = moisture_model.step(
+        building_model=building,
+        moisture_state=moisture_state,
+        thermal_state=make_thermal_state(["living_room"]),
+        airflow_network=supplied_network,
+        weather_state=make_weather(outdoor_rh_percent=50.0),
+        moisture_source_inputs=make_empty_sources(),
+        dt_minutes=DT_MINUTES,
+    )
+
+    expected_mass_flow_kg_s = (
+        MOISTURE_AIR_DENSITY_KG_M3
+        * supplied_flow_m3_h
+        / 3600.0
+    )
+
+    actual_mass_flow_kg_s = (
+        result
+        .moisture_transport_result
+        .total_dry_air_mass_flow_kg_s_by_zone()["living_room"]
+    )
+
+    assert abs(actual_mass_flow_kg_s - expected_mass_flow_kg_s) < 1e-9
+
+    print("OK: supplied airflow network is used without recalculating airflow")
+
+
 def run_tests():
-    assert_ventilation_moves_co2_toward_outdoor_baseline()
-    assert_people_no_ventilation_co2_rises()
-    assert_people_with_ventilation_rises_slower()
-    assert_two_zones_open_door_mix_co2()
-    assert_window_open_wind_increases_outdoor_airflow()
-    assert_wind_direction_affects_window_airflow()
-    assert_co2_never_goes_negative()
+    assert_dry_indoor_humid_outdoor_ventilation_raises_humidity()
+    assert_humid_indoor_dry_outdoor_ventilation_lowers_humidity()
+    assert_people_moisture_no_ventilation_raises_humidity()
+    assert_people_moisture_with_ventilation_rises_slower()
+    assert_two_zones_open_door_mix_humidity()
+    assert_rh_is_derived_from_temperature_and_humidity_ratio()
+    assert_humidity_ratio_never_negative()
     assert_no_thermal_solver_calculated()
+    assert_no_airflow_solver_recalculated_when_network_passed()
 
     print("")
-    print("PHASE 5 AIRFLOW CO2 ARCHITECTURE OK ✅")
+    print("PHASE 6 HUMIDITY ARCHITECTURE OK ✅")
 
 
 if __name__ == "__main__":
