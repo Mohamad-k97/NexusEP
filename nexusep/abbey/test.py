@@ -1,19 +1,21 @@
 """
-ABBEY Phase 4 thermal architecture test.
+ABBEY Phase 5 airflow / CO2 architecture test.
 
 Tests:
-1. One zone, no gains, no HVAC -> temperature drifts toward outside.
-2. One zone, heating active -> temperature rises.
-3. Two zones, one hot and one cold -> temperatures move toward each other.
-4. Window solar gain -> temperature rises during daytime.
-5. No non-thermal building physics is calculated.
+1. 1 zone, no people, outdoor ventilation -> CO2 moves toward outdoor baseline.
+2. 1 zone, people inside, no ventilation -> CO2 rises.
+3. 1 zone, people + ventilation -> CO2 rises slower.
+4. 2 zones with open door -> CO2 mixes between zones.
+5. Window open + wind -> outdoor airflow increases.
+6. Wind direction affects window airflow.
+7. CO2 never goes negative / below physical lower bound.
+8. No thermal solver is calculated here.
 
 Expected:
-    PHASE 4 THERMAL ARCHITECTURE OK ✅
+    PHASE 5 AIRFLOW CO2 ARCHITECTURE OK ✅
 """
 
 from datetime import datetime as DateTime
-from types import SimpleNamespace
 
 from nexusep.abbey.building.model import (
     BuildingModel,
@@ -29,9 +31,16 @@ from nexusep.abbey.building.physics.graph import (
 
 from nexusep.abbey.building.physics.weather import WeatherState
 
-from nexusep.abbey.building.physics.thermal import (
-    ThermalModel,
-    ThermalStepResult,
+from nexusep.abbey.building.physics.airflow import (
+    AirCO2Model,
+    AirCO2StepResult,
+    BuildingAirState,
+    BuildingAirflowControlInputs,
+    DoorOpeningInput,
+    WindowOpeningInput,
+    ZoneAirState,
+    ZoneOccupancyInput,
+    calculate_building_window_outdoor_airflows,
 )
 
 
@@ -40,10 +49,11 @@ DT_MINUTES = 15.0
 
 def make_zone(
     zone_id,
-    initial_temp_c,
-    external_wall_area_m2=20.0,
-    internal_wall_area_m2=0.0,
-    floor_area_m2=20.0,
+    initial_co2_ppm=600.0,
+    air_volume_m3=50.0,
+    infiltration_ach=0.0,
+    mechanical_available=False,
+    mechanical_flow_m3_h=0.0,
 ):
     return ZoneModel(
         zone_id=zone_id,
@@ -52,22 +62,16 @@ def make_zone(
         building_id="building_1",
         zone_scope="private",
         zone_use="generic",
-        floor_area_m2=floor_area_m2,
+        floor_area_m2=air_volume_m3 / 2.7,
         height_m=2.7,
-        volume_m3=floor_area_m2 * 2.7,
-        air_volume_m3=floor_area_m2 * 2.7,
-        air_heat_capacity_j_k=30000.0,
-        internal_heat_capacity_j_k=500000.0,
-        external_wall_area_m2=external_wall_area_m2,
-        internal_wall_area_m2=internal_wall_area_m2,
-        u_value_external_wall_w_m2k=1.2,
-        u_value_internal_wall_w_m2k=1.8,
-        thermal_bridge_factor=1.0,
-        default_infiltration_ach=0.0,
-        initial_air_temperature_c=initial_temp_c,
-        initial_mass_temperature_c=initial_temp_c,
-        initial_temp_c=initial_temp_c,
-        initial_co2_ppm=600.0,
+        volume_m3=air_volume_m3,
+        air_volume_m3=air_volume_m3,
+        default_infiltration_ach=infiltration_ach,
+        mechanical_ventilation_available=mechanical_available,
+        mechanical_ventilation_flow_m3_h=mechanical_flow_m3_h,
+        co2_initial_ppm=initial_co2_ppm,
+        initial_co2_ppm=initial_co2_ppm,
+        initial_temp_c=20.0,
     )
 
 
@@ -89,68 +93,6 @@ def make_building(zone_models):
     )
 
 
-def make_zone_connection(
-    connection_id,
-    zone_a_id,
-    zone_b_id,
-    area_m2,
-    u_value_w_m2k,
-):
-    """
-    Compatibility helper.
-
-    Your graph.py uses from_zone_id/to_zone_id.
-    Some thermal code may expect zone_a_id/zone_b_id.
-    We set both aliases safely.
-    """
-
-    try:
-        connection = ZoneConnection(
-            connection_id=connection_id,
-            from_zone_id=zone_a_id,
-            to_zone_id=zone_b_id,
-            connection_type="internal_wall",
-            area_m2=area_m2,
-        )
-    except TypeError:
-        connection = ZoneConnection(
-            connection_id=connection_id,
-            zone_a_id=zone_a_id,
-            zone_b_id=zone_b_id,
-            connection_type="internal_wall",
-            area_m2=area_m2,
-        )
-
-    connection.zone_a_id = zone_a_id
-    connection.zone_b_id = zone_b_id
-    connection.u_value_w_m2k = u_value_w_m2k
-
-    return connection
-
-
-def make_window_connection(
-    connection_id,
-    zone_id,
-    area_m2,
-    shgc=0.60,
-):
-    return BoundaryConnection(
-        connection_id=connection_id,
-        zone_id=zone_id,
-        connection_type="window",
-        area_m2=area_m2,
-        orientation_deg=180.0,
-        is_window=True,
-        is_openable=True,
-        open_fraction=0.0,
-        solar_heat_gain_coefficient=shgc,
-        frame_fraction=0.20,
-        shading_factor=1.0,
-        curtain_open=True,
-        curtain_solar_reduction_factor=0.35,
-    )
-
-
 def make_graph(
     building,
     zone_connections=None,
@@ -164,48 +106,112 @@ def make_graph(
 
 
 def make_weather(
-    outdoor_temperature_c,
-    ghi=0.0,
-    dni=0.0,
-    dhi=0.0,
+    outdoor_co2_ppm=420.0,
+    wind_speed_m_s=0.0,
+    wind_direction_deg=0.0,
 ):
     return WeatherState(
         datetime=DateTime(2021, 1, 1, 12, 0, 0),
-        outdoor_temperature_c=outdoor_temperature_c,
-        wind_speed_m_s=0.0,
-        wind_direction_deg=0.0,
-        direct_normal_radiation_w_m2=dni,
-        diffuse_horizontal_radiation_w_m2=dhi,
-        global_horizontal_radiation_w_m2=ghi,
+        outdoor_temperature_c=20.0,
+        wind_speed_m_s=wind_speed_m_s,
+        wind_direction_deg=wind_direction_deg,
+        direct_normal_radiation_w_m2=0.0,
+        diffuse_horizontal_radiation_w_m2=0.0,
+        global_horizontal_radiation_w_m2=0.0,
         outdoor_illuminance_lux=0.0,
         sky_condition="clear",
-        outdoor_co2_ppm=420.0,
+        outdoor_co2_ppm=outdoor_co2_ppm,
         outdoor_noise_db=45.0,
     )
 
 
-def make_heating_system_spec():
-    return SimpleNamespace(
-        has_heating=True,
-        has_cooling=False,
-        max_heating_power_w=1000.0,
-        max_cooling_power_w=0.0,
+def make_window_connection(
+    connection_id,
+    zone_id,
+    orientation_deg=180.0,
+    area_m2=2.0,
+    max_opening_area_m2=1.0,
+):
+    return BoundaryConnection(
+        connection_id=connection_id,
+        zone_id=zone_id,
+        connection_type="window",
+        area_m2=area_m2,
+        orientation_deg=orientation_deg,
+        is_window=True,
+        is_openable=True,
+        open_fraction=0.0,
+        max_opening_area_m2=max_opening_area_m2,
+        discharge_coefficient=0.60,
     )
 
 
-def make_heating_control_state():
-    return SimpleNamespace(
-        heating_setpoint_c=20.0,
-        cooling_setpoint_c=26.0,
-        thermostat_deadband_c=0.5,
+def make_zone_connection(
+    connection_id,
+    zone_a_id,
+    zone_b_id,
+    max_opening_area_m2=2.0,
+    base_airflow_m3_h=0.0,
+):
+    """
+    Compatibility helper.
+
+    Current graph versions may use:
+        from_zone_id / to_zone_id
+
+    Some code paths may look for:
+        zone_a_id / zone_b_id
+
+    We set both safely.
+    """
+
+    try:
+        connection = ZoneConnection(
+            connection_id=connection_id,
+            from_zone_id=zone_a_id,
+            to_zone_id=zone_b_id,
+            connection_type="door",
+            area_m2=max_opening_area_m2,
+            max_opening_area_m2=max_opening_area_m2,
+            discharge_coefficient=0.60,
+            base_airflow_m3_h=base_airflow_m3_h,
+        )
+    except TypeError:
+        connection = ZoneConnection(
+            connection_id=connection_id,
+            zone_a_id=zone_a_id,
+            zone_b_id=zone_b_id,
+            connection_type="door",
+            area_m2=max_opening_area_m2,
+        )
+
+        connection.max_opening_area_m2 = max_opening_area_m2
+        connection.discharge_coefficient = 0.60
+        connection.base_airflow_m3_h = base_airflow_m3_h
+
+    connection.zone_a_id = zone_a_id
+    connection.zone_b_id = zone_b_id
+
+    return connection
+
+
+def make_controls(
+    occupancy_by_zone=None,
+    window_openings=None,
+    door_openings=None,
+):
+    return BuildingAirflowControlInputs(
+        occupancy_by_zone=occupancy_by_zone or {},
+        window_openings=window_openings or {},
+        door_openings=door_openings or {},
     )
 
 
-def assert_one_zone_drifts_toward_outside():
+def assert_ventilation_moves_co2_toward_outdoor_baseline():
     zone = make_zone(
         zone_id="living_room",
-        initial_temp_c=20.0,
-        external_wall_area_m2=40.0,
+        initial_co2_ppm=1200.0,
+        infiltration_ach=2.0,
     )
 
     building = make_building({
@@ -213,45 +219,36 @@ def assert_one_zone_drifts_toward_outside():
     })
 
     graph = make_graph(building)
+    weather = make_weather(outdoor_co2_ppm=420.0)
 
-    weather = make_weather(
-        outdoor_temperature_c=0.0,
-    )
+    model = AirCO2Model()
+    air_state = model.make_initial_state(building)
 
-    model = ThermalModel()
-    thermal_state = model.make_initial_state(building)
-
-    old_temp = thermal_state.get_zone_state("living_room").air_temperature_c
+    old_co2 = air_state.get_zone_state("living_room").co2_ppm
 
     result = model.step(
         building_model=building,
         physics_graph=graph,
-        thermal_state=thermal_state,
+        air_state=air_state,
         weather_state=weather,
-        zone_system_specs={},
-        zone_control_states={},
-        internal_gains_by_zone={},
+        airflow_control_inputs=make_controls(),
         dt_minutes=DT_MINUTES,
     )
 
-    new_temp = (
-        result
-        .updated_thermal_state
-        .get_zone_state("living_room")
-        .air_temperature_c
-    )
+    new_co2 = result.updated_air_state.get_zone_state("living_room").co2_ppm
 
-    assert isinstance(result, ThermalStepResult)
-    assert new_temp < old_temp
+    assert isinstance(result, AirCO2StepResult)
+    assert new_co2 < old_co2
+    assert new_co2 > 420.0
 
-    print("OK: one zone drifts toward outside")
+    print("OK: ventilation moves CO2 toward outdoor baseline")
 
 
-def assert_heating_raises_temperature():
+def assert_people_no_ventilation_co2_rises():
     zone = make_zone(
         zone_id="living_room",
-        initial_temp_c=18.0,
-        external_wall_area_m2=40.0,
+        initial_co2_ppm=600.0,
+        infiltration_ach=0.0,
     )
 
     building = make_building({
@@ -259,130 +256,195 @@ def assert_heating_raises_temperature():
     })
 
     graph = make_graph(building)
+    weather = make_weather(outdoor_co2_ppm=420.0)
 
-    weather = make_weather(
-        outdoor_temperature_c=0.0,
+    controls = make_controls(
+        occupancy_by_zone={
+            "living_room": ZoneOccupancyInput(
+                zone_id="living_room",
+                number_of_people=1.0,
+            )
+        }
     )
 
-    model = ThermalModel()
-    thermal_state = model.make_initial_state(building)
+    model = AirCO2Model()
+    air_state = model.make_initial_state(building)
 
-    old_temp = thermal_state.get_zone_state("living_room").air_temperature_c
+    old_co2 = air_state.get_zone_state("living_room").co2_ppm
 
     result = model.step(
         building_model=building,
         physics_graph=graph,
-        thermal_state=thermal_state,
+        air_state=air_state,
         weather_state=weather,
-        zone_system_specs={
-            "living_room": make_heating_system_spec(),
-        },
-        zone_control_states={
-            "living_room": make_heating_control_state(),
-        },
-        internal_gains_by_zone={},
+        airflow_control_inputs=controls,
         dt_minutes=DT_MINUTES,
     )
 
-    new_temp = (
-        result
-        .updated_thermal_state
+    new_co2 = result.updated_air_state.get_zone_state("living_room").co2_ppm
+
+    assert new_co2 > old_co2
+
+    print("OK: people inside with no ventilation raise CO2")
+
+
+def assert_people_with_ventilation_rises_slower():
+    no_vent_zone = make_zone(
+        zone_id="living_room",
+        initial_co2_ppm=600.0,
+        infiltration_ach=0.0,
+    )
+
+    vent_zone = make_zone(
+        zone_id="living_room",
+        initial_co2_ppm=600.0,
+        infiltration_ach=0.5,
+    )
+
+    no_vent_building = make_building({
+        "living_room": no_vent_zone,
+    })
+
+    vent_building = make_building({
+        "living_room": vent_zone,
+    })
+
+    no_vent_graph = make_graph(no_vent_building)
+    vent_graph = make_graph(vent_building)
+
+    weather = make_weather(outdoor_co2_ppm=420.0)
+
+    controls = make_controls(
+        occupancy_by_zone={
+            "living_room": ZoneOccupancyInput(
+                zone_id="living_room",
+                number_of_people=1.0,
+            )
+        }
+    )
+
+    model = AirCO2Model()
+
+    no_vent_state = model.make_initial_state(no_vent_building)
+    vent_state = model.make_initial_state(vent_building)
+
+    no_vent_result = model.step(
+        building_model=no_vent_building,
+        physics_graph=no_vent_graph,
+        air_state=no_vent_state,
+        weather_state=weather,
+        airflow_control_inputs=controls,
+        dt_minutes=DT_MINUTES,
+    )
+
+    vent_result = model.step(
+        building_model=vent_building,
+        physics_graph=vent_graph,
+        air_state=vent_state,
+        weather_state=weather,
+        airflow_control_inputs=controls,
+        dt_minutes=DT_MINUTES,
+    )
+
+    no_vent_co2 = (
+        no_vent_result
+        .updated_air_state
         .get_zone_state("living_room")
-        .air_temperature_c
+        .co2_ppm
     )
 
-    assert new_temp > old_temp
-    assert result.total_heating_energy_wh() > 0.0
-    assert result.total_cooling_energy_wh() == 0.0
-
-    print("OK: heating raises temperature")
-
-
-def assert_two_zones_move_toward_each_other():
-    hot_zone = make_zone(
-        zone_id="hot_room",
-        initial_temp_c=30.0,
-        external_wall_area_m2=0.0,
-        internal_wall_area_m2=30.0,
+    vent_co2 = (
+        vent_result
+        .updated_air_state
+        .get_zone_state("living_room")
+        .co2_ppm
     )
 
-    cold_zone = make_zone(
-        zone_id="cold_room",
-        initial_temp_c=10.0,
-        external_wall_area_m2=0.0,
-        internal_wall_area_m2=30.0,
+    assert no_vent_co2 > vent_co2
+    assert vent_co2 > 600.0
+
+    print("OK: people plus ventilation raises CO2 slower")
+
+
+def assert_two_zones_open_door_mix_co2():
+    high_zone = make_zone(
+        zone_id="high_co2_room",
+        initial_co2_ppm=1600.0,
+        infiltration_ach=0.0,
+    )
+
+    low_zone = make_zone(
+        zone_id="low_co2_room",
+        initial_co2_ppm=500.0,
+        infiltration_ach=0.0,
     )
 
     building = make_building({
-        "hot_room": hot_zone,
-        "cold_room": cold_zone,
+        "high_co2_room": high_zone,
+        "low_co2_room": low_zone,
     })
 
     connection = make_zone_connection(
-        connection_id="hot_cold_wall",
-        zone_a_id="hot_room",
-        zone_b_id="cold_room",
-        area_m2=30.0,
-        u_value_w_m2k=5.0,
+        connection_id="door_between_rooms",
+        zone_a_id="high_co2_room",
+        zone_b_id="low_co2_room",
+        max_opening_area_m2=4.0,
+        base_airflow_m3_h=0.0,
     )
 
     graph = make_graph(
         building=building,
         zone_connections={
-            "hot_cold_wall": connection,
+            "door_between_rooms": connection,
         },
     )
 
-    weather = make_weather(
-        outdoor_temperature_c=20.0,
+    weather = make_weather(outdoor_co2_ppm=420.0)
+
+    controls = make_controls(
+        door_openings={
+            "door_between_rooms": DoorOpeningInput(
+                zone_connection_id="door_between_rooms",
+                zone_a_id="high_co2_room",
+                zone_b_id="low_co2_room",
+                opening_fraction=1.0,
+            )
+        }
     )
 
-    model = ThermalModel()
-    thermal_state = model.make_initial_state(building)
+    model = AirCO2Model()
+    air_state = model.make_initial_state(building)
 
-    old_hot = thermal_state.get_zone_state("hot_room").air_temperature_c
-    old_cold = thermal_state.get_zone_state("cold_room").air_temperature_c
-    old_difference = old_hot - old_cold
+    old_high = air_state.get_zone_state("high_co2_room").co2_ppm
+    old_low = air_state.get_zone_state("low_co2_room").co2_ppm
+    old_difference = old_high - old_low
 
     result = model.step(
         building_model=building,
         physics_graph=graph,
-        thermal_state=thermal_state,
+        air_state=air_state,
         weather_state=weather,
-        zone_system_specs={},
-        zone_control_states={},
-        internal_gains_by_zone={},
+        airflow_control_inputs=controls,
         dt_minutes=DT_MINUTES,
     )
 
-    new_hot = (
-        result
-        .updated_thermal_state
-        .get_zone_state("hot_room")
-        .air_temperature_c
-    )
+    new_high = result.updated_air_state.get_zone_state("high_co2_room").co2_ppm
+    new_low = result.updated_air_state.get_zone_state("low_co2_room").co2_ppm
+    new_difference = new_high - new_low
 
-    new_cold = (
-        result
-        .updated_thermal_state
-        .get_zone_state("cold_room")
-        .air_temperature_c
-    )
-
-    new_difference = new_hot - new_cold
-
-    assert new_hot < old_hot
-    assert new_cold > old_cold
+    assert new_high < old_high
+    assert new_low > old_low
     assert abs(new_difference) < abs(old_difference)
+    assert result.airflow_network.all_interzone_records_symmetric()
 
-    print("OK: two zones move toward each other")
+    print("OK: two zones with open door mix CO2")
 
 
-def assert_window_solar_gain_raises_temperature():
+def assert_window_open_wind_increases_outdoor_airflow():
     zone = make_zone(
         zone_id="living_room",
-        initial_temp_c=20.0,
-        external_wall_area_m2=0.0,
+        initial_co2_ppm=800.0,
+        infiltration_ach=0.0,
     )
 
     building = make_building({
@@ -390,60 +452,152 @@ def assert_window_solar_gain_raises_temperature():
     })
 
     window = make_window_connection(
-        connection_id="living_south_window",
+        connection_id="south_window",
         zone_id="living_room",
-        area_m2=4.0,
-        shgc=0.60,
+        orientation_deg=180.0,
+        max_opening_area_m2=1.5,
     )
 
     graph = make_graph(
         building=building,
         boundary_connections={
-            "living_south_window": window,
+            "south_window": window,
         },
     )
 
     weather = make_weather(
-        outdoor_temperature_c=20.0,
-        ghi=800.0,
-        dni=900.0,
-        dhi=120.0,
+        outdoor_co2_ppm=420.0,
+        wind_speed_m_s=4.0,
+        wind_direction_deg=180.0,
     )
 
-    model = ThermalModel()
-    thermal_state = model.make_initial_state(building)
+    closed_controls = make_controls(
+        window_openings={
+            "south_window": WindowOpeningInput(
+                boundary_connection_id="south_window",
+                zone_id="living_room",
+                opening_fraction=0.0,
+            )
+        }
+    )
 
-    old_temp = thermal_state.get_zone_state("living_room").air_temperature_c
+    open_controls = make_controls(
+        window_openings={
+            "south_window": WindowOpeningInput(
+                boundary_connection_id="south_window",
+                zone_id="living_room",
+                opening_fraction=1.0,
+            )
+        }
+    )
 
-    result = model.step(
-        building_model=building,
+    closed_flow = calculate_building_window_outdoor_airflows(
         physics_graph=graph,
-        thermal_state=thermal_state,
         weather_state=weather,
-        zone_system_specs={},
-        zone_control_states={},
-        internal_gains_by_zone={},
-        dt_minutes=DT_MINUTES,
+        airflow_control_inputs=closed_controls,
     )
 
-    new_temp = (
-        result
-        .updated_thermal_state
-        .get_zone_state("living_room")
-        .air_temperature_c
+    open_flow = calculate_building_window_outdoor_airflows(
+        physics_graph=graph,
+        weather_state=weather,
+        airflow_control_inputs=open_controls,
     )
 
-    assert result.solar_gain_result.total_solar_gain_w() > 0.0
-    assert new_temp > old_temp
+    assert closed_flow.total_airflow_m3_h() == 0.0
+    assert open_flow.total_airflow_m3_h() > closed_flow.total_airflow_m3_h()
 
-    print("OK: window solar gain raises temperature")
+    print("OK: window open plus wind increases outdoor airflow")
 
 
-def assert_no_nonthermal_physics_calculated():
+def assert_wind_direction_affects_window_airflow():
     zone = make_zone(
         zone_id="living_room",
-        initial_temp_c=20.0,
-        external_wall_area_m2=20.0,
+        initial_co2_ppm=800.0,
+        infiltration_ach=0.0,
+    )
+
+    building = make_building({
+        "living_room": zone,
+    })
+
+    window = make_window_connection(
+        connection_id="south_window",
+        zone_id="living_room",
+        orientation_deg=180.0,
+        max_opening_area_m2=1.5,
+    )
+
+    graph = make_graph(
+        building=building,
+        boundary_connections={
+            "south_window": window,
+        },
+    )
+
+    controls = make_controls(
+        window_openings={
+            "south_window": WindowOpeningInput(
+                boundary_connection_id="south_window",
+                zone_id="living_room",
+                opening_fraction=1.0,
+            )
+        }
+    )
+
+    aligned_weather = make_weather(
+        outdoor_co2_ppm=420.0,
+        wind_speed_m_s=4.0,
+        wind_direction_deg=180.0,
+    )
+
+    perpendicular_weather = make_weather(
+        outdoor_co2_ppm=420.0,
+        wind_speed_m_s=4.0,
+        wind_direction_deg=90.0,
+    )
+
+    aligned_flow = calculate_building_window_outdoor_airflows(
+        physics_graph=graph,
+        weather_state=aligned_weather,
+        airflow_control_inputs=controls,
+    )
+
+    perpendicular_flow = calculate_building_window_outdoor_airflows(
+        physics_graph=graph,
+        weather_state=perpendicular_weather,
+        airflow_control_inputs=controls,
+    )
+
+    assert aligned_flow.total_airflow_m3_h() > perpendicular_flow.total_airflow_m3_h()
+
+    print("OK: wind direction affects window airflow")
+
+
+def assert_co2_never_goes_negative():
+    state = ZoneAirState(
+        zone_id="bad_room",
+        co2_ppm=-100.0,
+        air_volume_m3=50.0,
+    )
+
+    assert state.co2_ppm >= 300.0
+
+    building_state = BuildingAirState(
+        zone_states={
+            "bad_room": state,
+        }
+    )
+
+    assert building_state.get_zone_state("bad_room").co2_ppm >= 300.0
+
+    print("OK: CO2 is physically bounded")
+
+
+def assert_no_thermal_solver_calculated():
+    zone = make_zone(
+        zone_id="living_room",
+        initial_co2_ppm=800.0,
+        infiltration_ach=1.0,
     )
 
     building = make_building({
@@ -451,56 +605,54 @@ def assert_no_nonthermal_physics_calculated():
     })
 
     graph = make_graph(building)
+    weather = make_weather(outdoor_co2_ppm=420.0)
 
-    weather = make_weather(
-        outdoor_temperature_c=10.0,
-    )
-
-    model = ThermalModel()
-    thermal_state = model.make_initial_state(building)
+    model = AirCO2Model()
+    air_state = model.make_initial_state(building)
 
     result = model.step(
         building_model=building,
         physics_graph=graph,
-        thermal_state=thermal_state,
+        air_state=air_state,
         weather_state=weather,
-        zone_system_specs={},
-        zone_control_states={},
-        internal_gains_by_zone={},
+        airflow_control_inputs=make_controls(),
         dt_minutes=DT_MINUTES,
     )
 
-    state_dict = result.updated_thermal_state.to_dict()
+    result_text = str(result.to_dict())
 
     forbidden_terms = [
-        "co2_ppm",
-        "indoor_daylight",
-        "indoor_noise",
-        "humidity",
-        "air_quality",
-        "occupant_comfort",
+        "air_temperature_c",
+        "mass_temperature_c",
+        "thermal_state",
+        "heating_energy_wh",
+        "cooling_energy_wh",
+        "hvac_gain_w",
+        "radiative_gain_w",
+        "convective_gain_w",
     ]
 
-    state_text = str(state_dict)
-
     for term in forbidden_terms:
-        assert term not in state_text
+        assert term not in result_text
 
-    assert "air_temperature_c" in state_text
-    assert "mass_temperature_c" in state_text
+    assert "co2_ppm" in result_text
+    assert "air_volume_m3" in result_text
 
-    print("OK: no non-thermal physics calculated")
+    print("OK: no thermal solver calculated")
 
 
 def run_tests():
-    assert_one_zone_drifts_toward_outside()
-    assert_heating_raises_temperature()
-    assert_two_zones_move_toward_each_other()
-    assert_window_solar_gain_raises_temperature()
-    assert_no_nonthermal_physics_calculated()
+    assert_ventilation_moves_co2_toward_outdoor_baseline()
+    assert_people_no_ventilation_co2_rises()
+    assert_people_with_ventilation_rises_slower()
+    assert_two_zones_open_door_mix_co2()
+    assert_window_open_wind_increases_outdoor_airflow()
+    assert_wind_direction_affects_window_airflow()
+    assert_co2_never_goes_negative()
+    assert_no_thermal_solver_calculated()
 
     print("")
-    print("PHASE 4 THERMAL ARCHITECTURE OK ✅")
+    print("PHASE 5 AIRFLOW CO2 ARCHITECTURE OK ✅")
 
 
 if __name__ == "__main__":
