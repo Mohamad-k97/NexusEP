@@ -4,10 +4,11 @@ ABBEY simulation logger.
 
 import json
 from pathlib import Path
-from typing import Any, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 
+from nexusep.abbey.agents.location import OccupantLocation, SpaceAssignment
 from nexusep.abbey.agents.location import OccupantLocation, SpaceAssignment
 from nexusep.abbey.agents.states import (
     PersonState,
@@ -16,12 +17,14 @@ from nexusep.abbey.agents.states import (
     ExecutionState,
     SimulationClock,
 )
-
+from nexusep.abbey.household import HouseholdState
+from nexusep.abbey.systems import CooldownState
 
 class SimulationLogger:
     def __init__(self) -> None:
         self.records = []
         self.zone_records = []
+        self.person_records: List[Dict[str, Any]] = []
 
     def record_step(
         self,
@@ -29,11 +32,15 @@ class SimulationLogger:
         person: PersonState,
         location: OccupantLocation,
         assignment: SpaceAssignment,
+        household: HouseholdState,
+        cooldowns: CooldownState,
         observation: DwellingObservation,
         systems: SystemState,
         execution: ExecutionState,
         chunk_records: list,
         performance_log: Optional[dict] = None,
+        people: Optional[Dict[str, PersonState]] = None,
+        locations: Optional[Dict[str, OccupantLocation]] = None,
     ) -> None:
         performance_log = performance_log or {}
 
@@ -79,15 +86,24 @@ class SimulationLogger:
             ),
             "chunk_records": json.dumps(chunk_records, ensure_ascii=False),
             "space_assignment": json.dumps(assignment.to_dict(), ensure_ascii=False),
+            "household": json.dumps(household.to_dict(), ensure_ascii=False),
+            "cooldowns": json.dumps(cooldowns.to_dict(), ensure_ascii=False),
             "performance_log": json.dumps(performance_log, ensure_ascii=False),
         }
 
         record.update(self._prefix_dict("person", person.to_dict()))
+        record.update(self._prefix_dict("household", household.to_dict()))
         record.update(self._prefix_dict("observation", observation.to_dict()))
         record.update(self._prefix_dict("systems", systems.to_dict()))
 
         self.records.append(record)
-
+        
+        if people is not None and locations is not None:
+            self.record_people_step(
+                clock=clock,
+                people=people,
+                locations=locations,
+            )
         self._record_zones(
             clock=clock,
             location=location,
@@ -135,9 +151,45 @@ class SimulationLogger:
                 }
             )
 
+    def record_people_step(
+        self,
+        clock: SimulationClock,
+        people: Dict[str, PersonState],
+        locations: Dict[str, OccupantLocation],
+    ) -> None:
+        """
+        Log one row per occupant per timestep.
+        """
+    
+        for occupant_id, person in people.items():
+            location = locations.get(occupant_id)
+    
+            record = {
+                "step": clock.step,
+                "day": clock.day,
+                "hour": clock.hour,
+                "dt_hours": clock.dt_hours,
+                "occupant_id": occupant_id,
+            }
+    
+            record.update(self._prefix_dict("person", person.to_dict()))
+    
+            if location is not None:
+                record.update(self._prefix_dict("location", location.to_dict()))
+    
+            self.person_records.append(record)
+            
     def to_dataframe(self) -> pd.DataFrame:
         return pd.DataFrame(self.records)
-
+    
+    def people_to_dataframe(self) -> pd.DataFrame:
+        return pd.DataFrame(self.person_records)
+    
+    
+    def save_people_csv(self, path: str) -> None:
+        df = self.people_to_dataframe()
+        df.to_csv(path, index=False)
+    
     def zones_to_dataframe(self) -> pd.DataFrame:
         return pd.DataFrame(self.zone_records)
 

@@ -27,7 +27,8 @@ from nexusep.abbey.agents.states import (
     ExecutionState,
     SimulationClock,
 )
-from nexusep.abbey.agents.location import OccupantLocation
+from nexusep.abbey.actions.proposal import ActionProposal
+from nexusep.abbey.agents.location import OccupantLocation, SpaceAssignment
 from nexusep.abbey.agents.schedule import homeostatic_sleep_signal
 
 AbbeyConfig = Mapping[str, Any]
@@ -79,8 +80,30 @@ def score_action(
             score += 1.5 * max(0.0, person.fatigue - 0.75)
 
     if action.name == "make_hot_drink":
-        score += float(cfg["hot_drink_sickness_weight"]) * person.sickness_severity
-        score += 0.25 * person.thermal_discomfort
+        hour = clock.hour % 24.0
+    
+        in_hot_drink_window = (
+            6.5 <= hour <= 10.0
+            or 15.0 <= hour <= 17.5
+            or 20.0 <= hour <= 22.0
+        )
+    
+        if not in_hot_drink_window and person.sickness_severity < 0.4:
+            score -= 999.0
+        else:
+            score += 0.35
+            score += float(cfg["hot_drink_sickness_weight"]) * person.sickness_severity
+    
+            # Very weak comfort effect only. Do not let thermal discomfort create endless tea.
+            score += 0.03 * person.thermal_discomfort
+    
+        # Do not make hot drinks while very hungry; food should dominate.
+        if person.hunger > 0.65:
+            score -= 1.0
+    
+        # Do not make hot drinks while exhausted; sleep/rest should dominate.
+        if person.fatigue > 0.75 or person.sleep_pressure > 0.85:
+            score -= 1.0
 
     # ------------------------------------------------------------
     # Sleep / wake
@@ -265,22 +288,11 @@ def score_action(
         ) * max(0.0, 1.0 - person.visual_discomfort)
 
     # ------------------------------------------------------------
-    # Laundry / tariff
+    # Laundry / tariff #TEMPPP
     # ------------------------------------------------------------
     if action.name == "run_washing_machine":
-        score += float(cfg["dirty_clothes_laundry_weight"]) * person.dirty_clothes
-
-        tariff_reference = float(cfg["laundry_tariff_reference"])
-        tariff_excess = max(
-            0.0,
-            observation.electricity_tariff - tariff_reference,
-        )
-
-        score -= (
-            float(cfg["tariff_penalty_weight"])
-            * person.money_sensitivity
-            * tariff_excess
-        )
+        # Temporarily disabled until household-level decision/arbitration is added.
+        score -= 999.0
 
     # ------------------------------------------------------------
     # Background process bonus
@@ -298,6 +310,152 @@ def score_action(
     )
 
     return score
+
+def propose_actions_for_person(
+    available_actions: list[Action],
+    person: PersonState,
+    observation: DwellingObservation,
+    systems: SystemState,
+    execution: ExecutionState,
+    location: OccupantLocation,
+    assignment: SpaceAssignment,
+    clock: SimulationClock,
+    config: AbbeyConfig,
+) -> list[ActionProposal]:
+    """
+    Generate scored action proposals for one occupant.
+
+    This does not choose the final action.
+    Household arbitration will later decide which proposals survive.
+    """
+
+    if not person.can_act:
+        return []
+
+    proposals: list[ActionProposal] = []
+
+    available_space_ids = observation.available_space_ids()
+
+    external_schedule_only_actions = {
+        "go_to_work",
+        "go_to_school",
+        "return_home",
+    }
+
+    for action in available_actions:
+        if action.name in external_schedule_only_actions:
+            continue
+
+        score = score_action(
+            action=action,
+            person=person,
+            observation=observation,
+            systems=systems,
+            execution=execution,
+            location=location,
+            clock=clock,
+            config=config,
+        )
+        score = score_action(
+            action=action,
+            person=person,
+            observation=observation,
+            systems=systems,
+            execution=execution,
+            location=location,
+            clock=clock,
+            config=config,
+        )
+
+        role = action.target_zone_role
+
+        if role == "door":
+            resolved_role = "entrance"
+        else:
+            resolved_role = role
+
+        if resolved_role in ("current", "outside"):
+            target_space_id = location.current_space_id
+        elif resolved_role == "outside":
+            target_space_id = "outside"
+        else:
+            target_space_id = assignment.resolve(
+                role=resolved_role,
+                available_space_ids=available_space_ids,
+            )
+
+        proposals.append(
+            ActionProposal(
+                actor_id=person.occupant_id,
+                action_name=action.name,
+                score=score,
+                target_space_id=target_space_id,
+                target_space_role=resolved_role,
+                is_household_action=action.name in {
+                    "cook",
+                    "run_washing_machine",
+                    "turn_lights_on",
+                    "turn_lights_off",
+                    "turn_heating_on",
+                    "turn_heating_off",
+                    "open_window",
+                    "close_window",
+                    "open_curtain",
+                    "close_curtain",
+                },
+                conflict_group=_proposal_conflict_group(
+                    action=action,
+                    target_space_id=target_space_id,
+                    actor_id=person.occupant_id,
+                ),
+                authority_weight=person.authority_weight,
+                reason="scored_by_person_decision",
+                metadata={
+                    "category": action.category,
+                    "execution_type": action.execution_type,
+                    "requires_home": action.requires_home,
+                    "requires_awake": action.requires_awake,
+                    "blocks_actor": action.blocks_actor,
+                    "background_process": action.background_process,
+                },
+            )
+        )
+
+    return proposals
+
+
+def _proposal_conflict_group(
+    action: Action,
+    target_space_id: str,
+    actor_id: str,
+) -> str:
+    """
+    Assign broad conflict groups for household arbitration.
+    """
+
+    if action.name in {"turn_lights_on", "turn_lights_off"}:
+        return f"same_space_light_control:{target_space_id}"
+
+    if action.name in {"open_window", "close_window"}:
+        return f"same_space_window_control:{target_space_id}"
+
+    if action.name in {"turn_heating_on", "turn_heating_off"}:
+        return f"same_space_heating_control:{target_space_id}"
+
+    if action.name in {"open_curtain", "close_curtain"}:
+        return f"same_space_curtain_control:{target_space_id}"
+
+    if action.name == "run_washing_machine":
+        return "laundry_machine"
+
+    if action.name == "cook":
+        return "household_cooking"
+
+    if action.blocks_actor:
+        return f"same_person_foreground:{actor_id}"
+
+    return ""
+
 
 
 def choose_action(

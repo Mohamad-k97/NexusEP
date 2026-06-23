@@ -159,7 +159,6 @@ person = PersonState(
     fatigue=0.20,
     sleep_pressure=0.20,
     sickness_severity=0.00,
-    dirty_clothes=0.20,
 
     is_home=True,
     is_sleeping=False,
@@ -247,316 +246,393 @@ sim = AbbeySimulation.initialize(
     random_seed=42,
 )
 
-df = sim.run()
+# print(sim.people.keys())
+# print(sim.locations.keys())
+# print(sim.assignments.keys())
+# print(sim.household.to_dict())
+# print("\nHousehold dirty clothes final:")
+# print(sim.household.dirty_clothes)
+from nexusep.abbey.systems import CooldownState
 
-sim.save_csv(output_path)
-sim.save_zone_csvs(zone_output_folder)
+cooldowns = CooldownState()
 
-
-# ============================================================
-# QUICK CHECKS
-# ============================================================
-
-print("\nSaved main CSV to:")
-print(output_path)
-
-print("\nSaved zone CSVs to:")
-print(zone_output_folder)
-
-print("\nSpace counts:")
-print(df["current_space_id"].value_counts())
-
-print("\nSpace-role counts:")
-print(df["current_space_role"].value_counts())
-
-print("\nLocation sample:")
-print(
-    df[
-        [
-            "day",
-            "hour",
-            "current_space_id",
-            "current_space_role",
-            "location_is_home",
-            "away_reason",
-            "person_is_sleeping",
-            "person_hunger",
-            "person_fatigue",
-            "person_sleep_pressure",
-        ]
-    ].head(80)
+cooldowns = cooldowns.set_person_action_cooldown(
+    occupant_id="working_man",
+    action_name="make_hot_drink",
+    cooldown_minutes=180,
 )
 
-print("\nLast rows:")
-print(
-    df[
-        [
-            "day",
-            "hour",
-            "current_space_id",
-            "current_space_role",
-            "location_is_home",
-            "away_reason",
-            "person_is_sleeping",
-        ]
-    ].tail(80)
+cooldowns = cooldowns.set_household_action_cooldown(
+    action_name="cook_family_meal",
+    cooldown_minutes=240,
 )
 
-import json
-from collections import Counter
-
-action_counter = Counter()
-
-for value in df["chunk_records"]:
-    chunks = json.loads(value)
-    for chunk in chunks:
-        label = chunk.get("chunk_label", "")
-        action_counter[label] += 1
-
-print("\nAction counts:")
-print(action_counter)
-
-print(
-    df[
-        [
-            "day",
-            "hour",
-            "person_is_sleeping",
-            "person_minutes_asleep",
-            "person_minutes_awake_since_sleep",
-            "current_space_id",
-            "current_space_role",
-        ]
-    ].tail(200)
+cooldowns = cooldowns.set_space_control_cooldown(
+    space_id="kitchen",
+    control_name="window",
+    cooldown_minutes=20,
 )
 
-print(
-    df[
-        [
-            "day",
-            "hour",
-            "location_is_home",
-            "away_reason",
-            "current_space_id",
-            "current_space_role",
-        ]
-    ][df["away_reason"] == "work"].tail(200)
-)
+print(cooldowns.to_dict())
 
-# ============================================================
-# QUICK BEHAVIOR PLOTS
-# ============================================================
+cooldowns = cooldowns.advance_cooldowns(minutes=30)
 
-import json
-import numpy as np
-import matplotlib.pyplot as plt
+print(cooldowns.to_dict())
+# import random
+
+# from nexusep.abbey.actions.proposal import ActionProposal
+# from nexusep.abbey.household import HouseholdState, arbitrate_household_actions
 
 
-plot_folder = (
-    PROJECT_ROOT
-    / "outputs"
-    / "abbey"
-    / "plots"
-    / "dummy_apartment_v02"
-)
+# household = HouseholdState(
+#     household_id="family_1",
+#     occupant_ids=["man", "woman", "schoolboy", "infant"],
+# )
 
-plot_folder.mkdir(parents=True, exist_ok=True)
+# proposals = [
+#     ActionProposal(
+#         actor_id="man",
+#         action_name="open_window",
+#         score=1.0,
+#         target_space_id="living_room",
+#         conflict_group="same_space_window_control:living_room",
+#         authority_weight=1.0,
+#     ),
+#     ActionProposal(
+#         actor_id="woman",
+#         action_name="close_window",
+#         score=1.1,
+#         target_space_id="living_room",
+#         conflict_group="same_space_window_control:living_room",
+#         authority_weight=1.0,
+#     ),
+#     ActionProposal(
+#         actor_id="schoolboy",
+#         action_name="use_laptop",
+#         score=2.0,
+#         target_space_id="bedroom_2",
+#         conflict_group="same_person_foreground:schoolboy",
+#         authority_weight=0.5,
+#     ),
+# ]
 
+# selected = arbitrate_household_actions(
+#     proposals=proposals,
+#     household=household,
+#     rng=random.Random(42),
+# )
 
-def extract_primary_action(chunk_records_value):
-    """
-    Extract the dominant visible action from chunk_records.
-    """
+# print([p.to_dict() for p in selected])
+# df = sim.run()
 
-    if isinstance(chunk_records_value, str):
-        try:
-            chunks = json.loads(chunk_records_value)
-        except json.JSONDecodeError:
-            return "unknown"
-    else:
-        chunks = chunk_records_value
-
-    if not chunks:
-        return "do_nothing"
-
-    action_minutes = {}
-
-    for chunk in chunks:
-        label = chunk.get("chunk_label", "do_nothing")
-        minutes = float(chunk.get("chunk_minutes", 0.0))
-
-        if label != "continue_blocking_action":
-            action_minutes[label] = action_minutes.get(label, 0.0) + minutes
-            continue
-
-        for item in chunk.get("power_breakdown", []):
-            if item.get("execution_type") != "background":
-                name = item.get("name", "do_nothing")
-                item_minutes = float(item.get("minutes", minutes))
-                action_minutes[name] = action_minutes.get(name, 0.0) + item_minutes
-
-    if not action_minutes:
-        return "do_nothing"
-
-    return max(action_minutes, key=action_minutes.get)
+# sim.save_csv(output_path)
+# sim.save_zone_csvs(zone_output_folder)
 
 
-df_plot = df.copy()
+# # ============================================================
+# # QUICK CHECKS
+# # ============================================================
 
-df_plot["time_h"] = np.arange(len(df_plot)) * df_plot["dt_hours"].iloc[0]
-df_plot["primary_action"] = df_plot["chunk_records"].apply(extract_primary_action)
+# print("\nSaved main CSV to:")
+# print(output_path)
 
+# print("\nSaved zone CSVs to:")
+# print(zone_output_folder)
 
-# ------------------------------------------------------------
-# Plot 1: where he is over time
-# ------------------------------------------------------------
+# print("\nSpace counts:")
+# print(df["current_space_id"].value_counts())
 
-space_categories = sorted(df_plot["current_space_id"].dropna().unique())
-space_to_y = {space: i for i, space in enumerate(space_categories)}
+# print("\nSpace-role counts:")
+# print(df["current_space_role"].value_counts())
 
-df_plot["space_y"] = df_plot["current_space_id"].map(space_to_y)
+# print("\nLocation sample:")
+# print(
+#     df[
+#         [
+#             "day",
+#             "hour",
+#             "current_space_id",
+#             "current_space_role",
+#             "location_is_home",
+#             "away_reason",
+#             "person_is_sleeping",
+#             "person_hunger",
+#             "person_fatigue",
+#             "person_sleep_pressure",
+#         ]
+#     ].head(80)
+# )
 
-plt.figure(figsize=(14, 5))
-plt.scatter(
-    df_plot["time_h"],
-    df_plot["space_y"],
-    s=6,
-)
-plt.yticks(
-    list(space_to_y.values()),
-    list(space_to_y.keys()),
-)
-plt.xlabel("Time [h]")
-plt.ylabel("Space")
-plt.title("Occupant location over time")
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.savefig(plot_folder / "01_location_over_time.png", dpi=200)
-plt.close()
+# print("\nLast rows:")
+# print(
+#     df[
+#         [
+#             "day",
+#             "hour",
+#             "current_space_id",
+#             "current_space_role",
+#             "location_is_home",
+#             "away_reason",
+#             "person_is_sleeping",
+#         ]
+#     ].tail(80)
+# )
 
+# import json
+# from collections import Counter
 
-# ------------------------------------------------------------
-# Plot 2: what he is doing over time
-# ------------------------------------------------------------
+# action_counter = Counter()
 
-action_categories = sorted(df_plot["primary_action"].dropna().unique())
-action_to_y = {action: i for i, action in enumerate(action_categories)}
+# for value in df["chunk_records"]:
+#     chunks = json.loads(value)
+#     for chunk in chunks:
+#         label = chunk.get("chunk_label", "")
+#         action_counter[label] += 1
 
-df_plot["action_y"] = df_plot["primary_action"].map(action_to_y)
+# print("\nAction counts:")
+# print(action_counter)
 
-plt.figure(figsize=(14, 6))
-plt.scatter(
-    df_plot["time_h"],
-    df_plot["action_y"],
-    s=6,
-)
-plt.yticks(
-    list(action_to_y.values()),
-    list(action_to_y.keys()),
-)
-plt.xlabel("Time [h]")
-plt.ylabel("Action")
-plt.title("Primary action over time")
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.savefig(plot_folder / "02_action_over_time.png", dpi=200)
-plt.close()
+# print(
+#     df[
+#         [
+#             "day",
+#             "hour",
+#             "person_is_sleeping",
+#             "person_minutes_asleep",
+#             "person_minutes_awake_since_sleep",
+#             "current_space_id",
+#             "current_space_role",
+#         ]
+#     ].tail(200)
+# )
 
+# print(
+#     df[
+#         [
+#             "day",
+#             "hour",
+#             "location_is_home",
+#             "away_reason",
+#             "current_space_id",
+#             "current_space_role",
+#         ]
+#     ][df["away_reason"] == "work"].tail(200)
+# )
 
-# ------------------------------------------------------------
-# Plot 3: home / work / sleep overview
-# ------------------------------------------------------------
+# # ============================================================
+# # QUICK BEHAVIOR PLOTS
+# # ============================================================
 
-plt.figure(figsize=(14, 5))
-
-plt.plot(
-    df_plot["time_h"],
-    df_plot["location_is_home"].astype(int),
-    label="At home",
-)
-
-plt.plot(
-    df_plot["time_h"],
-    df_plot["person_is_sleeping"].astype(int),
-    label="Sleeping",
-)
-
-plt.xlabel("Time [h]")
-plt.ylabel("State flag")
-plt.title("Home and sleep state over time")
-plt.yticks([0, 1], ["False", "True"])
-plt.grid(True, alpha=0.3)
-plt.legend()
-plt.tight_layout()
-plt.savefig(plot_folder / "03_home_sleep_over_time.png", dpi=200)
-plt.close()
-
-
-# ------------------------------------------------------------
-# Plot 4: time spent in each space
-# ------------------------------------------------------------
-
-space_minutes = (
-    df_plot.groupby("current_space_id")["dt_hours"]
-    .sum()
-    .sort_values(ascending=True)
-    * 60.0
-)
-
-plt.figure(figsize=(9, 5))
-plt.barh(space_minutes.index, space_minutes.values)
-plt.xlabel("Minutes")
-plt.ylabel("Space")
-plt.title("Total time spent in each space")
-plt.grid(True, axis="x", alpha=0.3)
-plt.tight_layout()
-plt.savefig(plot_folder / "04_time_by_space.png", dpi=200)
-plt.close()
+# import json
+# import numpy as np
+# import matplotlib.pyplot as plt
 
 
-# ------------------------------------------------------------
-# Plot 5: time spent doing each action
-# ------------------------------------------------------------
+# plot_folder = (
+#     PROJECT_ROOT
+#     / "outputs"
+#     / "abbey"
+#     / "plots"
+#     / "dummy_apartment_v02"
+# )
 
-action_minutes = (
-    df_plot.groupby("primary_action")["dt_hours"]
-    .sum()
-    .sort_values(ascending=True)
-    * 60.0
-)
-
-plt.figure(figsize=(9, 6))
-plt.barh(action_minutes.index, action_minutes.values)
-plt.xlabel("Minutes")
-plt.ylabel("Action")
-plt.title("Total time spent by action")
-plt.grid(True, axis="x", alpha=0.3)
-plt.tight_layout()
-plt.savefig(plot_folder / "05_time_by_action.png", dpi=200)
-plt.close()
+# plot_folder.mkdir(parents=True, exist_ok=True)
 
 
-print("\nSaved behavior plots to:")
-print(plot_folder)
+# def extract_primary_action(chunk_records_value):
+#     """
+#     Extract the dominant visible action from chunk_records.
+#     """
 
-print("\nTime spent in spaces [min]:")
-print(space_minutes.sort_values(ascending=False))
+#     if isinstance(chunk_records_value, str):
+#         try:
+#             chunks = json.loads(chunk_records_value)
+#         except json.JSONDecodeError:
+#             return "unknown"
+#     else:
+#         chunks = chunk_records_value
 
-print("\nTime spent by action [min]:")
-print(action_minutes.sort_values(ascending=False))
+#     if not chunks:
+#         return "do_nothing"
 
-print("\nSleep pressure diagnostic every hour:")
-cols = [
-    "time_h",
-    "hour",
-    "current_activity",
-    "location_is_home",
-    "away_reason",
-    "person_is_sleeping",
-    "person_minutes_awake_since_sleep",
-    "person_minutes_asleep",
-    "person_fatigue",
-    "person_sleep_pressure",
-]
+#     action_minutes = {}
 
-print(df_plot[[c for c in cols if c in df_plot.columns]].iloc[::60].head(60))
+#     for chunk in chunks:
+#         label = chunk.get("chunk_label", "do_nothing")
+#         minutes = float(chunk.get("chunk_minutes", 0.0))
+
+#         if label != "continue_blocking_action":
+#             action_minutes[label] = action_minutes.get(label, 0.0) + minutes
+#             continue
+
+#         for item in chunk.get("power_breakdown", []):
+#             if item.get("execution_type") != "background":
+#                 name = item.get("name", "do_nothing")
+#                 item_minutes = float(item.get("minutes", minutes))
+#                 action_minutes[name] = action_minutes.get(name, 0.0) + item_minutes
+
+#     if not action_minutes:
+#         return "do_nothing"
+
+#     return max(action_minutes, key=action_minutes.get)
+
+
+# df_plot = df.copy()
+
+# df_plot["time_h"] = np.arange(len(df_plot)) * df_plot["dt_hours"].iloc[0]
+# df_plot["primary_action"] = df_plot["chunk_records"].apply(extract_primary_action)
+
+
+# # ------------------------------------------------------------
+# # Plot 1: where he is over time
+# # ------------------------------------------------------------
+
+# space_categories = sorted(df_plot["current_space_id"].dropna().unique())
+# space_to_y = {space: i for i, space in enumerate(space_categories)}
+
+# df_plot["space_y"] = df_plot["current_space_id"].map(space_to_y)
+
+# plt.figure(figsize=(14, 5))
+# plt.scatter(
+#     df_plot["time_h"],
+#     df_plot["space_y"],
+#     s=6,
+# )
+# plt.yticks(
+#     list(space_to_y.values()),
+#     list(space_to_y.keys()),
+# )
+# plt.xlabel("Time [h]")
+# plt.ylabel("Space")
+# plt.title("Occupant location over time")
+# plt.grid(True, alpha=0.3)
+# plt.tight_layout()
+# plt.savefig(plot_folder / "01_location_over_time.png", dpi=200)
+# plt.close()
+
+
+# # ------------------------------------------------------------
+# # Plot 2: what he is doing over time
+# # ------------------------------------------------------------
+
+# action_categories = sorted(df_plot["primary_action"].dropna().unique())
+# action_to_y = {action: i for i, action in enumerate(action_categories)}
+
+# df_plot["action_y"] = df_plot["primary_action"].map(action_to_y)
+
+# plt.figure(figsize=(14, 6))
+# plt.scatter(
+#     df_plot["time_h"],
+#     df_plot["action_y"],
+#     s=6,
+# )
+# plt.yticks(
+#     list(action_to_y.values()),
+#     list(action_to_y.keys()),
+# )
+# plt.xlabel("Time [h]")
+# plt.ylabel("Action")
+# plt.title("Primary action over time")
+# plt.grid(True, alpha=0.3)
+# plt.tight_layout()
+# plt.savefig(plot_folder / "02_action_over_time.png", dpi=200)
+# plt.close()
+
+
+# # ------------------------------------------------------------
+# # Plot 3: home / work / sleep overview
+# # ------------------------------------------------------------
+
+# plt.figure(figsize=(14, 5))
+
+# plt.plot(
+#     df_plot["time_h"],
+#     df_plot["location_is_home"].astype(int),
+#     label="At home",
+# )
+
+# plt.plot(
+#     df_plot["time_h"],
+#     df_plot["person_is_sleeping"].astype(int),
+#     label="Sleeping",
+# )
+
+# plt.xlabel("Time [h]")
+# plt.ylabel("State flag")
+# plt.title("Home and sleep state over time")
+# plt.yticks([0, 1], ["False", "True"])
+# plt.grid(True, alpha=0.3)
+# plt.legend()
+# plt.tight_layout()
+# plt.savefig(plot_folder / "03_home_sleep_over_time.png", dpi=200)
+# plt.close()
+
+
+# # ------------------------------------------------------------
+# # Plot 4: time spent in each space
+# # ------------------------------------------------------------
+
+# space_minutes = (
+#     df_plot.groupby("current_space_id")["dt_hours"]
+#     .sum()
+#     .sort_values(ascending=True)
+#     * 60.0
+# )
+
+# plt.figure(figsize=(9, 5))
+# plt.barh(space_minutes.index, space_minutes.values)
+# plt.xlabel("Minutes")
+# plt.ylabel("Space")
+# plt.title("Total time spent in each space")
+# plt.grid(True, axis="x", alpha=0.3)
+# plt.tight_layout()
+# plt.savefig(plot_folder / "04_time_by_space.png", dpi=200)
+# plt.close()
+
+
+# # ------------------------------------------------------------
+# # Plot 5: time spent doing each action
+# # ------------------------------------------------------------
+
+# action_minutes = (
+#     df_plot.groupby("primary_action")["dt_hours"]
+#     .sum()
+#     .sort_values(ascending=True)
+#     * 60.0
+# )
+
+# plt.figure(figsize=(9, 6))
+# plt.barh(action_minutes.index, action_minutes.values)
+# plt.xlabel("Minutes")
+# plt.ylabel("Action")
+# plt.title("Total time spent by action")
+# plt.grid(True, axis="x", alpha=0.3)
+# plt.tight_layout()
+# plt.savefig(plot_folder / "05_time_by_action.png", dpi=200)
+# plt.close()
+
+
+# print("\nSaved behavior plots to:")
+# print(plot_folder)
+
+# print("\nTime spent in spaces [min]:")
+# print(space_minutes.sort_values(ascending=False))
+
+# print("\nTime spent by action [min]:")
+# print(action_minutes.sort_values(ascending=False))
+
+# print("\nSleep pressure diagnostic every hour:")
+# cols = [
+#     "time_h",
+#     "hour",
+#     "current_activity",
+#     "location_is_home",
+#     "away_reason",
+#     "person_is_sleeping",
+#     "person_minutes_awake_since_sleep",
+#     "person_minutes_asleep",
+#     "person_fatigue",
+#     "person_sleep_pressure",
+# ]
+
+# print(df_plot[[c for c in cols if c in df_plot.columns]].iloc[::60].head(60))

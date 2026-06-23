@@ -9,10 +9,11 @@ Handles:
 - action-level power and energy accounting
 """
 
-from typing import Any, Callable, Mapping, Tuple
-
+from typing import Any, Callable, Mapping, Tuple, Optional
+from nexusep.abbey.systems import CooldownState
 from nexusep.abbey.actions.action import Action
-from nexusep.abbey.actions.library import get_available_actions
+from nexusep.abbey.actions.proposal import ActionProposal
+from nexusep.abbey.actions.library import get_available_actions, build_action
 from nexusep.abbey.agents.location import OccupantLocation, SpaceAssignment
 from nexusep.abbey.agents.states import (
     PersonState,
@@ -22,6 +23,9 @@ from nexusep.abbey.agents.states import (
     ExecutionState,
     SimulationClock,
 )
+from nexusep.abbey.household import apply_family_meal_effect
+from nexusep.abbey.household.state import HouseholdState
+from nexusep.abbey.household.care import apply_dependent_care_effect
 
 
 AbbeyConfig = Mapping[str, Any]
@@ -40,6 +44,18 @@ ChooseActionFn = Callable[
     Action,
 ]
 
+def action_from_proposal(
+    proposal: ActionProposal,
+    config: AbbeyConfig,
+) -> Action:
+    """
+    Build an Action object from an ActionProposal.
+    """
+
+    return build_action(
+        name=proposal.action_name,
+        config=config,
+    )
 
 def apply_system_effects(
     systems: SystemState,
@@ -81,6 +97,65 @@ def apply_location_effects(
 
     return location.copy(**updates)
 
+def apply_v03_cooldowns_on_start(
+    cooldowns: Optional[CooldownState],
+    action: Action,
+    actor_id: str,
+    target_space_id: str,
+) -> Optional[CooldownState]:
+    """
+    Apply v0.3 cooldowns when an action starts.
+
+    For now:
+        - action_cooldowns_on_start -> person-level cooldowns
+        - cook/run_washing_machine -> household-level cooldowns
+        - window/light/heating/curtain controls -> space-level cooldowns
+    """
+
+    if cooldowns is None:
+        cooldowns = CooldownState()
+
+    # Person-level action cooldowns.
+    for action_name, cooldown_minutes in action.action_cooldowns_on_start.items():
+        cooldowns = cooldowns.set_person_action_cooldown(
+            occupant_id=actor_id,
+            action_name=action_name,
+            cooldown_minutes=float(cooldown_minutes),
+        )
+
+    # Household-level cooldowns.
+    if action.name in {"cook", "run_washing_machine", "care_for_infant"}:
+        for action_name, cooldown_minutes in action.action_cooldowns_on_start.items():
+            cooldowns = cooldowns.set_household_action_cooldown(
+                action_name=action_name,
+                cooldown_minutes=float(cooldown_minutes),
+            )
+            
+    # Space-control cooldowns.
+    control_name = ""
+
+    if action.name in {"open_window", "close_window"}:
+        control_name = "window"
+
+    if action.name in {"turn_lights_on", "turn_lights_off"}:
+        control_name = "lights"
+
+    if action.name in {"turn_heating_on", "turn_heating_off"}:
+        control_name = "heating"
+
+    if action.name in {"open_curtain", "close_curtain"}:
+        control_name = "curtain"
+
+    if control_name:
+        control_cooldown_minutes = 20.0
+
+        cooldowns = cooldowns.set_space_control_cooldown(
+            space_id=target_space_id,
+            control_name=control_name,
+            cooldown_minutes=control_cooldown_minutes,
+        )
+
+    return cooldowns
 
 def resolve_action_space(
     action: Action,
@@ -192,8 +267,9 @@ def start_action(
     execution: ExecutionState,
     config: AbbeyConfig,
     actor_id: str = "person_1",
+    cooldowns: Optional[CooldownState] = None,
     other_locations: list = None,
-) -> tuple[PersonState, OccupantLocation, SystemState, ExecutionState, ActionState]:
+) -> tuple[PersonState, OccupantLocation, SystemState, ExecutionState, Optional[CooldownState], ActionState]:
     """
     Start an action.
 
@@ -212,7 +288,16 @@ def start_action(
         assignment=assignment,
         observation=observation,
     )
-    
+    action_state = action_state.copy(
+        target_zone_role=target_role,
+        target_space_id=target_space_id,
+    )
+    cooldowns = apply_v03_cooldowns_on_start(
+        cooldowns=cooldowns,
+        action=action,
+        actor_id=actor_id,
+        target_space_id=target_space_id,
+    )
     systems = apply_space_exit_rules(
         systems=systems,
         old_space_id=old_space_id,
@@ -240,11 +325,12 @@ def start_action(
         effects=action.person_effects,
     )
 
-    location = apply_location_effects(
-        location=location,
-        effects=action.person_effects,
+    location = location.copy(
+        current_space_id=target_space_id,
+        current_space_role=target_role,
+        current_activity=action.name,
+        minutes_since_last_space_change=0.0,
     )
-
     if action.name == "go_to_work":
         systems = apply_space_exit_rules(
             systems=systems,
@@ -312,8 +398,125 @@ def start_action(
 
     execution = clean_execution_state(execution, person)
 
-    return person, location, systems, execution, action_state
+    return person, location, systems, execution, cooldowns, action_state
 
+def start_selected_proposals(
+    selected_proposals: list[ActionProposal],
+    people: dict[str, PersonState],
+    locations: dict[str, OccupantLocation],
+    assignments: dict[str, SpaceAssignment],
+    observation: DwellingObservation,
+    systems: SystemState,
+    execution: ExecutionState,
+    cooldowns: CooldownState,
+    config: AbbeyConfig,
+) -> tuple[
+    dict[str, PersonState],
+    dict[str, OccupantLocation],
+    SystemState,
+    ExecutionState,
+    CooldownState,
+    list[ActionState],
+]:
+    """
+    Start selected household action proposals.
+
+    This is the v0.3 multi-agent entry point.
+
+    It does not yet solve all conflicts itself.
+    It assumes household arbitration has already selected compatible proposals.
+    """
+
+    started_actions = []
+
+    for proposal in selected_proposals:
+        actor_id = proposal.actor_id
+
+        if actor_id not in people:
+            raise KeyError(f"Unknown actor_id in proposal: {actor_id}")
+
+        if actor_id not in locations:
+            raise KeyError(f"No location found for actor_id: {actor_id}")
+
+        if actor_id not in assignments:
+            raise KeyError(f"No space assignment found for actor_id: {actor_id}")
+        
+        if proposal.action_name in {"go_to_work", "go_to_school"}:
+            
+            def _interrupt_sleep_for_actor(
+                execution: ExecutionState,
+                actor_id: str,
+            ) -> ExecutionState:
+                """
+                Remove active sleep action for one actor so scheduled external duties
+                can force wake-up.
+                """
+            
+                new_foreground = []
+            
+                for action in execution.foreground_actions:
+                    if action.actor_id == actor_id and action.name == "sleep":
+                        continue
+            
+                    new_foreground.append(action)
+            
+                return execution.copy(
+                    foreground_actions=new_foreground,
+                )
+            
+            execution = _interrupt_sleep_for_actor(
+                execution=execution,
+                actor_id=proposal.actor_id,
+            )
+        
+            person = people[proposal.actor_id]
+            people[proposal.actor_id] = person.copy(
+                is_sleeping=False,
+            )
+        
+            location = locations[proposal.actor_id]
+            locations[proposal.actor_id] = location.copy(
+                current_activity="idle",
+            )
+        action = action_from_proposal(
+            proposal=proposal,
+            config=config,
+        )
+
+        person = people[actor_id]
+        location = locations[actor_id]
+        assignment = assignments[actor_id]
+
+        (
+            person,
+            location,
+            systems,
+            execution,
+            cooldowns,
+            action_state,
+        ) = start_action(
+            action=action,
+            person=person,
+            location=location,
+            assignment=assignment,
+            observation=observation,
+            systems=systems,
+            execution=execution,
+            config=config,
+            actor_id=actor_id,
+            cooldowns=cooldowns,
+            other_locations=[
+                loc
+                for oid, loc in locations.items()
+                if oid != actor_id
+            ],
+        )
+
+        people[actor_id] = person
+        locations[actor_id] = location
+        started_actions.append(action_state)
+
+    return people, locations, systems, execution, cooldowns, started_actions
 
 def advance_action_state(
     action_state: ActionState,
@@ -348,6 +551,182 @@ def clean_execution_state(
         background_processes=background,
     )
 
+def advance_household_execution_state(
+    people: dict[str, PersonState],
+    locations: dict[str, OccupantLocation],
+    assignments: dict[str, SpaceAssignment],
+    household: HouseholdState,
+    observation: DwellingObservation,
+    systems: SystemState,
+    execution: ExecutionState,
+    config: AbbeyConfig,
+    minutes: float,
+) -> tuple[
+    dict[str, PersonState],
+    dict[str, OccupantLocation],
+    HouseholdState,
+    SystemState,
+    ExecutionState,
+]:
+    """
+    Advance all active foreground/background actions in a multi-agent household.
+
+    This is the v0.3 multi-agent version of advance_execution_state().
+    It updates the location of the actor when their foreground action finishes.
+    """
+
+    if minutes < 0:
+        raise ValueError("minutes must be non-negative.")
+
+    new_foreground = []
+
+    for action in execution.foreground_actions:
+        advanced = action.advance(minutes)
+
+        if advanced.is_active():
+            new_foreground.append(advanced)
+            continue
+
+        actor_id = action.actor_id
+
+        if actor_id not in locations:
+            continue
+
+        if actor_id not in assignments:
+            continue
+
+        old_location = locations[actor_id]
+        old_space_id = old_location.current_space_id
+
+        new_location = move_location_to_role(
+            location=old_location,
+            assignment=assignments[actor_id],
+            observation=observation,
+            role=action.post_action_zone_role,
+        )
+        post_role = action.post_action_zone_role
+        
+        if post_role == "current":
+            post_activity = "idle"
+        elif post_role == "idle":
+            post_activity = "idle"
+        elif post_role == "sleep":
+            post_activity = "sleep"
+        elif post_role == "outside":
+            post_activity = "away"
+        else:
+            post_activity = post_role
+        
+        new_location = new_location.copy(
+            current_activity=post_activity,
+        )
+        other_locations = [
+            loc
+            for oid, loc in locations.items()
+            if oid != actor_id
+        ]
+
+        systems = apply_space_exit_rules(
+            systems=systems,
+            old_space_id=old_space_id,
+            new_space_id=new_location.current_space_id,
+            actor_id=actor_id,
+            location=old_location,
+            config=config,
+            other_locations=other_locations,
+        )
+        
+        if action.name == "cook":
+            people, household = apply_family_meal_effect(
+                people=people,
+                locations=locations,
+                household=household,
+                cook_id=actor_id,
+                config=config,
+            )
+
+        if action.name == "care_for_infant":
+            people, household = apply_dependent_care_effect(
+                people=people,
+                locations=locations,
+                household=household,
+                caregiver_id=actor_id,
+                config=config,
+            )
+            
+    
+        if action.name in {"go_to_work", "go_to_school"}:
+            away_reason = "work"
+        
+            if action.name == "go_to_school":
+                away_reason = "school"
+        
+            new_location = new_location.copy(
+                is_home=False,
+                current_space_id="outside",
+                current_space_role="outside",
+                current_activity=away_reason,
+                away_reason=away_reason,
+            )
+        
+            people[actor_id] = people[actor_id].copy(
+                is_home=False,
+                away_reason=away_reason,
+                is_sleeping=False,
+            )
+
+        elif action.name == "return_home":
+            idle_space_id = assignments[actor_id].resolve(
+                role="idle",
+                available_space_ids=observation.available_space_ids(),
+            )
+
+            new_location = new_location.copy(
+                is_home=True,
+                current_space_id=idle_space_id,
+                current_space_role="idle",
+                current_activity="idle",
+                away_reason="none",
+            )
+
+            people[actor_id] = people[actor_id].copy(
+                is_home=True,
+                away_reason="none",
+                is_sleeping=False,
+            )
+
+        locations[actor_id] = new_location
+
+    new_background = []
+
+    for process in execution.background_processes:
+        advanced = process.advance(minutes)
+
+        if not advanced.is_active():
+            continue
+
+        actor_location = locations.get(process.actor_id)
+
+        if actor_location is None:
+            new_background.append(advanced)
+            continue
+
+        if actor_location.is_home or process.can_continue_without_actor:
+            new_background.append(advanced)
+
+    new_action_cooldowns = {
+        action_name: max(0.0, remaining - minutes)
+        for action_name, remaining in execution.action_cooldowns.items()
+        if max(0.0, remaining - minutes) > 0.0
+    }
+    
+    new_execution = execution.copy(
+        foreground_actions=new_foreground,
+        background_processes=new_background,
+        action_cooldowns=new_action_cooldowns,
+    )
+
+    return people, locations, household, systems, new_execution
 
 def advance_execution_state(
     execution: ExecutionState,
@@ -473,10 +852,61 @@ def make_chunk_record(
     execution: ExecutionState,
     label: str,
 ) -> dict[str, Any]:
-    breakdown = power_breakdown(
-        execution=execution,
-        minutes=minutes,
-    )
+    """
+    Make power/energy log for the current execution state.
+
+    Energy is capped by each action's remaining time.
+    Example:
+        15-min laptop inside 30-min chunk counts as 15 min, not 30 min.
+    """
+
+    power_breakdown = []
+    total_energy_wh = 0.0
+
+    for action in execution.foreground_actions:
+        action_minutes = min(minutes, float(action.remaining_minutes))
+        energy_wh = float(action.power_w) * action_minutes / 60.0
+
+        power_breakdown.append(
+            {
+                "name": action.name,
+                "category": action.category,
+                "execution_type": action.execution_type,
+                "actor_id": action.actor_id,
+                "target_zone_role": action.target_zone_role,
+                "target_space_id": action.target_space_id,
+                "minutes": action_minutes,
+                "power_w": float(action.power_w),
+                "energy_wh": energy_wh,
+            }
+        )
+
+        total_energy_wh += energy_wh
+
+    for process in execution.background_processes:
+        process_minutes = min(minutes, float(process.remaining_minutes))
+        energy_wh = float(process.power_w) * process_minutes / 60.0
+
+        power_breakdown.append(
+            {
+                "name": process.name,
+                "category": process.category,
+                "execution_type": process.execution_type,
+                "actor_id": process.actor_id,
+                "target_zone_role": process.target_zone_role,
+                "target_space_id": process.target_space_id,
+                "minutes": process_minutes,
+                "power_w": float(process.power_w),
+                "energy_wh": energy_wh,
+            }
+        )
+
+        total_energy_wh += energy_wh
+
+    total_power_w = 0.0
+
+    if minutes > 0:
+        total_power_w = total_energy_wh / (minutes / 60.0)
 
     return {
         "step": clock.step,
@@ -484,11 +914,10 @@ def make_chunk_record(
         "hour": clock.hour,
         "chunk_label": label,
         "chunk_minutes": minutes,
-        "total_power_w": sum(row["power_w"] for row in breakdown),
-        "total_energy_wh": sum(row["energy_wh"] for row in breakdown),
-        "power_breakdown": breakdown,
+        "total_power_w": total_power_w,
+        "total_energy_wh": total_energy_wh,
+        "power_breakdown": power_breakdown,
     }
-
 def move_location_to_role(
     location: OccupantLocation,
     assignment: SpaceAssignment,
@@ -525,6 +954,117 @@ def move_location_to_role(
         minutes_since_last_space_change=0.0,
     )
 
+
+def execute_household_timestep(
+    people: dict[str, PersonState],
+    locations: dict[str, OccupantLocation],
+    assignments: dict[str, SpaceAssignment],
+    household,
+    observation: DwellingObservation,
+    systems: SystemState,
+    execution: ExecutionState,
+    cooldowns: CooldownState,
+    clock: SimulationClock,
+    config: AbbeyConfig,
+    rng,
+) -> tuple[
+    dict[str, PersonState],
+    dict[str, OccupantLocation],
+    HouseholdState,
+    SystemState,
+    ExecutionState,
+    CooldownState,
+    list[dict[str, Any]],
+]:
+    """
+    v0.3 household timestep.
+
+    Pipeline:
+        collect proposals
+        arbitrate proposals
+        start selected proposals
+        record active power/energy
+        advance active actions
+    """
+
+    from nexusep.abbey.household import (
+        collect_household_action_proposals,
+        arbitrate_household_actions,
+    )
+
+    if cooldowns is None:
+        cooldowns = CooldownState()
+
+    dt_minutes = clock.dt_hours * 60.0
+
+    proposals = collect_household_action_proposals(
+        people=people,
+        locations=locations,
+        assignments=assignments,
+        household=household,
+        observation=observation,
+        systems=systems,
+        execution=execution,
+        clock=clock,
+        config=config,
+        cooldowns=cooldowns,
+    )
+
+    selected = arbitrate_household_actions(
+        proposals=proposals,
+        household=household,
+        rng=rng,
+    )
+
+    if selected:
+        (
+            people,
+            locations,
+            systems,
+            execution,
+            cooldowns,
+            started_actions,
+        ) = start_selected_proposals(
+            selected_proposals=selected,
+            people=people,
+            locations=locations,
+            assignments=assignments,
+            observation=observation,
+            systems=systems,
+            execution=execution,
+            cooldowns=cooldowns,
+            config=config,
+        )
+
+    chunk_records = [
+        make_chunk_record(
+            clock=clock,
+            minutes=dt_minutes,
+            execution=execution,
+            label="household_execution",
+        )
+    ]
+
+    (
+        people,
+        locations,
+        household,
+        systems,
+        execution,
+    ) = advance_household_execution_state(
+        people=people,
+        locations=locations,
+        assignments=assignments,
+        household=household,
+        observation=observation,
+        systems=systems,
+        execution=execution,
+        config=config,
+        minutes=dt_minutes,
+    )
+
+    return people, locations, household, systems, execution, cooldowns, chunk_records
+
 def execute_timestep(
     person: PersonState,
     location: OccupantLocation,
@@ -536,7 +1076,8 @@ def execute_timestep(
     config: AbbeyConfig,
     choose_action: ChooseActionFn,
     actor_id: str = "person_1",
-) -> tuple[PersonState, OccupantLocation, SystemState, ExecutionState, list[dict[str, Any]]]:
+    cooldowns: Optional[CooldownState] = None,
+) -> tuple[PersonState, OccupantLocation, SystemState, ExecutionState, Optional[CooldownState], list[dict[str, Any]]]:
     remaining_minutes = clock.dt_hours * 60.0
     chunk_records = []
 
@@ -544,7 +1085,8 @@ def execute_timestep(
     iteration = 0
 
     execution = clean_execution_state(execution, person)
-
+    if cooldowns is None:
+        cooldowns = CooldownState()
     while remaining_minutes > 1e-9:
         iteration += 1
 
@@ -592,6 +1134,7 @@ def execute_timestep(
             location=location,
             clock=clock,
             config=config,
+            cooldowns=cooldowns,
         )
 
         action = choose_action(
@@ -605,7 +1148,7 @@ def execute_timestep(
             config,
         )
 
-        person, location, systems, execution, started_action = start_action(
+        person, location, systems, execution, cooldowns, started_action = start_action(
             action=action,
             person=person,
             location=location,
@@ -615,6 +1158,7 @@ def execute_timestep(
             execution=execution,
             config=config,
             actor_id=actor_id,
+            cooldowns=cooldowns,
         )
 
         if started_action.background_process:
@@ -647,4 +1191,4 @@ def execute_timestep(
 
         remaining_minutes -= chunk_minutes
 
-    return person, location, systems, execution, chunk_records
+    return person, location, systems, execution, cooldowns, chunk_records

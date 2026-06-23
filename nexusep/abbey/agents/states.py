@@ -11,8 +11,27 @@ class PersonState:
     Bounded evolution is handled by the dynamics module.
     """
     
-    # Identity / behavior profile
+    # Identity / household role
     occupant_id: str = "person_1"
+    household_id: str = "household_1"
+    
+    # Decision / capability profile
+    can_act: bool = True
+    can_cook: bool = True
+    authority_weight: float = 1.0
+    
+    # Schedule obligations
+    has_job: bool = False
+    has_school: bool = False
+    
+    # Demographic / care profile
+    age_group: str = "adult"  # adult, child, infant
+    care_dependency: float = 0.0  # 0 = independent, 1 = fully dependent
+    
+    # Household contribution rates
+    laundry_generation_rate: float = 0.012  # pressure/hour contribution to household dirty clothes
+    
+    # Movement / behavioral profile
     idle_movement_profile: str = "normal"
     mobility_tendency: float = 1.0
 
@@ -21,7 +40,6 @@ class PersonState:
     fatigue: float = 0.20
     sleep_pressure: float = 0.20
     sickness_severity: float = 0.00
-    dirty_clothes: float = 0.20
 
     # Perceptual discomfort states
     thermal_discomfort: float = 0.00
@@ -342,6 +360,8 @@ class ActionState:
     post_action_zone_role: str = "current"
     action_cooldowns_on_start: Dict[str, float] = field(default_factory=dict)
     target_zone_role: str = "current"
+    target_space_id: str = ""
+    
     
     def is_active(self) -> bool:
         return self.remaining_minutes > 0.0

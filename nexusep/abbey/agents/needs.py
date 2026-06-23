@@ -54,12 +54,6 @@ def update_needs(
         config=config,
     )
 
-    dirty_up, dirty_down = compute_dirty_clothes_pressures(
-        person=person,
-        action=action,
-        clock=clock,
-        config=config,
-    )
 
     friction_up, friction_down = compute_action_friction_pressures(
         person=person,
@@ -86,12 +80,7 @@ def update_needs(
             down=sleep_down,
             dt_hours=clock.dt_hours,
         ),
-        dirty_clothes=smooth_bounded_update(
-            x=person.dirty_clothes,
-            up=dirty_up,
-            down=dirty_down,
-            dt_hours=clock.dt_hours,
-        ),
+
         action_friction=smooth_bounded_update(
             x=person.action_friction,
             up=friction_up,

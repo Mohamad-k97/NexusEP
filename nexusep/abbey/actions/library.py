@@ -5,8 +5,8 @@ Builds action blueprints from abbey_config.jsonc and filters available
 actions from the current person/system/execution state.
 """
 
-from typing import Any, Mapping, List, Dict
-
+from typing import Any, Mapping, List, Dict, Optional
+from nexusep.abbey.systems import CooldownState
 from nexusep.abbey.actions.action import Action
 from nexusep.abbey.agents.states import (
     PersonState,
@@ -131,6 +131,23 @@ def _is_noop_person_effect(action: Action, person: PersonState) -> bool:
 
     return True
 
+
+def _control_cooldown_name(action: Action) -> str:
+    if action.name in {"open_window", "close_window"}:
+        return "window"
+
+    if action.name in {"turn_lights_on", "turn_lights_off"}:
+        return "lights"
+
+    if action.name in {"turn_heating_on", "turn_heating_off"}:
+        return "heating"
+
+    if action.name in {"open_curtain", "close_curtain"}:
+        return "curtain"
+
+    return ""
+
+
 def _same_background_process_running(
     action: Action,
     active_background_processes: List[ActionState],
@@ -156,6 +173,7 @@ def is_action_available(
     location: OccupantLocation,
     clock: SimulationClock,
     config: AbbeyConfig,
+    cooldowns: Optional[CooldownState] = None,
 ) -> bool:
     
         # Forced work-return override.
@@ -177,14 +195,57 @@ def is_action_available(
             and work_day_active(person, clock, config)
         ):
             return True
+        
+    if action.name == "cook" and not person.can_cook:
+        return False
+    # Legacy execution cooldowns.
     if execution.action_on_cooldown(action.name):
         return False
 
+    # New v0.3 person-level cooldowns.
+    if cooldowns is not None:
+        if cooldowns.person_action_on_cooldown(
+            occupant_id=person.occupant_id,
+            action_name=action.name,
+        ):
+            return False
+
+    if cooldowns is not None:
+        if action.name in {"cook", "run_washing_machine"}:
+            if cooldowns.household_action_on_cooldown(action.name):
+                return False
+    
+    if cooldowns is not None:
+        control_name = _control_cooldown_name(action)
+    
+        if control_name:
+            if cooldowns.space_control_on_cooldown(
+                space_id=location.current_space_id,
+                control_name=control_name,
+            ):
+                return False
+        
     if action.requires_home and not person.is_home:
         return False
-
+    
+    if action.name == "make_hot_drink":
+        hour = clock.hour % 24.0
+    
+        in_hot_drink_window = (
+            6.5 <= hour <= 10.0
+            or 15.0 <= hour <= 17.5
+            or 20.0 <= hour <= 22.0
+        )
+    
+        if not in_hot_drink_window and person.sickness_severity < 0.4:
+            return False
+        
     if action.requires_awake and person.is_sleeping:
-        return False
+        if action.name in {"go_to_work", "go_to_school"}:
+            pass
+        elif action.requires_awake and person.is_sleeping:
+            return False
+
 
     if _is_noop_control(action, systems, location):    
         return False
@@ -223,6 +284,7 @@ def get_available_actions(
     location: OccupantLocation,
     clock: SimulationClock,
     config: AbbeyConfig,
+    cooldowns: Optional[CooldownState] = None,
 ) -> List[Action]:
     action_library = build_action_library(config)
 
@@ -237,6 +299,7 @@ def get_available_actions(
             location=location,
             clock=clock,
             config=config,
+            cooldowns=cooldowns,
         ):
             available.append(action)
 
