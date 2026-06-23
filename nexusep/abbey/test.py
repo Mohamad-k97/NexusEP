@@ -1,287 +1,507 @@
 """
-ABBEY Phase 3 weather-layer test using a real EPW file.
+ABBEY Phase 4 thermal architecture test.
 
 Tests:
-- EPW loading
-- metadata parsing
-- hourly dataframe creation
-- radiation/daylight preprocessing
-- wind preprocessing
-- outdoor boundary defaults
-- timestep interpolation
-- WeatherProvider
-- WeatherState output
-- validation
+1. One zone, no gains, no HVAC -> temperature drifts toward outside.
+2. One zone, heating active -> temperature rises.
+3. Two zones, one hot and one cold -> temperatures move toward each other.
+4. Window solar gain -> temperature rises during daytime.
+5. No non-thermal building physics is calculated.
 
-No building physics is calculated.
+Expected:
+    PHASE 4 THERMAL ARCHITECTURE OK ✅
 """
 
-import os
-import sys
+from datetime import datetime as DateTime
+from types import SimpleNamespace
 
-from nexusep.abbey.building.physics.weather import (
-    WeatherProvider,
-    WeatherState,
-    interpolate_weather_to_timestep,
-    load_epw_weather_timeseries,
-    validate_weather_timeseries,
+from nexusep.abbey.building.model import (
+    BuildingModel,
+    DwellingModel,
+    ZoneModel,
+)
+
+from nexusep.abbey.building.physics.graph import (
+    BuildingPhysicsGraph,
+    BoundaryConnection,
+    ZoneConnection,
+)
+
+from nexusep.abbey.building.physics.weather import WeatherState
+
+from nexusep.abbey.building.physics.thermal import (
+    ThermalModel,
+    ThermalStepResult,
 )
 
 
-# Put your real EPW path here.
-EPW_PATH = r"C:/Works/NexusEP/NexusEP/nexusep/abbey/SWE_UP_Uppsala.Univ.024620_TMYx.2009-2023.epw"
-
-DT_MINUTES = 15
+DT_MINUTES = 15.0
 
 
-def assert_metadata_real_epw(weather_series):
-    metadata = weather_series.metadata
-
-    assert metadata.source_type == "epw"
-    assert metadata.source_path is not None
-    assert str(metadata.source_path).strip() != ""
-
-    assert metadata.location_name is not None
-    assert str(metadata.location_name).strip() != ""
-
-    assert metadata.data_timestep_minutes == 60
-
-    assert metadata.latitude is not None
-    assert metadata.longitude is not None
-    assert metadata.timezone is not None
-    assert metadata.elevation_m is not None
-
-    print("OK: metadata parsed")
-
-
-def assert_hourly_dataframe(weather_series):
-    df = weather_series.hourly_dataframe
-
-    assert df is not None
-    assert len(df) > 0
-
-    required_columns = [
-        "datetime",
-        "outdoor_temperature_c",
-        "wind_speed_m_s",
-        "wind_direction_deg",
-        "direct_normal_radiation_w_m2",
-        "diffuse_horizontal_radiation_w_m2",
-        "global_horizontal_radiation_w_m2",
-        "outdoor_illuminance_lux",
-    ]
-
-    for column in required_columns:
-        assert column in df.columns, "Missing hourly weather column: " + column
-
-    print("OK: hourly weather table exists")
-
-
-def assert_radiation_clamped(weather_series):
-    df = weather_series.hourly_dataframe
-
-    radiation_columns = [
-        "direct_normal_radiation_w_m2",
-        "diffuse_horizontal_radiation_w_m2",
-        "global_horizontal_radiation_w_m2",
-    ]
-
-    for column in radiation_columns:
-        assert (df[column] >= 0.0).all(), column + " has negative values"
-
-    assert (df["outdoor_illuminance_lux"] >= 0.0).all()
-
-    assert "is_night" in df.columns
-
-    night_df = df[df["is_night"]]
-
-    if len(night_df) > 0:
-        for column in radiation_columns:
-            assert (night_df[column] == 0.0).all()
-
-        assert (night_df["outdoor_illuminance_lux"] == 0.0).all()
-
-    print("OK: radiation and illuminance clamped")
-
-
-def assert_wind_preprocessed(weather_series):
-    df = weather_series.hourly_dataframe
-
-    assert (df["wind_speed_m_s"] >= 0.0).all()
-    assert (df["wind_direction_deg"] >= 0.0).all()
-    assert (df["wind_direction_deg"] < 360.0).all()
-
-    required_columns = [
-        "wind_direction_sin",
-        "wind_direction_cos",
-        "wind_vector_east_m_s",
-        "wind_vector_north_m_s",
-    ]
-
-    for column in required_columns:
-        assert column in df.columns, "Missing wind preprocessing column: " + column
-
-    print("OK: wind direction normalized")
-
-
-def assert_outdoor_defaults(weather_series):
-    df = weather_series.hourly_dataframe
-
-    assert "outdoor_co2_ppm" in df.columns
-    assert "outdoor_noise_db" in df.columns
-    assert "sky_condition" in df.columns
-
-    assert (df["outdoor_co2_ppm"] > 0.0).all()
-    assert (df["outdoor_noise_db"] >= 0.0).all()
-
-    assert abs(float(df["outdoor_co2_ppm"].iloc[0]) - 420.0) < 1e-9
-    assert abs(float(df["outdoor_noise_db"].iloc[0]) - 45.0) < 1e-9
-
-    print("OK: outdoor boundary defaults exist")
-
-
-def assert_interpolation(weather_series, dt_minutes):
-    interpolated = interpolate_weather_to_timestep(
-        weather_series,
-        dt_minutes=dt_minutes,
+def make_zone(
+    zone_id,
+    initial_temp_c,
+    external_wall_area_m2=20.0,
+    internal_wall_area_m2=0.0,
+    floor_area_m2=20.0,
+):
+    return ZoneModel(
+        zone_id=zone_id,
+        zone_name=zone_id,
+        dwelling_id="dwelling_1",
+        building_id="building_1",
+        zone_scope="private",
+        zone_use="generic",
+        floor_area_m2=floor_area_m2,
+        height_m=2.7,
+        volume_m3=floor_area_m2 * 2.7,
+        air_volume_m3=floor_area_m2 * 2.7,
+        air_heat_capacity_j_k=30000.0,
+        internal_heat_capacity_j_k=500000.0,
+        external_wall_area_m2=external_wall_area_m2,
+        internal_wall_area_m2=internal_wall_area_m2,
+        u_value_external_wall_w_m2k=1.2,
+        u_value_internal_wall_w_m2k=1.8,
+        thermal_bridge_factor=1.0,
+        default_infiltration_ach=0.0,
+        initial_air_temperature_c=initial_temp_c,
+        initial_mass_temperature_c=initial_temp_c,
+        initial_temp_c=initial_temp_c,
+        initial_co2_ppm=600.0,
     )
 
-    df = interpolated.timestep_dataframe
 
-    assert df is not None
-    assert len(df) > 0
-
-    hourly_df = weather_series.hourly_dataframe
-    start_time = hourly_df["datetime"].iloc[0]
-    end_time = hourly_df["datetime"].iloc[-1]
-
-    expected_steps = int(
-        ((end_time - start_time).total_seconds() / 60.0) / dt_minutes
-    ) + 1
-
-    assert len(df) == expected_steps, (
-        "Unexpected timestep count. Expected "
-        + str(expected_steps)
-        + ", got "
-        + str(len(df))
+def make_building(zone_models):
+    dwelling = DwellingModel(
+        dwelling_id="dwelling_1",
+        building_id="building_1",
+        household_id="household_1",
+        private_zone_ids=list(zone_models.keys()),
+        zone_models=zone_models,
     )
 
-    non_negative_columns = [
-        "wind_speed_m_s",
-        "direct_normal_radiation_w_m2",
-        "diffuse_horizontal_radiation_w_m2",
-        "global_horizontal_radiation_w_m2",
-        "outdoor_illuminance_lux",
-        "outdoor_co2_ppm",
-        "outdoor_noise_db",
-    ]
-
-    for column in non_negative_columns:
-        assert (df[column] >= 0.0).all(), column + " has negative values"
-
-    assert (df["wind_direction_deg"] >= 0.0).all()
-    assert (df["wind_direction_deg"] < 360.0).all()
-
-    print("OK: weather interpolated to timestep")
-
-    return interpolated
-
-
-def assert_weather_provider(weather_series):
-    provider = WeatherProvider(weather_series)
-
-    assert provider.number_of_steps() == len(weather_series.simulation_dataframe())
-
-    state_0 = provider.get_state_by_step(0)
-    assert isinstance(state_0, WeatherState)
-
-    if provider.number_of_steps() > 10:
-        some_datetime = provider.datetimes()[10]
-    else:
-        some_datetime = provider.datetimes()[0]
-
-    state_t = provider.get_state(some_datetime)
-    assert isinstance(state_t, WeatherState)
-
-    assert state_0.outdoor_co2_ppm > 0.0
-    assert state_0.outdoor_noise_db >= 0.0
-    assert state_0.wind_direction_deg >= 0.0
-    assert state_0.wind_direction_deg < 360.0
-
-    print("OK: WeatherProvider returns WeatherState")
-
-
-def assert_validation(weather_series, dt_minutes):
-    report = validate_weather_timeseries(
-        weather_series,
-        require_timestep_dataframe=True,
-        expected_dt_minutes=dt_minutes,
-        raise_on_error=True,
+    return BuildingModel(
+        building_id="building_1",
+        dwelling_ids=["dwelling_1"],
+        dwellings={
+            "dwelling_1": dwelling,
+        },
     )
 
-    print(report)
-    print("OK: weather validation")
 
+def make_zone_connection(
+    connection_id,
+    zone_a_id,
+    zone_b_id,
+    area_m2,
+    u_value_w_m2k,
+):
+    """
+    Compatibility helper.
 
-def assert_no_building_physics(weather_series):
-    df = weather_series.simulation_dataframe()
+    Your graph.py uses from_zone_id/to_zone_id.
+    Some thermal code may expect zone_a_id/zone_b_id.
+    We set both aliases safely.
+    """
 
-    forbidden_columns = [
-        "indoor_temp_c",
-        "zone_temperature_c",
-        "heating_energy_wh",
-        "cooling_energy_wh",
-        "solar_gain_wh",
-        "zone_co2_ppm",
-        "indoor_daylight",
-        "indoor_noise",
-    ]
-
-    for column in forbidden_columns:
-        assert column not in df.columns, (
-            "Building physics column should not exist in Phase 3: " + column
+    try:
+        connection = ZoneConnection(
+            connection_id=connection_id,
+            from_zone_id=zone_a_id,
+            to_zone_id=zone_b_id,
+            connection_type="internal_wall",
+            area_m2=area_m2,
+        )
+    except TypeError:
+        connection = ZoneConnection(
+            connection_id=connection_id,
+            zone_a_id=zone_a_id,
+            zone_b_id=zone_b_id,
+            connection_type="internal_wall",
+            area_m2=area_m2,
         )
 
-    print("OK: no building physics calculated")
+    connection.zone_a_id = zone_a_id
+    connection.zone_b_id = zone_b_id
+    connection.u_value_w_m2k = u_value_w_m2k
+
+    return connection
 
 
-def run_tests(epw_path, dt_minutes=15):
-    if epw_path is None or not str(epw_path).strip():
-        raise ValueError("epw_path cannot be empty.")
-
-    epw_path = str(epw_path)
-
-    if not os.path.exists(epw_path):
-        raise FileNotFoundError("EPW file not found: " + epw_path)
-
-    weather_series = load_epw_weather_timeseries(epw_path)
-
-    assert_metadata_real_epw(weather_series)
-    assert_hourly_dataframe(weather_series)
-    assert_radiation_clamped(weather_series)
-    assert_wind_preprocessed(weather_series)
-    assert_outdoor_defaults(weather_series)
-
-    weather_series = assert_interpolation(
-        weather_series,
-        dt_minutes=dt_minutes,
+def make_window_connection(
+    connection_id,
+    zone_id,
+    area_m2,
+    shgc=0.60,
+):
+    return BoundaryConnection(
+        connection_id=connection_id,
+        zone_id=zone_id,
+        connection_type="window",
+        area_m2=area_m2,
+        orientation_deg=180.0,
+        is_window=True,
+        is_openable=True,
+        open_fraction=0.0,
+        solar_heat_gain_coefficient=shgc,
+        frame_fraction=0.20,
+        shading_factor=1.0,
+        curtain_open=True,
+        curtain_solar_reduction_factor=0.35,
     )
 
-    assert_weather_provider(weather_series)
-    assert_validation(weather_series, dt_minutes)
-    assert_no_building_physics(weather_series)
+
+def make_graph(
+    building,
+    zone_connections=None,
+    boundary_connections=None,
+):
+    return BuildingPhysicsGraph(
+        building_model=building,
+        zone_connections=zone_connections or {},
+        boundary_connections=boundary_connections or {},
+    )
+
+
+def make_weather(
+    outdoor_temperature_c,
+    ghi=0.0,
+    dni=0.0,
+    dhi=0.0,
+):
+    return WeatherState(
+        datetime=DateTime(2021, 1, 1, 12, 0, 0),
+        outdoor_temperature_c=outdoor_temperature_c,
+        wind_speed_m_s=0.0,
+        wind_direction_deg=0.0,
+        direct_normal_radiation_w_m2=dni,
+        diffuse_horizontal_radiation_w_m2=dhi,
+        global_horizontal_radiation_w_m2=ghi,
+        outdoor_illuminance_lux=0.0,
+        sky_condition="clear",
+        outdoor_co2_ppm=420.0,
+        outdoor_noise_db=45.0,
+    )
+
+
+def make_heating_system_spec():
+    return SimpleNamespace(
+        has_heating=True,
+        has_cooling=False,
+        max_heating_power_w=1000.0,
+        max_cooling_power_w=0.0,
+    )
+
+
+def make_heating_control_state():
+    return SimpleNamespace(
+        heating_setpoint_c=20.0,
+        cooling_setpoint_c=26.0,
+        thermostat_deadband_c=0.5,
+    )
+
+
+def assert_one_zone_drifts_toward_outside():
+    zone = make_zone(
+        zone_id="living_room",
+        initial_temp_c=20.0,
+        external_wall_area_m2=40.0,
+    )
+
+    building = make_building({
+        "living_room": zone,
+    })
+
+    graph = make_graph(building)
+
+    weather = make_weather(
+        outdoor_temperature_c=0.0,
+    )
+
+    model = ThermalModel()
+    thermal_state = model.make_initial_state(building)
+
+    old_temp = thermal_state.get_zone_state("living_room").air_temperature_c
+
+    result = model.step(
+        building_model=building,
+        physics_graph=graph,
+        thermal_state=thermal_state,
+        weather_state=weather,
+        zone_system_specs={},
+        zone_control_states={},
+        internal_gains_by_zone={},
+        dt_minutes=DT_MINUTES,
+    )
+
+    new_temp = (
+        result
+        .updated_thermal_state
+        .get_zone_state("living_room")
+        .air_temperature_c
+    )
+
+    assert isinstance(result, ThermalStepResult)
+    assert new_temp < old_temp
+
+    print("OK: one zone drifts toward outside")
+
+
+def assert_heating_raises_temperature():
+    zone = make_zone(
+        zone_id="living_room",
+        initial_temp_c=18.0,
+        external_wall_area_m2=40.0,
+    )
+
+    building = make_building({
+        "living_room": zone,
+    })
+
+    graph = make_graph(building)
+
+    weather = make_weather(
+        outdoor_temperature_c=0.0,
+    )
+
+    model = ThermalModel()
+    thermal_state = model.make_initial_state(building)
+
+    old_temp = thermal_state.get_zone_state("living_room").air_temperature_c
+
+    result = model.step(
+        building_model=building,
+        physics_graph=graph,
+        thermal_state=thermal_state,
+        weather_state=weather,
+        zone_system_specs={
+            "living_room": make_heating_system_spec(),
+        },
+        zone_control_states={
+            "living_room": make_heating_control_state(),
+        },
+        internal_gains_by_zone={},
+        dt_minutes=DT_MINUTES,
+    )
+
+    new_temp = (
+        result
+        .updated_thermal_state
+        .get_zone_state("living_room")
+        .air_temperature_c
+    )
+
+    assert new_temp > old_temp
+    assert result.total_heating_energy_wh() > 0.0
+    assert result.total_cooling_energy_wh() == 0.0
+
+    print("OK: heating raises temperature")
+
+
+def assert_two_zones_move_toward_each_other():
+    hot_zone = make_zone(
+        zone_id="hot_room",
+        initial_temp_c=30.0,
+        external_wall_area_m2=0.0,
+        internal_wall_area_m2=30.0,
+    )
+
+    cold_zone = make_zone(
+        zone_id="cold_room",
+        initial_temp_c=10.0,
+        external_wall_area_m2=0.0,
+        internal_wall_area_m2=30.0,
+    )
+
+    building = make_building({
+        "hot_room": hot_zone,
+        "cold_room": cold_zone,
+    })
+
+    connection = make_zone_connection(
+        connection_id="hot_cold_wall",
+        zone_a_id="hot_room",
+        zone_b_id="cold_room",
+        area_m2=30.0,
+        u_value_w_m2k=5.0,
+    )
+
+    graph = make_graph(
+        building=building,
+        zone_connections={
+            "hot_cold_wall": connection,
+        },
+    )
+
+    weather = make_weather(
+        outdoor_temperature_c=20.0,
+    )
+
+    model = ThermalModel()
+    thermal_state = model.make_initial_state(building)
+
+    old_hot = thermal_state.get_zone_state("hot_room").air_temperature_c
+    old_cold = thermal_state.get_zone_state("cold_room").air_temperature_c
+    old_difference = old_hot - old_cold
+
+    result = model.step(
+        building_model=building,
+        physics_graph=graph,
+        thermal_state=thermal_state,
+        weather_state=weather,
+        zone_system_specs={},
+        zone_control_states={},
+        internal_gains_by_zone={},
+        dt_minutes=DT_MINUTES,
+    )
+
+    new_hot = (
+        result
+        .updated_thermal_state
+        .get_zone_state("hot_room")
+        .air_temperature_c
+    )
+
+    new_cold = (
+        result
+        .updated_thermal_state
+        .get_zone_state("cold_room")
+        .air_temperature_c
+    )
+
+    new_difference = new_hot - new_cold
+
+    assert new_hot < old_hot
+    assert new_cold > old_cold
+    assert abs(new_difference) < abs(old_difference)
+
+    print("OK: two zones move toward each other")
+
+
+def assert_window_solar_gain_raises_temperature():
+    zone = make_zone(
+        zone_id="living_room",
+        initial_temp_c=20.0,
+        external_wall_area_m2=0.0,
+    )
+
+    building = make_building({
+        "living_room": zone,
+    })
+
+    window = make_window_connection(
+        connection_id="living_south_window",
+        zone_id="living_room",
+        area_m2=4.0,
+        shgc=0.60,
+    )
+
+    graph = make_graph(
+        building=building,
+        boundary_connections={
+            "living_south_window": window,
+        },
+    )
+
+    weather = make_weather(
+        outdoor_temperature_c=20.0,
+        ghi=800.0,
+        dni=900.0,
+        dhi=120.0,
+    )
+
+    model = ThermalModel()
+    thermal_state = model.make_initial_state(building)
+
+    old_temp = thermal_state.get_zone_state("living_room").air_temperature_c
+
+    result = model.step(
+        building_model=building,
+        physics_graph=graph,
+        thermal_state=thermal_state,
+        weather_state=weather,
+        zone_system_specs={},
+        zone_control_states={},
+        internal_gains_by_zone={},
+        dt_minutes=DT_MINUTES,
+    )
+
+    new_temp = (
+        result
+        .updated_thermal_state
+        .get_zone_state("living_room")
+        .air_temperature_c
+    )
+
+    assert result.solar_gain_result.total_solar_gain_w() > 0.0
+    assert new_temp > old_temp
+
+    print("OK: window solar gain raises temperature")
+
+
+def assert_no_nonthermal_physics_calculated():
+    zone = make_zone(
+        zone_id="living_room",
+        initial_temp_c=20.0,
+        external_wall_area_m2=20.0,
+    )
+
+    building = make_building({
+        "living_room": zone,
+    })
+
+    graph = make_graph(building)
+
+    weather = make_weather(
+        outdoor_temperature_c=10.0,
+    )
+
+    model = ThermalModel()
+    thermal_state = model.make_initial_state(building)
+
+    result = model.step(
+        building_model=building,
+        physics_graph=graph,
+        thermal_state=thermal_state,
+        weather_state=weather,
+        zone_system_specs={},
+        zone_control_states={},
+        internal_gains_by_zone={},
+        dt_minutes=DT_MINUTES,
+    )
+
+    state_dict = result.updated_thermal_state.to_dict()
+
+    forbidden_terms = [
+        "co2_ppm",
+        "indoor_daylight",
+        "indoor_noise",
+        "humidity",
+        "air_quality",
+        "occupant_comfort",
+    ]
+
+    state_text = str(state_dict)
+
+    for term in forbidden_terms:
+        assert term not in state_text
+
+    assert "air_temperature_c" in state_text
+    assert "mass_temperature_c" in state_text
+
+    print("OK: no non-thermal physics calculated")
+
+
+def run_tests():
+    assert_one_zone_drifts_toward_outside()
+    assert_heating_raises_temperature()
+    assert_two_zones_move_toward_each_other()
+    assert_window_solar_gain_raises_temperature()
+    assert_no_nonthermal_physics_calculated()
 
     print("")
-    print("PHASE 3 WEATHER LAYER OK ✅")
+    print("PHASE 4 THERMAL ARCHITECTURE OK ✅")
 
 
 if __name__ == "__main__":
-    if len(sys.argv) > 1:
-        epw_path_arg = sys.argv[1]
-    else:
-        epw_path_arg = EPW_PATH
-
-    run_tests(
-        epw_path=epw_path_arg,
-        dt_minutes=DT_MINUTES,
-    )
+    run_tests()

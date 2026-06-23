@@ -73,6 +73,9 @@ class ZoneConnection:
     partition_sound_reduction_db: float = 35.0
     door_sound_reduction_db: float = 20.0
     
+    # Thermal property for interzone heat transfer
+    u_value_w_m2k: Optional[float] = None
+    
     def __post_init__(self) -> None:
         if not self.connection_id:
             raise ValueError("ZoneConnection.connection_id cannot be empty.")
@@ -157,6 +160,15 @@ class ZoneConnection:
                     self.connection_id
                 )
             )
+        if self.u_value_w_m2k is not None:
+            self.u_value_w_m2k = float(self.u_value_w_m2k)
+
+            if self.u_value_w_m2k < 0.0:
+                raise ValueError(
+                    "ZoneConnection '{}' has negative u_value_w_m2k.".format(
+                        self.connection_id
+                    )
+                )
 
     def effective_sound_reduction_db(self) -> float:
         """
