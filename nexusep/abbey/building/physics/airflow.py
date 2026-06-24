@@ -87,6 +87,10 @@ CO2_GENERATION_PPM_FACTOR = 1000000.0
 AIR_CO2_MODEL_INTERFACE_MODE = "runner_facing_airflow_co2_model"
 DEFAULT_AIR_CO2_DT_MINUTES = 15.0
 
+AIRFLOW_WINDOW_BOUNDARY_SOURCE = "BuildingWindowBoundaryResult"
+AIRFLOW_PHASE8_WINDOW_COMPATIBILITY_MODE = "phase8_window_boundary_optional"
+AIRFLOW_LEGACY_WINDOW_LOGIC = "legacy_boundary_connection_window_airflow"
+
 @dataclass
 class AirCO2ArchitectureDecision:
     """
@@ -2494,6 +2498,7 @@ class AirCO2Model:
         weather_state: Any,
         airflow_control_inputs: Optional[BuildingAirflowControlInputs] = None,
         dt_minutes: Optional[float] = None,
+        window_boundary_result: Any = None,
     ) -> AirCO2StepResult:
         """
         Advance airflow/CO2 model by one timestep.
@@ -2551,6 +2556,7 @@ class AirCO2Model:
             physics_graph=physics_graph,
             weather_state=weather_state,
             airflow_control_inputs=airflow_control_inputs,
+            window_boundary_result=window_boundary_result,
         )
 
         co2_generation_result = calculate_building_co2_generation(
@@ -2864,6 +2870,7 @@ def calculate_and_step_building_co2_state(
     air_state: BuildingAirState,
     weather_state: Any,
     airflow_control_inputs: Optional[BuildingAirflowControlInputs] = None,
+    window_boundary_result: Any = None,
     dt_minutes: float = 15.0,
 ) -> BuildingCO2StepResult:
     """
@@ -2887,6 +2894,7 @@ def calculate_and_step_building_co2_state(
         physics_graph=physics_graph,
         weather_state=weather_state,
         airflow_control_inputs=airflow_control_inputs,
+        window_boundary_result=window_boundary_result,
     )
 
     co2_generation_result = calculate_building_co2_generation(
@@ -3052,6 +3060,7 @@ def calculate_building_airflow_network(
     physics_graph: Any,
     weather_state: Any,
     airflow_control_inputs: Optional[BuildingAirflowControlInputs] = None,
+    window_boundary_result: Any = None,
 ) -> BuildingAirflowNetwork:
     """
     Full Phase 5.8 airflow network calculation.
@@ -3081,12 +3090,12 @@ def calculate_building_airflow_network(
         raise TypeError(
             "airflow_control_inputs must be BuildingAirflowControlInputs."
         )
-
     outdoor_airflow_result = calculate_building_outdoor_airflow_result(
         building_model=building_model,
         physics_graph=physics_graph,
         weather_state=weather_state,
         airflow_control_inputs=airflow_control_inputs,
+        window_boundary_result=window_boundary_result,
     )
 
     interzone_airflow_result = calculate_building_interzone_airflows(
@@ -3280,12 +3289,16 @@ def make_zone_outdoor_airflow_record(
 def make_building_outdoor_airflow_result(
     building_airflow_parameters: BuildingAirflowParameters,
     window_airflow_result: Optional[BuildingWindowOutdoorAirflowResult] = None,
+    window_boundary_result: Any = None,
 ) -> BuildingOutdoorAirflowResult:
     """
     Assemble outdoor airflow records for all zones.
 
-    Window airflow is optional.
-    If missing, windows are treated as closed/no airflow.
+    Preferred Phase 8 source:
+        BuildingWindowBoundaryResult
+
+    Legacy fallback:
+        BuildingWindowOutdoorAirflowResult
     """
 
     if not isinstance(building_airflow_parameters, BuildingAirflowParameters):
@@ -3295,7 +3308,12 @@ def make_building_outdoor_airflow_result(
 
     window_airflow_by_zone = {}
 
-    if window_airflow_result is not None:
+    if window_boundary_result is not None:
+        window_airflow_by_zone = window_boundary_outdoor_airflow_by_zone_m3_h(
+            window_boundary_result
+        )
+
+    elif window_airflow_result is not None:
         if not isinstance(window_airflow_result, BuildingWindowOutdoorAirflowResult):
             raise TypeError(
                 "window_airflow_result must be BuildingWindowOutdoorAirflowResult."
@@ -3315,35 +3333,39 @@ def make_building_outdoor_airflow_result(
         zone_records=zone_records,
     )
 
-
 def calculate_building_outdoor_airflow_result(
     building_model: Any,
     physics_graph: Any,
     weather_state: Any,
     airflow_control_inputs: BuildingAirflowControlInputs,
+    window_boundary_result: Any = None,
 ) -> BuildingOutdoorAirflowResult:
     """
-    Full Phase 5.6 outdoor airflow calculation.
+    Full outdoor airflow calculation.
 
-    Steps:
-    1. Build airflow parameters from ZoneModel.
-    2. Calculate window outdoor airflow.
-    3. Combine infiltration + mechanical + window airflow.
+    Phase 8 path:
+        windows.py -> BuildingWindowBoundaryResult -> window airflow by zone
+
+    Legacy direct window calculation remains available only through
+    calculate_building_window_outdoor_airflows(...), but this function now
+    prefers the shared window boundary model.
     """
 
     building_airflow_parameters = make_building_airflow_parameters(
         building_model
     )
 
-    window_airflow_result = calculate_building_window_outdoor_airflows(
-        physics_graph=physics_graph,
-        weather_state=weather_state,
-        airflow_control_inputs=airflow_control_inputs,
-    )
+    if window_boundary_result is None:
+        window_boundary_result = calculate_window_boundary_result_for_airflow(
+            building_model=building_model,
+            physics_graph=physics_graph,
+            weather_state=weather_state,
+            airflow_control_inputs=airflow_control_inputs,
+        )
 
     return make_building_outdoor_airflow_result(
         building_airflow_parameters=building_airflow_parameters,
-        window_airflow_result=window_airflow_result,
+        window_boundary_result=window_boundary_result,
     )
 
 def calculate_window_outdoor_airflow_record(
@@ -3519,6 +3541,136 @@ def make_empty_airflow_control_inputs() -> BuildingAirflowControlInputs:
 
     return BuildingAirflowControlInputs()
 
+def is_building_window_boundary_result_like(
+    window_boundary_result: Any,
+) -> bool:
+    """
+    Duck-typed check.
+
+    Avoids hard dependency/circular import problems.
+    """
+
+    if window_boundary_result is None:
+        return False
+
+    required_methods = [
+        "outdoor_airflow_by_zone_m3_h",
+        "airflow_opening_area_by_window_m2",
+        "opening_fraction_by_window",
+    ]
+
+    for method_name in required_methods:
+        if not hasattr(window_boundary_result, method_name):
+            return False
+
+    return True
+
+
+def window_boundary_outdoor_airflow_by_zone_m3_h(
+    window_boundary_result: Any,
+) -> Dict[str, float]:
+    """
+    Read outdoor window airflow from BuildingWindowBoundaryResult-like object.
+
+    This is the Phase 8 preferred window-airflow source.
+    """
+
+    if not is_building_window_boundary_result_like(window_boundary_result):
+        raise TypeError(
+            "window_boundary_result must behave like BuildingWindowBoundaryResult."
+        )
+
+    return window_boundary_result.outdoor_airflow_by_zone_m3_h()
+
+
+def make_window_operation_inputs_from_airflow_control_inputs(
+    airflow_control_inputs: "BuildingAirflowControlInputs",
+):
+    """
+    Compatibility bridge.
+
+    Existing airflow runner input:
+        BuildingAirflowControlInputs.window_openings
+
+    New shared window input:
+        BuildingWindowOperationInputs
+
+    This lets old Phase 5 tests keep using WindowOpeningInput while the actual
+    window physics comes from windows.py.
+    """
+
+    if not isinstance(airflow_control_inputs, BuildingAirflowControlInputs):
+        raise TypeError(
+            "airflow_control_inputs must be BuildingAirflowControlInputs."
+        )
+
+    from nexusep.abbey.building.physics.windows import (
+        BuildingWindowOperationInputs,
+        ZoneWindowOperationInput,
+    )
+
+    operation_inputs_by_window = {}
+
+    for window_id, window_opening in airflow_control_inputs.window_openings.items():
+        operation_inputs_by_window[window_id] = ZoneWindowOperationInput(
+            boundary_connection_id=window_opening.boundary_connection_id,
+            zone_id=window_opening.zone_id,
+            is_open=window_opening.opening_fraction > 0.0,
+            opening_fraction=window_opening.opening_fraction,
+            curtain_open=True,
+            blind_open=True,
+            blind_fraction=0.0,
+            source="converted_from_BuildingAirflowControlInputs",
+        )
+
+    return BuildingWindowOperationInputs(
+        operation_inputs_by_window=operation_inputs_by_window,
+        source="converted_from_BuildingAirflowControlInputs",
+    )
+
+
+def calculate_window_boundary_result_for_airflow(
+    building_model: Any,
+    physics_graph: Any,
+    weather_state: Any,
+    airflow_control_inputs: "BuildingAirflowControlInputs",
+):
+    """
+    Build BuildingWindowBoundaryResult for airflow.py.
+
+    airflow.py does not calculate window physics anymore.
+    It only prepares compatible bridge input and asks windows.py for the shared
+    boundary result.
+    """
+
+    if building_model is None:
+        raise ValueError("building_model cannot be None.")
+
+    if physics_graph is None:
+        raise ValueError("physics_graph cannot be None.")
+
+    if weather_state is None:
+        raise ValueError("weather_state cannot be None.")
+
+    if not isinstance(airflow_control_inputs, BuildingAirflowControlInputs):
+        raise TypeError(
+            "airflow_control_inputs must be BuildingAirflowControlInputs."
+        )
+
+    from nexusep.abbey.building.physics.windows import (
+        calculate_building_window_boundary_result,
+    )
+
+    window_operation_inputs = make_window_operation_inputs_from_airflow_control_inputs(
+        airflow_control_inputs=airflow_control_inputs,
+    )
+
+    return calculate_building_window_boundary_result(
+        physics_graph=physics_graph,
+        building_model=building_model,
+        building_window_operation_inputs=window_operation_inputs,
+        weather_state=weather_state,
+    )
 
 def make_airflow_control_inputs(
     occupancy_by_zone_people: Dict[str, float] = None,

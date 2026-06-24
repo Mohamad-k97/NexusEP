@@ -41,6 +41,7 @@ class SimulationLogger:
         performance_log: Optional[dict] = None,
         people: Optional[Dict[str, PersonState]] = None,
         locations: Optional[Dict[str, OccupantLocation]] = None,
+        internal_source_result: Optional[Any] = None,
     ) -> None:
         performance_log = performance_log or {}
 
@@ -95,7 +96,12 @@ class SimulationLogger:
         record.update(self._prefix_dict("household", household.to_dict()))
         record.update(self._prefix_dict("observation", observation.to_dict()))
         record.update(self._prefix_dict("systems", systems.to_dict()))
-
+        if internal_source_result is not None:
+            record.update(
+                self._make_internal_source_main_summary(
+                    internal_source_result=internal_source_result,
+                )
+            )
         self.records.append(record)
         
         if people is not None and locations is not None:
@@ -212,6 +218,99 @@ class SimulationLogger:
             out = folder / f"{safe_zone_id}.csv"
             group.to_csv(out, index=False)
 
+    @staticmethod
+    def _call_float_method(obj: Any, method_name: str, default: float = 0.0) -> float:
+        if obj is None:
+            return default
+
+        method = getattr(obj, method_name, None)
+
+        if method is None:
+            return default
+
+        try:
+            return float(method())
+        except Exception:
+            return default
+
+    def _make_internal_source_main_summary(
+        self,
+        internal_source_result: Any,
+    ) -> Dict[str, Any]:
+        record_count = 0
+
+        if hasattr(internal_source_result, "records"):
+            record_count = len(internal_source_result.records)
+
+        summary = {
+            "internal_source_record_count": record_count,
+            "internal_total_electricity_wh": self._call_float_method(
+                internal_source_result,
+                "total_electricity_wh",
+            ),
+            "internal_total_average_electricity_power_w": self._call_float_method(
+                internal_source_result,
+                "total_average_electricity_power_w",
+            ),
+            "internal_total_average_sensible_heat_w": self._call_float_method(
+                internal_source_result,
+                "total_average_sensible_heat_w",
+            ),
+            "internal_total_average_latent_heat_w": self._call_float_method(
+                internal_source_result,
+                "total_average_latent_heat_w",
+            ),
+            "internal_total_co2_generation_m3_h": self._call_float_method(
+                internal_source_result,
+                "total_co2_generation_m3_h",
+            ),
+            "internal_total_moisture_generation_kg": self._call_float_method(
+                internal_source_result,
+                "total_moisture_generation_kg",
+            ),
+            "internal_average_total_moisture_generation_kg_h": self._call_float_method(
+                internal_source_result,
+                "average_total_moisture_generation_kg_h",
+            ),
+            "internal_total_appliance_electricity_wh": self._call_float_method(
+                internal_source_result,
+                "total_appliance_electricity_wh",
+            ),
+            "internal_total_lighting_electricity_wh": self._call_float_method(
+                internal_source_result,
+                "total_lighting_electricity_wh",
+            ),
+            "internal_total_hvac_electricity_wh": self._call_float_method(
+                internal_source_result,
+                "total_hvac_electricity_wh",
+            ),
+        }
+
+        if hasattr(internal_source_result, "average_sensible_heat_w_by_zone"):
+            summary["internal_average_sensible_heat_w_by_zone"] = json.dumps(
+                internal_source_result.average_sensible_heat_w_by_zone(),
+                ensure_ascii=False,
+            )
+
+        if hasattr(internal_source_result, "average_electricity_power_w_by_zone"):
+            summary["internal_average_electricity_power_w_by_zone"] = json.dumps(
+                internal_source_result.average_electricity_power_w_by_zone(),
+                ensure_ascii=False,
+            )
+
+        if hasattr(internal_source_result, "average_co2_generation_m3_h_by_zone"):
+            summary["internal_average_co2_generation_m3_h_by_zone"] = json.dumps(
+                internal_source_result.average_co2_generation_m3_h_by_zone(),
+                ensure_ascii=False,
+            )
+
+        if hasattr(internal_source_result, "average_moisture_generation_kg_h_by_zone"):
+            summary["internal_average_moisture_generation_kg_h_by_zone"] = json.dumps(
+                internal_source_result.average_moisture_generation_kg_h_by_zone(),
+                ensure_ascii=False,
+            )
+
+        return summary
     @staticmethod
     def _prefix_dict(prefix: str, data: dict) -> dict:
         clean = {}

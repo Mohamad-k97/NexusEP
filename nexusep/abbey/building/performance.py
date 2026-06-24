@@ -30,7 +30,10 @@ from nexusep.abbey.building.systems import (
     BuildingEnergyResult,
 )
 from nexusep.abbey.building.controllers import controller_for_control_state
-
+from nexusep.abbey.building.physics.internal_sources import (
+    make_building_internal_source_result,
+    make_physics_inputs_from_internal_sources,
+)
 
 @dataclass
 class BuildingPerformanceStepResult:
@@ -45,6 +48,9 @@ class BuildingPerformanceStepResult:
     building_energy_result: Optional[BuildingEnergyResult] = None
 
     zone_control_commands: Dict[str, ZoneControlCommand] = field(default_factory=dict)
+
+    internal_source_result: Any = None
+    physics_inputs: Dict[str, Any] = field(default_factory=dict)
 
 
 class SimpleBuildingPerformanceModel:
@@ -96,55 +102,55 @@ class SimpleBuildingPerformanceModel:
         dt_minutes = float(dt_minutes)
         dt_hours = dt_minutes / 60.0
         dt_seconds = dt_minutes * 60.0
-
+    
         if dt_minutes <= 0:
             raise ValueError("dt_minutes must be positive.")
-
+    
         observation = _get_attr_or_key(performance_input, "observation", None)
         locations = _get_attr_or_key(performance_input, "locations", {})
         people = _get_attr_or_key(performance_input, "people", {})
         chunk_records = _get_attr_or_key(performance_input, "chunk_records", [])
-        action_energy_wh = _get_attr_or_key(performance_input, "action_energy_wh", {})
-
+        role_to_zone_id = _get_attr_or_key(performance_input, "role_to_zone_id", {})
+    
         day = _get_attr_or_key(performance_input, "day", None)
         hour = _get_attr_or_key(performance_input, "hour", None)
         step = _get_attr_or_key(performance_input, "step", None)
-
+    
         outdoor_temp_c = self._get_outdoor_temp_c(
             performance_input=performance_input,
             observation=observation,
         )
-
+    
         occupancy_by_zone = self._map_occupancy_by_zone(locations=locations)
-        appliance_energy_by_zone = self._map_appliance_energy_by_zone(
-            locations=locations,
-            chunk_records=chunk_records,
-            action_energy_wh=action_energy_wh,
-            dt_hours=dt_hours,
-        )
-
+    
         zone_records = []
         zone_energy_results = {}
         zone_control_commands = {}
-
+        zone_system_specs = {}
+        zone_occupied_states = {}
+    
         all_zone_models = self.building_model.all_zone_models()
-
+    
+        # ------------------------------------------------------------
+        # PASS 1:
+        # Create occupied states, system specs, and physical commands.
+        # ------------------------------------------------------------
         for zone_id, zone_model in all_zone_models.items():
             old_state = self.building_model.get_zone_state(zone_id)
-
+    
             occupied_person_ids = occupancy_by_zone.get(zone_id, [])
             occupied_state = old_state.with_occupants(occupied_person_ids)
-
+    
             system_spec = self._get_or_create_zone_system_spec(zone_model)
             control_state = self._get_or_create_zone_control_state(zone_model)
-
+    
             previous_command = self.previous_commands.get(zone_id)
-
+    
             controller = controller_for_control_state(
                 control_state=control_state,
                 deadband_c=self.thermostat_deadband_c,
             )
-
+    
             command = controller.step(
                 zone_state=occupied_state,
                 control_state=control_state,
@@ -157,12 +163,67 @@ class SimpleBuildingPerformanceModel:
                     "people": people,
                 },
             )
-
+    
             self.previous_commands[zone_id] = command
             zone_control_commands[zone_id] = command
+            zone_system_specs[zone_id] = system_spec
+            zone_occupied_states[zone_id] = occupied_state
+    
+        # ------------------------------------------------------------
+        # INTERNAL SOURCE BRIDGE:
+        # Now commands exist, so lighting/HVAC can be included.
+        # ------------------------------------------------------------
+        internal_source_result = make_building_internal_source_result(
+            chunk_records=chunk_records,
+            people=people,
+            locations=locations,
+            role_to_zone_id=role_to_zone_id,
+            building_model=self.building_model,
+            dt_minutes=dt_minutes,
+            include_people=True,
+            include_lighting=True,
+            lighting_power_result=None,
+            include_hvac=True,
+            zone_control_commands=zone_control_commands,
+            zone_system_specs=zone_system_specs,
+        )
+    
+        physics_inputs = make_physics_inputs_from_internal_sources(
+            internal_source_result=internal_source_result,
+            zone_ids=list(all_zone_models.keys()),
+        )
+    
+        bridge_inputs_by_zone = internal_source_result.physics_bridge_inputs_by_zone()
+    
+        appliance_energy_by_zone = internal_source_result.appliance_electricity_wh_by_zone()
+        lighting_energy_by_zone = internal_source_result.lighting_electricity_wh_by_zone()
+    
 
+    
+        # ------------------------------------------------------------
+        # PASS 2:
+        # Update zone states using internal-source bridge values.
+        # ------------------------------------------------------------
+        for zone_id, zone_model in all_zone_models.items():
+            occupied_state = zone_occupied_states[zone_id]
+            command = zone_control_commands[zone_id]
+            system_spec = zone_system_specs[zone_id]
+    
+            bridge_row = bridge_inputs_by_zone.get(zone_id, {})
+    
+            internal_sensible_heat_w = float(
+                bridge_row.get("average_sensible_heat_w", 0.0)
+            )
+    
+            co2_generation_m3_h = float(
+                bridge_row.get("average_co2_generation_m3_h", 0.0)
+            )
+    
             appliance_energy_wh = appliance_energy_by_zone.get(zone_id, 0.0)
-
+    
+            appliance_energy_wh = appliance_energy_by_zone.get(zone_id, 0.0)
+            lighting_energy_wh = lighting_energy_by_zone.get(zone_id, 0.0)
+    
             new_temp_c = self._update_temperature(
                 zone_model=zone_model,
                 zone_state=occupied_state,
@@ -172,32 +233,35 @@ class SimpleBuildingPerformanceModel:
                 appliance_energy_wh=appliance_energy_wh,
                 dt_hours=dt_hours,
                 dt_seconds=dt_seconds,
+                internal_sensible_heat_w=internal_sensible_heat_w,
             )
-
+    
             new_co2_ppm = self._update_co2(
                 zone_model=zone_model,
                 zone_state=occupied_state,
                 command=command,
                 dt_hours=dt_hours,
+                co2_generation_m3_h=co2_generation_m3_h,
             )
-
+    
             new_state = occupied_state.copy(
                 indoor_temp_c=new_temp_c,
                 co2_ppm=new_co2_ppm,
             )
-
+    
             self.building_model.set_zone_state(zone_id, new_state)
-
+    
             energy_result = self._calculate_zone_energy(
                 zone_model=zone_model,
                 system_spec=system_spec,
                 command=command,
                 appliance_energy_wh=appliance_energy_wh,
+                lighting_energy_wh=lighting_energy_wh,
                 dt_hours=dt_hours,
             )
-
+    
             zone_energy_results[zone_id] = energy_result
-
+    
             zone_records.append(
                 self._make_zone_record(
                     step=step,
@@ -207,19 +271,20 @@ class SimpleBuildingPerformanceModel:
                     zone_state=new_state,
                     command=command,
                     energy_result=energy_result,
+                    internal_source_row=bridge_row,
                 )
             )
-
+    
         dwelling_energy_results = self._aggregate_dwelling_energy(zone_energy_results)
         building_energy_result = self._aggregate_building_energy(dwelling_energy_results)
-
+    
         dwelling_records = self._make_dwelling_records(
             step=step,
             day=day,
             hour=hour,
             dwelling_energy_results=dwelling_energy_results,
         )
-
+    
         building_record = self._make_building_record(
             step=step,
             day=day,
@@ -227,12 +292,28 @@ class SimpleBuildingPerformanceModel:
             building_energy_result=building_energy_result,
             zone_records=zone_records,
         )
-
+    
+        building_record["internal_source_record_count"] = len(
+            internal_source_result.records
+        )
+        building_record["internal_total_electricity_wh"] = (
+            internal_source_result.total_electricity_wh()
+        )
+        building_record["internal_total_average_sensible_heat_w"] = (
+            internal_source_result.total_average_sensible_heat_w()
+        )
+        building_record["internal_total_co2_generation_m3_h"] = (
+            internal_source_result.total_co2_generation_m3_h()
+        )
+        building_record["internal_total_moisture_generation_kg_h"] = (
+            internal_source_result.total_moisture_generation_kg_h()
+        )
+    
         updated_observation = self._make_updated_observation(
             previous_observation=observation,
             outdoor_temp_c=outdoor_temp_c,
         )
-
+    
         return BuildingPerformanceStepResult(
             observation=updated_observation,
             zone_records=zone_records,
@@ -242,6 +323,8 @@ class SimpleBuildingPerformanceModel:
             dwelling_energy_results=dwelling_energy_results,
             building_energy_result=building_energy_result,
             zone_control_commands=zone_control_commands,
+            internal_source_result=internal_source_result,
+            physics_inputs=physics_inputs,
         )
 
     # ============================================================
@@ -362,53 +445,38 @@ class SimpleBuildingPerformanceModel:
         appliance_energy_wh: float,
         dt_hours: float,
         dt_seconds: float,
+        internal_sensible_heat_w: float,
     ) -> float:
         temp_c = float(zone_state.indoor_temp_c)
-
+    
         effective_ua_w_per_k = float(zone_model.ua_w_per_k)
-
-        if command.window_open:
-            effective_ua_w_per_k *= 3.0
-
-        outdoor_exchange_w = effective_ua_w_per_k * (outdoor_temp_c - temp_c)
-
-        people_gain_w = (
-            float(zone_state.number_of_people)
-            * self.sensible_gain_per_person_w
+    
+        ventilation_flow_m3_h = float(command.ventilation_flow_m3_h)
+    
+        ventilation_heat_transfer_w_per_k = (
+            0.33 * ventilation_flow_m3_h
         )
-
-        appliance_gain_w = 0.0
-
-        if dt_hours > 0:
-            appliance_gain_w = float(appliance_energy_wh) / dt_hours
-
-        heating_power_w = (
-            float(command.heating_power_fraction)
-            * float(system_spec.heating_capacity_w)
+    
+        effective_ua_w_per_k += ventilation_heat_transfer_w_per_k
+    
+        outdoor_exchange_w = effective_ua_w_per_k * (
+            outdoor_temp_c - temp_c
         )
-
-        cooling_power_w = (
-            float(command.cooling_power_fraction)
-            * float(system_spec.cooling_capacity_w)
-        )
-
+    
         net_heat_flow_w = (
             outdoor_exchange_w
-            + people_gain_w
-            + appliance_gain_w
-            + heating_power_w
-            - cooling_power_w
+            + float(internal_sensible_heat_w)
         )
-
-        delta_t_c = (
+    
+        delta_t_k = (
             net_heat_flow_w
             * dt_seconds
             / float(zone_model.thermal_capacity_j_per_k)
         )
-
-        next_temp_c = temp_c + delta_t_c
-
-        return _clip(next_temp_c, self.min_temp_c, self.max_temp_c)
+    
+        new_temp_c = temp_c + delta_t_k
+    
+        return new_temp_c
 
     def _update_co2(
         self,
@@ -416,42 +484,42 @@ class SimpleBuildingPerformanceModel:
         zone_state: ZoneState,
         command: ZoneControlCommand,
         dt_hours: float,
+        co2_generation_m3_h: float,
     ) -> float:
-        co2 = float(zone_state.co2_ppm)
         volume_m3 = float(zone_model.volume_m3)
-
-        people_generation_m3_h = (
-            float(zone_state.number_of_people)
-            * self.co2_generation_per_person_m3_h
-        )
-
-        generation_ppm = (
-            people_generation_m3_h
-            / volume_m3
-            * 1_000_000.0
-            * dt_hours
-        )
-
+    
+        if volume_m3 <= 0.0:
+            return float(zone_state.co2_ppm)
+    
+        current_co2_ppm = float(zone_state.co2_ppm)
+    
         ventilation_flow_m3_h = float(command.ventilation_flow_m3_h)
-
-        if command.window_open:
-            window_flow_m3_h = max(
-                50.0,
-                2.0 * volume_m3 * float(command.window_opening_fraction),
-            )
-            ventilation_flow_m3_h += window_flow_m3_h
-
-        air_changes_per_h = ventilation_flow_m3_h / volume_m3
-
-        removal_ppm = (
-            max(0.0, co2 - self.outdoor_co2_ppm)
-            * air_changes_per_h
-            * dt_hours
+    
+        generation_m3_h = float(co2_generation_m3_h)
+    
+        generation_ppm_h = (
+            generation_m3_h
+            / volume_m3
+            * 1000000.0
         )
-
-        next_co2 = co2 + generation_ppm - removal_ppm
-
-        return _clip(next_co2, self.min_co2_ppm, self.max_co2_ppm)
+    
+        ventilation_rate_h = 0.0
+    
+        if volume_m3 > 0.0:
+            ventilation_rate_h = ventilation_flow_m3_h / volume_m3
+    
+        ventilation_ppm_h = ventilation_rate_h * (
+            self.outdoor_co2_ppm - current_co2_ppm
+        )
+    
+        new_co2_ppm = current_co2_ppm + (
+            generation_ppm_h + ventilation_ppm_h
+        ) * dt_hours
+    
+        return max(
+            self.outdoor_co2_ppm,
+            new_co2_ppm,
+        )
 
     def _calculate_zone_energy(
         self,
@@ -459,6 +527,7 @@ class SimpleBuildingPerformanceModel:
         system_spec: ZoneSystemSpec,
         command: ZoneControlCommand,
         appliance_energy_wh: float,
+        lighting_energy_wh: float,
         dt_hours: float,
     ) -> ZoneEnergyResult:
         heating_energy_wh = (
@@ -466,18 +535,23 @@ class SimpleBuildingPerformanceModel:
             * float(system_spec.heating_capacity_w)
             * dt_hours
         )
-
+    
         cooling_energy_wh = (
             float(command.cooling_power_fraction)
             * float(system_spec.cooling_capacity_w)
             * dt_hours
         )
-
-        lighting_energy_wh = (
-            float(command.lighting_power_w)
-            * dt_hours
+    
+        appliance_energy_wh = float(appliance_energy_wh)
+        lighting_energy_wh = float(lighting_energy_wh)
+    
+        total_energy_wh = (
+            heating_energy_wh
+            + cooling_energy_wh
+            + lighting_energy_wh
+            + appliance_energy_wh
         )
-
+    
         return ZoneEnergyResult(
             zone_id=zone_model.zone_id,
             dwelling_id=zone_model.dwelling_id,
@@ -485,7 +559,8 @@ class SimpleBuildingPerformanceModel:
             heating_energy_wh=heating_energy_wh,
             cooling_energy_wh=cooling_energy_wh,
             lighting_energy_wh=lighting_energy_wh,
-            appliance_energy_wh=float(appliance_energy_wh),
+            appliance_energy_wh=appliance_energy_wh,
+            total_energy_wh=total_energy_wh,
         )
 
     # ============================================================
@@ -612,8 +687,9 @@ class SimpleBuildingPerformanceModel:
         zone_state: ZoneState,
         command: ZoneControlCommand,
         energy_result: ZoneEnergyResult,
+        internal_source_row: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
-        return {
+        record = {
             "step": step,
             "day": day,
             "hour": hour,
@@ -649,6 +725,58 @@ class SimpleBuildingPerformanceModel:
             "appliance_energy_wh": energy_result.appliance_energy_wh,
             "total_energy_wh": energy_result.total_energy_wh,
         }
+
+        if internal_source_row is not None:
+            record["internal_source_record_count"] = internal_source_row.get(
+                "record_count",
+                0,
+            )
+            record["internal_average_sensible_heat_w"] = internal_source_row.get(
+                "average_sensible_heat_w",
+                0.0,
+            )
+            record["internal_average_latent_heat_w"] = internal_source_row.get(
+                "average_latent_heat_w",
+                0.0,
+            )
+            record["internal_average_electricity_power_w"] = internal_source_row.get(
+                "average_electricity_power_w",
+                0.0,
+            )
+            record["internal_electricity_wh"] = internal_source_row.get(
+                "electricity_wh",
+                0.0,
+            )
+            record["internal_average_co2_generation_m3_h"] = internal_source_row.get(
+                "average_co2_generation_m3_h",
+                0.0,
+            )
+            record["internal_average_moisture_generation_kg_h"] = internal_source_row.get(
+                "average_moisture_generation_kg_h",
+                0.0,
+            )
+            record["internal_average_sensible_heat_w_by_source_kind"] = internal_source_row.get(
+                "average_sensible_heat_w_by_source_kind",
+                {},
+            )
+            record["internal_average_electricity_power_w_by_source_kind"] = internal_source_row.get(
+                "average_electricity_power_w_by_source_kind",
+                {},
+            )
+            record["internal_average_co2_generation_m3_h_by_source_kind"] = internal_source_row.get(
+                "average_co2_generation_m3_h_by_source_kind",
+                {},
+            )
+            record["internal_average_moisture_generation_kg_h_by_source_kind"] = internal_source_row.get(
+                "average_moisture_generation_kg_h_by_source_kind",
+                {},
+            )
+            record["internal_record_count_by_source_kind"] = internal_source_row.get(
+                "record_count_by_source_kind",
+                {},
+            )
+
+        return record
 
     def _make_dwelling_records(
         self,

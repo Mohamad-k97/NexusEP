@@ -93,6 +93,18 @@ DEFAULT_THERMOSTAT_DEADBAND_C = 0.5
 THERMAL_SOLUTION_METHOD = "semi_implicit_backward_euler_style"
 DEFAULT_THERMAL_DT_MINUTES = 15.0
 
+THERMAL_WINDOW_BOUNDARY_SOURCE = "BuildingWindowBoundaryResult"
+THERMAL_AIRFLOW_NETWORK_SOURCE = "BuildingAirflowNetwork"
+THERMAL_PHASE8_WINDOW_COMPATIBILITY_MODE = "phase8_window_boundary_optional"
+
+THERMAL_SOLAR_GAIN_SOURCE_WINDOW_BOUNDARY = (
+    "BuildingWindowBoundaryResult + WeatherState"
+)
+
+THERMAL_VENTILATION_SOURCE_AIRFLOW_NETWORK = (
+    "BuildingAirflowNetwork"
+)
+
 def _clamp_unit_interval(value: Any) -> float:
     value = float(value)
 
@@ -2212,6 +2224,8 @@ class ThermalModel:
         zone_control_states: Optional[Dict[str, Any]] = None,
         internal_gains_by_zone: Optional[Dict[str, float]] = None,
         dt_minutes: Optional[float] = None,
+        window_boundary_result: Any = None,
+        airflow_network: Any = None,
     ) -> ThermalStepResult:
         """
         Advance the thermal model by one timestep.
@@ -2236,8 +2250,10 @@ class ThermalModel:
         if building_model is None:
             raise ValueError("building_model cannot be None.")
 
-        if physics_graph is None:
-            raise ValueError("physics_graph cannot be None.")
+        if physics_graph is None and window_boundary_result is None:
+            raise ValueError(
+                "physics_graph cannot be None unless window_boundary_result is provided."
+            )
 
         if not isinstance(thermal_state, BuildingThermalState):
             raise TypeError("thermal_state must be BuildingThermalState.")
@@ -2267,14 +2283,25 @@ class ThermalModel:
             physics_graph
         )
 
-        ventilation_exchange = make_building_ventilation_heat_exchange(
-            building_model
+        ventilation_exchange = make_ventilation_heat_exchange_for_thermal(
+            building_model=building_model,
+            airflow_network=airflow_network,
         )
 
-        solar_gain_result = calculate_simplified_window_solar_gains(
+        solar_gain_result = calculate_solar_gains_for_thermal(
             physics_graph=physics_graph,
             weather_state=weather_state,
+            window_boundary_result=window_boundary_result,
         )
+
+        additional_outside_conductance_by_zone_w_k = {}
+
+        if window_boundary_result is not None:
+            additional_outside_conductance_by_zone_w_k = (
+                window_closed_conductance_by_zone_from_boundary_w_k(
+                    window_boundary_result
+                )
+            )
 
         hvac_inputs = make_building_hvac_inputs(
             zone_ids=zone_ids,
@@ -2302,6 +2329,7 @@ class ThermalModel:
             building_gains=building_gains,
             interzone_network=interzone_network,
             ventilation_exchange=ventilation_exchange,
+            additional_outside_conductance_by_zone_w_k=additional_outside_conductance_by_zone_w_k,
             dt_minutes=dt_minutes,
         )
 
@@ -3871,6 +3899,7 @@ def update_zone_thermal_state_semi_implicit(
     outdoor_temperature_c: float,
     adjacent_air_targets: Optional[List[ThermalTemperatureTarget]] = None,
     ventilation_h_w_k: Optional[float] = None,
+    additional_outside_h_w_k: float = 0.0,
     convective_gain_w: float = 0.0,
     radiative_gain_w: float = 0.0,
     dt_minutes: float = DEFAULT_THERMAL_DT_MINUTES,
@@ -3920,6 +3949,17 @@ def update_zone_thermal_state_semi_implicit(
         zone_state.zone_id,
     )
 
+    additional_outside_h_w_k = _non_negative_float(
+        additional_outside_h_w_k,
+        "additional_outside_h_w_k",
+        zone_state.zone_id,
+    )
+
+    total_outside_h_w_k = (
+        zone_parameters.h_external_w_k
+        + additional_outside_h_w_k
+    )
+    
     air_targets = []
 
     air_targets.append(
@@ -3933,10 +3973,10 @@ def update_zone_thermal_state_semi_implicit(
 
     air_targets.append(
         ThermalTemperatureTarget(
-            target_id="outside_envelope",
+            target_id="outside_envelope_plus_windows",
             target_type=THERMAL_PATH_OUTSIDE,
             temperature_c=outdoor_temperature_c,
-            h_w_k=zone_parameters.h_external_w_k,
+            h_w_k=total_outside_h_w_k,
         )
     )
 
@@ -3990,6 +4030,257 @@ def update_zone_thermal_state_semi_implicit(
         dt_seconds=dt_seconds,
     )
 
+def calculate_window_boundary_solar_gains(
+    window_boundary_result: Any,
+    weather_state: Any,
+) -> BuildingSolarGainResult:
+    """
+    Calculate solar gains from the shared Phase 8 window boundary result.
+
+    Important:
+        WindowBoundaryResult.effective_solar_factor already includes:
+        - SHGC
+        - shading
+        - curtain/blind solar reduction
+        - solar direction/exposure factor
+
+    Therefore WindowSolarGainRecord receives:
+        solar_heat_gain_coefficient = 1.0
+
+    to avoid applying SHGC twice.
+    """
+
+    if not is_building_window_boundary_result_like(window_boundary_result):
+        raise TypeError(
+            "window_boundary_result must behave like BuildingWindowBoundaryResult."
+        )
+
+    if weather_state is None:
+        raise ValueError("weather_state cannot be None.")
+
+    ghi = _non_negative_float(
+        _get_attr_or_default(
+            weather_state,
+            "global_horizontal_radiation_w_m2",
+            0.0,
+        ),
+        "global_horizontal_radiation_w_m2",
+        "weather",
+    )
+
+    dni = _non_negative_float(
+        _get_attr_or_default(
+            weather_state,
+            "direct_normal_radiation_w_m2",
+            0.0,
+        ),
+        "direct_normal_radiation_w_m2",
+        "weather",
+    )
+
+    dhi = _non_negative_float(
+        _get_attr_or_default(
+            weather_state,
+            "diffuse_horizontal_radiation_w_m2",
+            0.0,
+        ),
+        "diffuse_horizontal_radiation_w_m2",
+        "weather",
+    )
+
+    records = []
+
+    for window_id, window_result in window_boundary_result.window_results_by_id.items():
+        if window_result.area_m2 <= 0.0:
+            continue
+
+        records.append(
+            WindowSolarGainRecord(
+                zone_id=window_result.zone_id,
+                boundary_connection_id=window_id,
+                window_area_m2=window_result.area_m2,
+                solar_heat_gain_coefficient=1.0,
+                effective_solar_factor=window_result.effective_solar_factor,
+                global_horizontal_radiation_w_m2=ghi,
+                direct_normal_radiation_w_m2=dni,
+                diffuse_horizontal_radiation_w_m2=dhi,
+                source=THERMAL_SOLAR_GAIN_SOURCE_WINDOW_BOUNDARY,
+            )
+        )
+
+    return BuildingSolarGainResult(
+        records=records,
+    )
+
+
+def calculate_solar_gains_for_thermal(
+    physics_graph: Any,
+    weather_state: Any,
+    window_boundary_result: Any = None,
+) -> BuildingSolarGainResult:
+    """
+    Compatibility wrapper.
+
+    Preferred Phase 8:
+        BuildingWindowBoundaryResult
+
+    Legacy fallback:
+        physics_graph BoundaryConnection extraction
+    """
+
+    if window_boundary_result is not None:
+        return calculate_window_boundary_solar_gains(
+            window_boundary_result=window_boundary_result,
+            weather_state=weather_state,
+        )
+
+    return calculate_simplified_window_solar_gains(
+        physics_graph=physics_graph,
+        weather_state=weather_state,
+    )
+
+def get_zone_outdoor_airflow_record_from_network(
+    airflow_network: Any,
+    zone_id: str,
+) -> Any:
+    """
+    Read a ZoneOutdoorAirflowRecord-like object from BuildingAirflowNetwork.
+    """
+
+    if airflow_network is None:
+        return None
+
+    if hasattr(airflow_network, "get_outdoor_airflow_for_zone"):
+        return airflow_network.get_outdoor_airflow_for_zone(zone_id)
+
+    if hasattr(airflow_network, "outdoor_airflows_by_zone"):
+        return airflow_network.outdoor_airflows_by_zone.get(zone_id)
+
+    return None
+
+
+def make_zone_ventilation_airflow_inputs_from_airflow_network(
+    zone_model: Any,
+    airflow_network: Any,
+) -> ZoneVentilationAirflowInputs:
+    """
+    Build thermal ventilation inputs from airflow network.
+
+    thermal.py does not calculate airflow here.
+    It only consumes already-assembled airflow.
+    """
+
+    if zone_model is None:
+        raise ValueError("zone_model cannot be None.")
+
+    zone_id = _required_attr(zone_model, "zone_id")
+
+    record = get_zone_outdoor_airflow_record_from_network(
+        airflow_network=airflow_network,
+        zone_id=zone_id,
+    )
+
+    if record is None:
+        return make_zone_ventilation_airflow_inputs_from_zone_model(
+            zone_model=zone_model,
+            include_mechanical_ventilation=True,
+        ).copy(
+            source="ZoneModel fallback because airflow_network has no zone record"
+        )
+
+    infiltration_flow_m3_h = _get_attr_or_default(
+        record,
+        "infiltration_flow_m3_h",
+        0.0,
+    )
+
+    mechanical_ventilation_flow_m3_h = _get_attr_or_default(
+        record,
+        "mechanical_ventilation_flow_m3_h",
+        0.0,
+    )
+
+    window_airflow_m3_h = _get_attr_or_default(
+        record,
+        "window_airflow_m3_h",
+        0.0,
+    )
+
+    return ZoneVentilationAirflowInputs(
+        zone_id=zone_id,
+        infiltration_airflow_m3_h=infiltration_flow_m3_h,
+        mechanical_ventilation_flow_m3_h=mechanical_ventilation_flow_m3_h,
+        window_opening_airflow_m3_h=window_airflow_m3_h,
+        interzone_airflow_m3_h=0.0,
+        source=THERMAL_VENTILATION_SOURCE_AIRFLOW_NETWORK,
+    )
+
+
+def make_building_ventilation_heat_exchange_from_airflow_network(
+    building_model: Any,
+    airflow_network: Any,
+) -> BuildingVentilationHeatExchange:
+    """
+    Build ventilation heat exchange from BuildingAirflowNetwork.
+
+    Preferred Phase 8 thermal path:
+        airflow.py calculates airflow network
+        thermal.py consumes it
+
+    No airflow is calculated here.
+    """
+
+    if building_model is None:
+        raise ValueError("building_model cannot be None.")
+
+    if not hasattr(building_model, "all_zone_models"):
+        raise TypeError(
+            "building_model must provide all_zone_models()."
+        )
+
+    if airflow_network is None:
+        raise ValueError("airflow_network cannot be None.")
+
+    airflow_inputs_by_zone = {}
+
+    for zone_id, zone_model in building_model.all_zone_models().items():
+        airflow_inputs_by_zone[zone_id] = (
+            make_zone_ventilation_airflow_inputs_from_airflow_network(
+                zone_model=zone_model,
+                airflow_network=airflow_network,
+            )
+        )
+
+    return make_building_ventilation_heat_exchange(
+        building_model=building_model,
+        airflow_inputs_by_zone=airflow_inputs_by_zone,
+    )
+
+
+def make_ventilation_heat_exchange_for_thermal(
+    building_model: Any,
+    airflow_network: Any = None,
+) -> BuildingVentilationHeatExchange:
+    """
+    Compatibility wrapper.
+
+    Preferred Phase 8:
+        consume BuildingAirflowNetwork
+
+    Legacy fallback:
+        use ZoneModel default infiltration/mechanical ventilation
+    """
+
+    if airflow_network is not None:
+        return make_building_ventilation_heat_exchange_from_airflow_network(
+            building_model=building_model,
+            airflow_network=airflow_network,
+        )
+
+    return make_building_ventilation_heat_exchange(
+        building_model=building_model,
+    )
+
 def step_building_thermal_state_semi_implicit(
     thermal_state: BuildingThermalState,
     building_parameters: BuildingThermalParameters,
@@ -3997,6 +4288,7 @@ def step_building_thermal_state_semi_implicit(
     building_gains: Optional[BuildingThermalGains] = None,
     interzone_network: Optional[BuildingInterzoneThermalNetwork] = None,
     ventilation_exchange: Optional[BuildingVentilationHeatExchange] = None,
+    additional_outside_conductance_by_zone_w_k: Optional[Dict[str, float]] = None,
     dt_minutes: float = DEFAULT_THERMAL_DT_MINUTES,
 ) -> BuildingSemiImplicitThermalStepResult:
     """
@@ -4022,6 +4314,9 @@ def step_building_thermal_state_semi_implicit(
 
     if building_gains is None:
         building_gains = BuildingThermalGains()
+        
+    if additional_outside_conductance_by_zone_w_k is None:
+        additional_outside_conductance_by_zone_w_k = {}
 
     outdoor_temperature_c = float(
         _get_attr_or_default(
@@ -4067,6 +4362,10 @@ def step_building_thermal_state_semi_implicit(
             outdoor_temperature_c=outdoor_temperature_c,
             adjacent_air_targets=adjacent_targets,
             ventilation_h_w_k=ventilation_h_w_k,
+            additional_outside_h_w_k=additional_outside_conductance_by_zone_w_k.get(
+                zone_id,
+                0.0,
+            ),
             convective_gain_w=zone_gains.convective_gain_w(),
             radiative_gain_w=zone_gains.radiative_gain_w(),
             dt_minutes=dt_minutes,
@@ -4085,6 +4384,58 @@ def step_building_thermal_state_semi_implicit(
         dt_minutes=dt_minutes,
     )
 
+def is_building_window_boundary_result_like(
+    window_boundary_result: Any,
+) -> bool:
+    if window_boundary_result is None:
+        return False
+
+    required_methods = [
+        "effective_solar_area_by_zone_m2",
+        "closed_window_conductance_by_zone_w_k",
+        "window_results_for_zone",
+    ]
+
+    for method_name in required_methods:
+        if not hasattr(window_boundary_result, method_name):
+            return False
+
+    return True
+
+
+def is_airflow_network_like(
+    airflow_network: Any,
+) -> bool:
+    if airflow_network is None:
+        return False
+
+    if not hasattr(airflow_network, "outdoor_airflows_by_zone"):
+        return False
+
+    return True
+
+
+def indoor_temperature_by_zone_from_thermal_state(
+    thermal_state: BuildingThermalState,
+) -> Dict[str, float]:
+    if not isinstance(thermal_state, BuildingThermalState):
+        raise TypeError("thermal_state must be BuildingThermalState.")
+
+    return {
+        zone_id: zone_state.air_temperature_c
+        for zone_id, zone_state in thermal_state.zone_states.items()
+    }
+
+
+def window_closed_conductance_by_zone_from_boundary_w_k(
+    window_boundary_result: Any,
+) -> Dict[str, float]:
+    if not is_building_window_boundary_result_like(window_boundary_result):
+        raise TypeError(
+            "window_boundary_result must behave like BuildingWindowBoundaryResult."
+        )
+
+    return window_boundary_result.closed_window_conductance_by_zone_w_k()
 
 def _make_adjacent_air_temperature_targets(
     zone_id: str,

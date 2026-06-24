@@ -36,7 +36,10 @@ def save_debug_building_outputs(
 
     bridge_df = sim.building_control_bridge_records_to_dataframe()
     action_df = sim.building_action_event_records_to_dataframe()
-
+    internal_source_df = sim.building_internal_source_records_to_dataframe()
+    internal_source_zone_df = sim.building_internal_source_zone_records_to_dataframe()
+    internal_source_building_df = sim.building_internal_source_building_records_to_dataframe()
+    
     zone_path = csv_folder / (prefix + "_zone_timestep.csv")
     dwelling_path = csv_folder / (prefix + "_dwelling_timestep.csv")
     building_path = csv_folder / (prefix + "_building_timestep.csv")
@@ -112,7 +115,26 @@ def save_debug_building_outputs(
             building_df=building_df,
             path=plot_folder / (prefix + "_energy_by_building.png"),
         )
+    if not internal_source_df.empty:
+        internal_source_path = csv_folder / (
+            prefix + "_internal_source_records_timestep.csv"
+        )
+        internal_source_df.to_csv(internal_source_path, index=False)
+        paths["internal_source_records_csv"] = internal_source_path
 
+    if not internal_source_zone_df.empty:
+        internal_source_zone_path = csv_folder / (
+            prefix + "_internal_source_zone_timestep.csv"
+        )
+        internal_source_zone_df.to_csv(internal_source_zone_path, index=False)
+        paths["internal_source_zone_csv"] = internal_source_zone_path
+
+    if not internal_source_building_df.empty:
+        internal_source_building_path = csv_folder / (
+            prefix + "_internal_source_building_timestep.csv"
+        )
+        internal_source_building_df.to_csv(internal_source_building_path, index=False)
+        paths["internal_source_building_csv"] = internal_source_building_path
     return paths
 
 
@@ -136,7 +158,9 @@ def save_yearly_building_outputs(
     zone_df = sim.building_zone_records_to_dataframe()
     dwelling_df = sim.building_dwelling_records_to_dataframe()
     building_df = sim.building_records_to_dataframe()
-
+    internal_source_zone_df = sim.building_internal_source_zone_records_to_dataframe()
+    internal_source_building_df = sim.building_internal_source_building_records_to_dataframe()
+    
     if not zone_df.empty:
         _add_time_columns(zone_df)
 
@@ -210,6 +234,84 @@ def save_yearly_building_outputs(
             path=plot_folder / (prefix + "_energy_by_building.png"),
         )
 
+    if not internal_source_zone_df.empty:
+        _add_time_columns(internal_source_zone_df)
+
+        group_cols = ["day", "zone_id"]
+
+        value_cols = [
+            col for col in [
+                "average_sensible_heat_w",
+                "average_electricity_power_w",
+                "average_co2_generation_m3_h",
+                "average_moisture_generation_kg_h",
+                "electricity_wh",
+                "moisture_generation_kg",
+                "record_count",
+            ]
+            if col in internal_source_zone_df.columns
+        ]
+
+        if value_cols:
+            daily_internal_zone = (
+                internal_source_zone_df
+                .groupby(group_cols)[value_cols]
+                .mean()
+                .reset_index()
+            )
+
+            daily_internal_zone_path = csv_folder / (
+                prefix + "_daily_internal_source_zone_summary.csv"
+            )
+
+            daily_internal_zone.to_csv(
+                daily_internal_zone_path,
+                index=False,
+            )
+
+            paths["daily_internal_source_zone_summary_csv"] = (
+                daily_internal_zone_path
+            )
+
+    if not internal_source_building_df.empty:
+        _add_time_columns(internal_source_building_df)
+
+        value_cols = [
+            col for col in [
+                "record_count",
+                "total_electricity_wh",
+                "total_average_electricity_power_w",
+                "total_average_sensible_heat_w",
+                "total_co2_generation_m3_h",
+                "average_total_moisture_generation_kg_h",
+                "total_appliance_electricity_wh",
+                "total_lighting_electricity_wh",
+                "total_hvac_electricity_wh",
+            ]
+            if col in internal_source_building_df.columns
+        ]
+
+        if value_cols:
+            daily_internal_building = (
+                internal_source_building_df
+                .groupby("day")[value_cols]
+                .mean()
+                .reset_index()
+            )
+
+            daily_internal_building_path = csv_folder / (
+                prefix + "_daily_internal_source_building_summary.csv"
+            )
+
+            daily_internal_building.to_csv(
+                daily_internal_building_path,
+                index=False,
+            )
+
+            paths["daily_internal_source_building_summary_csv"] = (
+                daily_internal_building_path
+            )
+            
     return paths
 
 

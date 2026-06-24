@@ -82,6 +82,12 @@ class AbbeySimulation:
     building_records: Optional[List[Dict[str, Any]]] = None
     building_control_bridge_records: Optional[List[Dict[str, Any]]] = None
     building_action_event_records: Optional[List[Dict[str, Any]]] = None
+    
+    building_internal_source_records: Optional[List[Dict[str, Any]]] = None
+    building_internal_source_records: Optional[List[Dict[str, Any]]] = None
+    building_internal_source_zone_records: Optional[List[Dict[str, Any]]] = None
+    building_internal_source_building_records: Optional[List[Dict[str, Any]]] = None
+    last_internal_source_result: Any = None
 
     def __post_init__(self) -> None:
         if self.building_zone_records is None:
@@ -98,6 +104,18 @@ class AbbeySimulation:
 
         if self.building_action_event_records is None:
             self.building_action_event_records = []
+            
+        if self.building_internal_source_records is None:
+            self.building_internal_source_records = []
+            
+        if self.building_internal_source_records is None:
+            self.building_internal_source_records = []
+
+        if self.building_internal_source_zone_records is None:
+            self.building_internal_source_zone_records = []
+
+        if self.building_internal_source_building_records is None:
+            self.building_internal_source_building_records = []
 
     # ============================================================
     # LEGACY SINGLE-OCCUPANT COMPATIBILITY
@@ -314,6 +332,10 @@ class AbbeySimulation:
             building_records=[],
             building_control_bridge_records=[],
             building_action_event_records=[],
+            building_internal_source_records=[],
+            building_internal_source_zone_records=[],
+            building_internal_source_building_records=[],
+            last_internal_source_result=None,
         )
 
     # ============================================================
@@ -583,7 +605,9 @@ class AbbeySimulation:
             )
 
         building_locations = self._locations_for_building_performance()
-
+        role_to_zone_id = default_family_space_role_map(
+            dwelling_id="dwelling_1",
+        )
         action_events = self._get_current_action_events_for_building_bridge(
             chunk_records=chunk_records,
         )
@@ -607,18 +631,29 @@ class AbbeySimulation:
             "people": self.people,
             "chunk_records": chunk_records or [],
             "action_energy_wh": action_energy_wh or {},
+            "role_to_zone_id": role_to_zone_id,
         }
 
         result = self.building_performance_model.step(
             performance_input=performance_input,
             dt_minutes=self.dt_minutes,
         )
-
+        self._store_building_internal_source_records(
+            internal_source_result=getattr(result, "internal_source_result", None),
+        )
         self.observation = result.observation
 
         self.building_zone_records.extend(result.zone_records)
         self.building_dwelling_records.extend(result.dwelling_records)
+        self.last_internal_source_result = getattr(
+            result,
+            "internal_source_result",
+            None,
+        )
 
+        self._store_building_internal_source_outputs(
+            internal_source_result=self.last_internal_source_result,
+        )
         if result.building_record:
             self.building_records.append(result.building_record)
 
@@ -633,6 +668,27 @@ class AbbeySimulation:
             row["hour"] = getattr(self.clock, "hour", None)
             self.building_action_event_records.append(row)
 
+    def _store_building_internal_source_records(
+        self,
+        internal_source_result: Any,
+    ) -> None:
+        if internal_source_result is None:
+            return
+
+        if not hasattr(internal_source_result, "records"):
+            return
+
+        for record in internal_source_result.records:
+            if hasattr(record, "to_dict"):
+                row = record.to_dict()
+            else:
+                row = dict(record)
+
+            row["step"] = getattr(self.clock, "step", None)
+            row["day"] = getattr(self.clock, "day", None)
+            row["hour"] = getattr(self.clock, "hour", None)
+
+            self.building_internal_source_records.append(row)
     def _store_building_bridge_records(
         self,
         bridge_records: List[Dict[str, Any]],
@@ -644,6 +700,168 @@ class AbbeySimulation:
             row["hour"] = getattr(self.clock, "hour", None)
             self.building_control_bridge_records.append(row)
 
+    def _internal_source_time_record(self) -> Dict[str, Any]:
+        day = getattr(self.clock, "day", None)
+        hour = getattr(self.clock, "hour", None)
+
+        time_hour = None
+
+        if day is not None and hour is not None:
+            time_hour = float(day) * 24.0 + float(hour)
+
+        return {
+            "step": getattr(self.clock, "step", None),
+            "day": day,
+            "hour": hour,
+            "time_hour": time_hour,
+            "dt_hours": getattr(self.clock, "dt_hours", None),
+            "dt_minutes": float(getattr(self.clock, "dt_hours", 0.0)) * 60.0,
+        }
+
+    @staticmethod
+    def _csv_safe_internal_source_row(row: Dict[str, Any]) -> Dict[str, Any]:
+        clean = {}
+
+        for key, value in row.items():
+            if isinstance(value, (dict, list, tuple)):
+                clean[key] = json.dumps(
+                    value,
+                    ensure_ascii=False,
+                    default=str,
+                )
+            else:
+                clean[key] = value
+
+        return clean
+
+    @staticmethod
+    def _call_float_method(obj: Any, method_name: str, default: float = 0.0) -> float:
+        if obj is None:
+            return default
+
+        method = getattr(obj, method_name, None)
+
+        if method is None:
+            return default
+
+        try:
+            return float(method())
+        except Exception:
+            return default
+
+    def _store_building_internal_source_outputs(
+        self,
+        internal_source_result: Any,
+    ) -> None:
+        if internal_source_result is None:
+            return
+
+        if not hasattr(internal_source_result, "records"):
+            return
+
+        time_record = self._internal_source_time_record()
+
+        # ------------------------------------------------------------
+        # 1. Long source records: one row per physical source.
+        # ------------------------------------------------------------
+        for source_record in internal_source_result.records:
+            if hasattr(source_record, "to_dict"):
+                row = source_record.to_dict()
+            else:
+                row = dict(source_record)
+
+            row.update(time_record)
+
+            self.building_internal_source_records.append(
+                self._csv_safe_internal_source_row(row)
+            )
+
+        # ------------------------------------------------------------
+        # 2. Zone aggregate rows: one row per zone per timestep.
+        # ------------------------------------------------------------
+        if hasattr(internal_source_result, "aggregate_dict_by_zone"):
+            zone_rows = internal_source_result.aggregate_dict_by_zone()
+
+            for zone_id, row in zone_rows.items():
+                row = dict(row)
+                row["zone_id"] = zone_id
+                row.update(time_record)
+
+                self.building_internal_source_zone_records.append(
+                    self._csv_safe_internal_source_row(row)
+                )
+
+        # ------------------------------------------------------------
+        # 3. Building aggregate row: one row per timestep.
+        # ------------------------------------------------------------
+        building_row = dict(time_record)
+
+        building_row.update(
+            {
+                "record_count": len(internal_source_result.records),
+                "total_electricity_wh": self._call_float_method(
+                    internal_source_result,
+                    "total_electricity_wh",
+                ),
+                "total_average_electricity_power_w": self._call_float_method(
+                    internal_source_result,
+                    "total_average_electricity_power_w",
+                ),
+                "total_average_sensible_heat_w": self._call_float_method(
+                    internal_source_result,
+                    "total_average_sensible_heat_w",
+                ),
+                "total_average_latent_heat_w": self._call_float_method(
+                    internal_source_result,
+                    "total_average_latent_heat_w",
+                ),
+                "total_co2_generation_m3_h": self._call_float_method(
+                    internal_source_result,
+                    "total_co2_generation_m3_h",
+                ),
+                "total_moisture_generation_kg": self._call_float_method(
+                    internal_source_result,
+                    "total_moisture_generation_kg",
+                ),
+                "average_total_moisture_generation_kg_h": self._call_float_method(
+                    internal_source_result,
+                    "average_total_moisture_generation_kg_h",
+                ),
+                "total_appliance_electricity_wh": self._call_float_method(
+                    internal_source_result,
+                    "total_appliance_electricity_wh",
+                ),
+                "total_lighting_electricity_wh": self._call_float_method(
+                    internal_source_result,
+                    "total_lighting_electricity_wh",
+                ),
+                "total_hvac_electricity_wh": self._call_float_method(
+                    internal_source_result,
+                    "total_hvac_electricity_wh",
+                ),
+                "total_appliance_sensible_heat_w": self._call_float_method(
+                    internal_source_result,
+                    "total_appliance_sensible_heat_w",
+                ),
+                "total_lighting_sensible_heat_w": self._call_float_method(
+                    internal_source_result,
+                    "total_lighting_sensible_heat_w",
+                ),
+                "total_hvac_heating_gain_w": self._call_float_method(
+                    internal_source_result,
+                    "total_hvac_heating_gain_w",
+                ),
+                "total_hvac_cooling_removal_w": self._call_float_method(
+                    internal_source_result,
+                    "total_hvac_cooling_removal_w",
+                ),
+            }
+        )
+
+        self.building_internal_source_building_records.append(
+            self._csv_safe_internal_source_row(building_row)
+        )
+        
     def _get_current_action_events_for_building_bridge(
         self,
         chunk_records: Optional[List[Dict[str, Any]]] = None,
@@ -959,6 +1177,7 @@ class AbbeySimulation:
             performance_log=performance_output.performance_log,
             people=self.people,
             locations=self.locations,
+            internal_source_result=self.last_internal_source_result,
         )
 
         # 7. Advance clock.
@@ -1005,6 +1224,10 @@ class AbbeySimulation:
         import pandas as pd
         return pd.DataFrame(self.building_records)
 
+    def building_internal_source_records_to_dataframe(self):
+        import pandas as pd
+        return pd.DataFrame(self.building_internal_source_records)
+    
     def building_control_bridge_records_to_dataframe(self):
         import pandas as pd
         return pd.DataFrame(self.building_control_bridge_records)
@@ -1012,6 +1235,18 @@ class AbbeySimulation:
     def building_action_event_records_to_dataframe(self):
         import pandas as pd
         return pd.DataFrame(self.building_action_event_records)
+    
+    def building_internal_source_records_to_dataframe(self):
+        import pandas as pd
+        return pd.DataFrame(self.building_internal_source_records)
+
+    def building_internal_source_zone_records_to_dataframe(self):
+        import pandas as pd
+        return pd.DataFrame(self.building_internal_source_zone_records)
+
+    def building_internal_source_building_records_to_dataframe(self):
+        import pandas as pd
+        return pd.DataFrame(self.building_internal_source_building_records)
     def save_building_debug_outputs(self, folder: Union[str, Path]):
         from nexusep.abbey.building import save_debug_building_outputs
     

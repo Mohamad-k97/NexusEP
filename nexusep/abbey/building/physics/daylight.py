@@ -27,6 +27,10 @@ from dataclasses import dataclass, replace
 from typing import Any, Dict, List, Optional
 import copy
 
+from nexusep.abbey.building.physics.windows import (
+    BuildingWindowBoundaryResult,
+)
+
 
 DAYLIGHT_MODEL_FAMILY = "simplified_zone_daylight"
 LIGHTING_MODEL_FAMILY = "zone_level_artificial_lighting_later"
@@ -130,6 +134,9 @@ DEFAULT_VISUAL_DARK_FRACTION = 0.10
 DEFAULT_GLARE_RISK_INDEX = 0.0
 DAYLIGHT_MODEL_INTERFACE_MODE = "runner_facing_daylight_lighting_model"
 DEFAULT_DAYLIGHT_DT_MINUTES = 15.0
+
+DAYLIGHT_WINDOW_BOUNDARY_SOURCE = "BuildingWindowBoundaryResult"
+DAYLIGHT_PHASE8_COMPATIBILITY_MODE = "phase8_window_boundary_optional"
 
 @dataclass
 class DaylightArchitectureDecision:
@@ -2249,7 +2256,38 @@ class DaylightStepResult:
             "dt_minutes": self.dt_minutes,
             "interface_mode": self.interface_mode,
         }
-    
+
+def make_empty_building_window_daylight_parameters_from_model(
+    building_model,
+):
+    """
+    Compatibility object for DaylightStepResult.
+
+    When Phase 8 window_boundary_result is used, daylight.py no longer needs
+    Phase 7 BuildingWindowDaylightParameters, but DaylightStepResult still
+    expects one.
+    """
+
+    if building_model is None:
+        raise ValueError("building_model cannot be None.")
+
+    if not hasattr(building_model, "all_zone_models"):
+        raise TypeError(
+            "building_model must provide all_zone_models()."
+        )
+
+    zone_window_parameters = {}
+
+    for zone_id in building_model.all_zone_models().keys():
+        zone_window_parameters[zone_id] = ZoneWindowDaylightParameters(
+            zone_id=zone_id,
+            windows=[],
+        )
+
+    return BuildingWindowDaylightParameters(
+        zone_window_parameters=zone_window_parameters,
+    )
+
 @dataclass
 class DaylightModel:
     """
@@ -2294,14 +2332,15 @@ class DaylightModel:
 
     def step(
         self,
-        building_model: Any,
-        physics_graph: Any,
-        light_state: BuildingLightState,
-        weather_state: Any,
-        lighting_control_inputs: BuildingLightingControlInputs = None,
-        zone_system_specs: Dict[str, Any] = None,
-        dt_minutes: float = None,
-    ) -> DaylightStepResult:
+        building_model,
+        physics_graph,
+        light_state,
+        weather_state,
+        lighting_control_inputs=None,
+        zone_system_specs=None,
+        dt_minutes=DEFAULT_DAYLIGHT_DT_MINUTES,
+        window_boundary_result=None,
+    ):
         """
         Advance daylight / lighting model by one timestep.
 
@@ -2324,8 +2363,10 @@ class DaylightModel:
         if building_model is None:
             raise ValueError("building_model cannot be None.")
 
-        if physics_graph is None:
-            raise ValueError("physics_graph cannot be None.")
+        if physics_graph is None and window_boundary_result is None:
+            raise ValueError(
+                "physics_graph cannot be None unless window_boundary_result is provided."
+            )
 
         if not isinstance(light_state, BuildingLightState):
             raise TypeError("light_state must be BuildingLightState.")
@@ -2357,17 +2398,28 @@ class DaylightModel:
             weather_state
         )
 
-        window_daylight_parameters = make_building_window_daylight_parameters(
-            physics_graph=physics_graph,
-            building_model=building_model,
-        )
-
-        daylight_result = calculate_building_indoor_daylight_result(
-            building_model=building_model,
-            building_window_daylight_parameters=window_daylight_parameters,
-            outdoor_daylight_boundary=outdoor_daylight_boundary,
-        )
-
+        if window_boundary_result is not None:
+            window_daylight_parameters = make_empty_building_window_daylight_parameters_from_model(
+                building_model=building_model,
+            )
+        
+            daylight_result = calculate_building_indoor_daylight_result_from_window_boundary(
+                building_model=building_model,
+                outdoor_daylight_boundary=outdoor_daylight_boundary,
+                window_boundary_result=window_boundary_result,
+            )
+        
+        else:
+            window_daylight_parameters = make_building_window_daylight_parameters(
+                physics_graph=physics_graph,
+                building_model=building_model,
+            )
+        
+            daylight_result = calculate_building_indoor_daylight_result(
+                building_model=building_model,
+                building_window_daylight_parameters=window_daylight_parameters,
+                outdoor_daylight_boundary=outdoor_daylight_boundary,
+            )
         building_lighting_parameters = make_building_lighting_parameters(
             building_model=building_model,
             zone_system_specs=zone_system_specs,
@@ -2468,6 +2520,108 @@ class DaylightModel:
 DEFAULT_DAYLIGHT_ARCHITECTURE = DaylightArchitectureDecision()
 LightingModel = DaylightModel
 
+def is_building_window_boundary_result_like(
+    window_boundary_result,
+):
+    if window_boundary_result is None:
+        return False
+
+    required_methods = [
+        "window_results_for_zone",
+        "effective_daylight_area_by_zone_m2",
+    ]
+
+    for method_name in required_methods:
+        if not hasattr(window_boundary_result, method_name):
+            return False
+
+    return True
+
+
+def effective_daylight_area_from_window_boundary_for_zone_m2(
+    window_boundary_result,
+    zone_id,
+):
+    """
+    Phase 8 adapter.
+
+    Reads effective daylight area from BuildingWindowBoundaryResult.
+
+    This is now the preferred daylight input:
+        windows.py -> BuildingWindowBoundaryResult -> daylight.py
+    """
+
+    if not is_building_window_boundary_result_like(window_boundary_result):
+        raise TypeError(
+            "window_boundary_result must behave like BuildingWindowBoundaryResult."
+        )
+
+    area_by_zone = window_boundary_result.effective_daylight_area_by_zone_m2()
+
+    return float(
+        area_by_zone.get(
+            zone_id,
+            0.0,
+        )
+    )
+
+
+def calculate_zone_indoor_daylight_result_from_window_boundary(
+    zone_model,
+    zone_id,
+    outdoor_daylight_boundary,
+    window_boundary_result,
+):
+    """
+    Phase 8 daylight estimate for one zone.
+
+    Uses:
+        BuildingWindowBoundaryResult.effective_daylight_area_by_zone_m2()
+
+    Does not read BoundaryConnection directly.
+    """
+
+    effective_daylight_area_m2 = (
+        effective_daylight_area_from_window_boundary_for_zone_m2(
+            window_boundary_result=window_boundary_result,
+            zone_id=zone_id,
+        )
+    )
+
+    floor_area_m2 = zone_floor_area_for_daylight_m2(
+        zone_model
+    )
+
+    outdoor_illuminance_lux = float(
+        outdoor_daylight_boundary.outdoor_illuminance_lux
+    )
+
+    daylight_illuminance_lux = (
+        outdoor_illuminance_lux
+        * effective_daylight_area_m2
+        / floor_area_m2
+    )
+
+    daylight_illuminance_lux = clamp_illuminance_lux(
+        daylight_illuminance_lux
+    )
+
+    record = WindowIndoorDaylightRecord(
+        boundary_connection_id="phase8_window_boundary_result",
+        zone_id=zone_id,
+        outdoor_illuminance_lux=outdoor_illuminance_lux,
+        floor_area_m2=floor_area_m2,
+        effective_daylight_area_m2=effective_daylight_area_m2,
+        indoor_daylight_illuminance_lux=daylight_illuminance_lux,
+        source=DAYLIGHT_WINDOW_BOUNDARY_SOURCE,
+    )
+
+    return ZoneIndoorDaylightResult(
+        zone_id=zone_id,
+        daylight_illuminance_lux=daylight_illuminance_lux,
+        window_records=[record],
+        source=DAYLIGHT_WINDOW_BOUNDARY_SOURCE,
+    )
 
 def make_default_daylight_model() -> DaylightModel:
     return DaylightModel()
@@ -3275,6 +3429,39 @@ def calculate_building_indoor_daylight_result(
         source=DAYLIGHT_ESTIMATE_SOURCE,
     )
 
+def estimate_building_indoor_daylight(
+    building_model,
+    physics_graph,
+    weather_state,
+    window_boundary_result=None,
+):
+    """
+    Compatibility wrapper.
+
+    Old path:
+        physics_graph -> BoundaryConnection extraction
+
+    New path:
+        window_boundary_result -> shared Phase 8 window result
+    """
+
+    if window_boundary_result is not None:
+        outdoor_daylight_boundary = make_outdoor_daylight_boundary_from_weather_state(
+            weather_state
+        )
+
+        return calculate_building_indoor_daylight_result_from_window_boundary(
+            building_model=building_model,
+            outdoor_daylight_boundary=outdoor_daylight_boundary,
+            window_boundary_result=window_boundary_result,
+        )
+
+    return estimate_building_indoor_daylight_from_weather_and_graph(
+        building_model=building_model,
+        physics_graph=physics_graph,
+        weather_state=weather_state,
+    )
+
 def estimate_building_indoor_daylight_from_weather_and_graph(
     building_model: Any,
     physics_graph: Any,
@@ -3654,6 +3841,48 @@ def make_initial_building_light_state(
 
     return BuildingLightState(
         zone_states=zone_states,
+    )
+
+def calculate_building_indoor_daylight_result_from_window_boundary(
+    building_model,
+    outdoor_daylight_boundary,
+    window_boundary_result,
+):
+    """
+    Phase 8 building daylight estimate.
+
+    Uses BuildingWindowBoundaryResult instead of extracting windows from
+    BuildingPhysicsGraph / BoundaryConnection.
+    """
+
+    if building_model is None:
+        raise ValueError("building_model cannot be None.")
+
+    if not hasattr(building_model, "all_zone_models"):
+        raise TypeError(
+            "building_model must provide all_zone_models()."
+        )
+
+    if not is_building_window_boundary_result_like(window_boundary_result):
+        raise TypeError(
+            "window_boundary_result must behave like BuildingWindowBoundaryResult."
+        )
+
+    zone_results = {}
+
+    for zone_id, zone_model in building_model.all_zone_models().items():
+        zone_result = calculate_zone_indoor_daylight_result_from_window_boundary(
+            zone_model=zone_model,
+            zone_id=zone_id,
+            outdoor_daylight_boundary=outdoor_daylight_boundary,
+            window_boundary_result=window_boundary_result,
+        )
+
+        zone_results[zone_id] = zone_result
+
+    return BuildingIndoorDaylightResult(
+        zone_results=zone_results,
+        source=DAYLIGHT_WINDOW_BOUNDARY_SOURCE,
     )
 
 
