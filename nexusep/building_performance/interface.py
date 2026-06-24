@@ -4,9 +4,8 @@ Building-performance interface for NexusEP / ABBEY coupling.
 ABBEY sends controls/actions.
 Building-performance module returns DwellingObservation.
 """
-
-from dataclasses import dataclass
-from typing import Any, Dict, Protocol
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional, Protocol
 
 from nexusep.abbey.agents.states import (
     SystemState,
@@ -19,15 +18,29 @@ from nexusep.abbey.agents.states import (
 @dataclass 
 class PerformanceInput:
     """
-    Data sent from ABBEY to the building-performance module.
+    Input sent from ABBEY to the building-performance module.
     """
 
     systems: SystemState
     execution: ExecutionState
     clock: SimulationClock
-    chunk_records: list[dict[str, Any]]
+
+    # Executed action chunks during this timestep
+    chunk_records: List[Dict[str, Any]] = field(default_factory=list)
+
+    # Energy from currently executed actions during this timestep
+    action_energy_wh: float = 0.0
+
+    # Legacy single-occupant compatibility
     person_is_home: bool = True
     person_current_zone_id: str = "main_room"
+
+    # v0.3 multi-occupant inputs
+    people: Optional[Dict[str, Any]] = None
+    locations: Optional[Dict[str, Any]] = None
+    household: Optional[Any] = None
+    
+    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "systems": self.systems.to_dict(),

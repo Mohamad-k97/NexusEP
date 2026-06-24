@@ -55,6 +55,7 @@ class DummyBuildingPerformanceModel:
         occupied_zone_id,
         person_is_home,
         systems,
+        performance_input,
     ):
         from nexusep.abbey.agents.states import ZoneObservation
     
@@ -96,13 +97,18 @@ class DummyBuildingPerformanceModel:
                 temp_offset = -0.5
                 daylight_factor = 0.4
     
-            occupied = person_is_home and zone_id == occupied_zone_id
-    
-            zone_co2 = co2_ppm
+            occupied_person_ids = self._zone_occupants_from_locations(
+                zone_id=zone_id,
+                performance_input=performance_input,
+            )
+            
+            number_of_people = len(occupied_person_ids)
+            occupied = number_of_people > 0
+            
+            zone_co2 = co2_ppm + 80.0 * max(0, number_of_people - 1)
+            
             if not occupied:
                 zone_co2 = max(420.0, co2_ppm - 150.0)
-    
-            occupied_person_ids = ["person_1"] if occupied else []
             
             zone_observations[zone_id] = ZoneObservation(
                 zone_id=zone_id,
@@ -118,7 +124,7 @@ class DummyBuildingPerformanceModel:
                 window_open=zone_controls.window_open,
             
                 occupied_person_ids=occupied_person_ids,
-                number_of_people=len(occupied_person_ids),
+                number_of_people=number_of_people,
             )
     
         return zone_observations
@@ -165,6 +171,7 @@ class DummyBuildingPerformanceModel:
             occupied_zone_id=performance_input.person_current_zone_id,
             person_is_home=performance_input.person_is_home,
             systems=systems,
+            performance_input=performance_input,
         )
         
         observation = DwellingObservation(
@@ -190,6 +197,32 @@ class DummyBuildingPerformanceModel:
             observation=observation,
             performance_log=log,
         )
+
+
+    def _zone_occupants_from_locations(
+        self,
+        zone_id: str,
+        performance_input,
+    ) -> list[str]:
+        if performance_input.locations:
+            occupant_ids = []
+    
+            for occupant_id, location in performance_input.locations.items():
+                if not getattr(location, "is_home", False):
+                    continue
+    
+                if getattr(location, "current_space_id", None) == zone_id:
+                    occupant_ids.append(occupant_id)
+    
+            return occupant_ids
+    
+        if (
+            performance_input.person_is_home
+            and performance_input.person_current_zone_id == zone_id
+        ):
+            return ["person_1"]
+    
+        return []
 
     def _total_action_energy_wh(
         self,

@@ -7,6 +7,88 @@
     "scale_explanation": "In the smooth update x_next = x + dt * (up * (1 - x) - down * x), a pressure of 1.0 is strong. With dt=0.25 h and x=0.5, up=1.0 increases x by about +0.125 in one timestep. A pressure of 0.05 is weak and slow."
   },
 
+"household_dirty_clothes": {
+  "_meta": {
+    "description": "Household-level dirty clothes accumulation. The state is bounded in [0, 1].",
+    "base_multiplier": "Multiplier applied to each occupant laundry_generation_rate.",
+    "home_multiplier": "Extra multiplier when occupant is home.",
+    "work_or_school_multiplier": "Extra multiplier when occupant is at work/school.",
+    "sickness_multiplier": "Extra multiplier from sickness severity.",
+    "washing_machine_down": "Reduction pressure while washing machine is active."
+  },
+
+  "base_multiplier": 1.0,
+  "home_multiplier": 1.10,
+  "work_or_school_multiplier": 1.20,
+  "sickness_multiplier": 0.50,
+
+  "washing_machine_down": 1.25
+},
+
+"household_cooking": {
+  "family_meal_hunger_down": 0.75
+},
+"household_care": {
+  "care_need_threshold": 0.65,
+  "hunger_down": 0.45,
+  "fatigue_down": 0.20,
+  "sleep_pressure_down": 0.30,
+  "household_care_cooldown_minutes": 90
+},
+
+"simulation_calendar": {
+  "start_weekday": 0,
+  "weekend_days": [5, 6],
+  "holiday_days": [],
+  "weekday_names": {
+    "0": "Monday",
+    "1": "Tuesday",
+    "2": "Wednesday",
+    "3": "Thursday",
+    "4": "Friday",
+    "5": "Saturday",
+    "6": "Sunday"
+  }
+},
+
+"external_schedules": {
+  "work": {
+    "weekday": {
+      "enabled": true,
+      "leave_start_hour": 7.5,
+      "leave_end_hour": 9.0,
+      "return_start_hour": 17.0,
+      "return_end_hour": 19.5,
+      "leave_score": 5.0,
+      "return_score": 5.0
+    },
+    "weekend": {
+      "enabled": false
+    },
+    "holiday": {
+      "enabled": false
+    }
+  },
+
+  "school": {
+    "weekday": {
+      "enabled": true,
+      "leave_start_hour": 7.25,
+      "leave_end_hour": 8.25,
+      "return_start_hour": 13.0,
+      "return_end_hour": 15.0,
+      "leave_score": 5.5,
+      "return_score": 5.5
+    },
+    "weekend": {
+      "enabled": false
+    },
+    "holiday": {
+      "enabled": false
+    }
+  }
+},
+
   "hunger": {
     // Natural hunger accumulation while awake.
     // 0.045 = weak hourly hunger growth.
@@ -374,7 +456,34 @@
     "target_zone_role": "current",
     "post_action_zone_role": "current"
   },
-
+    "care_for_infant": {
+      "category": "care",
+      "execution_type": "foreground",
+      "duration_minutes": 20,
+      "power_w": 0,
+      "activity_intensity": 0.25,
+      "effort": 0.35,
+    
+      "requires_home": true,
+      "requires_awake": true,
+      "blocks_actor": true,
+      "background_process": false,
+    
+      "can_continue_without_actor": false,
+      "can_be_interrupted": true,
+      "can_fill_remaining_time": false,
+      "can_repeat": true,
+    
+      "target_zone_role": "care",
+      "post_action_zone_role": "idle",
+    
+      "system_effects": {},
+      "person_effects": {},
+    
+      "action_cooldowns_on_start": {
+        "care_for_infant": 60
+      }
+  },
   "sleep": {
     "category": "rest",
     "execution_type": "foreground",
@@ -446,6 +555,39 @@
       },
       "target_zone_role": "door",
     "post_action_zone_role": "outside"
+    },
+    
+    "go_to_school": {
+      "category": "external",
+      "execution_type": "foreground",
+      "duration_minutes": 10,
+      "power_w": 0,
+      "activity_intensity": 0.2,
+      "effort": 0.2,
+    
+      "requires_home": true,
+      "requires_awake": false,
+      "blocks_actor": true,
+      "background_process": false,
+    
+      "can_continue_without_actor": false,
+      "can_be_interrupted": false,
+      "can_fill_remaining_time": false,
+      "can_repeat": false,
+    
+      "target_zone_role": "entrance",
+      "post_action_zone_role": "outside",
+    
+      "system_effects": {},
+      "person_effects": {
+        "is_home": false,
+        "away_reason": "school",
+        "is_sleeping": false
+      },
+    
+      "action_cooldowns_on_start": {
+        "go_to_school": 360
+      }
     },
 
   "return_home": {
@@ -673,43 +815,35 @@
     "post_action_zone_role": "idle"
   },
 
-  "make_hot_drink": {
-    "category": "appliance",
-    "execution_type": "foreground",
-    "duration_minutes": 10,
-    "power_w": 1500.0,
-    "activity_intensity": 0.15,
-    "effort": 0.15,
-    "requires_home": true,
-    "requires_awake": true,
-    "blocks_actor": true,
-    "background_process": false,
-    "can_continue_without_actor": false,
-    "can_be_interrupted": false,
-    "system_effects": {},
-    "person_effects": {},
-    "target_zone_role": "kitchen",
-    "post_action_zone_role": "idle"
-  },
+"make_hot_drink": {
+  "category": "appliance",
+  "execution_type": "foreground",
+  "duration_minutes": 4,
+  "power_w": 1800,
+  "activity_intensity": 0.1,
+  "effort": 0.1,
 
-  "cook": {
-    "category": "appliance",
-    "execution_type": "foreground",
-    "duration_minutes": 30,
-    "power_w": 1200.0,
-    "activity_intensity": 0.50,
-    "effort": 0.55,
-    "requires_home": true,
-    "requires_awake": true,
-    "blocks_actor": true,
-    "background_process": false,
-    "can_continue_without_actor": false,
-    "can_be_interrupted": false,
-    "system_effects": {},
-    "person_effects": {},
-    "target_zone_role": "kitchen",
-    "post_action_zone_role": "idle"
-  },
+  "requires_home": true,
+  "requires_awake": true,
+  "blocks_actor": true,
+  "background_process": false,
+
+  "can_continue_without_actor": false,
+  "can_be_interrupted": true,
+  "can_fill_remaining_time": false,
+  "can_repeat": true,
+
+  "target_zone_role": "kitchen",
+  "post_action_zone_role": "idle",
+
+  "system_effects": {},
+  "person_effects": {},
+
+  "action_cooldowns_on_start": {
+    "make_hot_drink": 240
+  }
+},
+
 
     "emergency_eat": {
       "category": "need",
@@ -742,6 +876,9 @@
       "background_process": false,
       "can_continue_without_actor": false,
       "can_be_interrupted": false,
+      "action_cooldowns_on_start": {
+        "cook": 240
+      },
       "system_effects": {},
       "person_effects": {},
       "target_zone_role": "kitchen",
@@ -762,6 +899,7 @@
     "can_be_interrupted": false,
     "system_effects": {},
     "person_effects": {},
+    "target_zone_role": "bathroom",
     "post_action_zone_role": "idle"
   },
 
