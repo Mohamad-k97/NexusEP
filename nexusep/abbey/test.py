@@ -1,19 +1,21 @@
 """
-ABBEY Phase 6 moisture / humidity architecture test.
+ABBEY Phase 7 daylight / lighting / visual comfort architecture test.
 
 Tests:
-1. 1 zone, dry indoor air + humid outdoor ventilation -> indoor humidity rises.
-2. 1 zone, humid indoor air + dry outdoor ventilation -> indoor humidity falls.
-3. 1 zone, people moisture + no ventilation -> humidity rises.
-4. 1 zone, people moisture + ventilation -> humidity rises slower.
-5. 2 zones with open door -> humidity ratios move toward each other.
-6. RH is derived from temperature and humidity ratio.
-7. Humidity ratio never goes negative.
-8. No thermal solver is calculated here.
-9. No airflow solver is recalculated here if airflow network is passed in.
+1. Outdoor daylight boundary reads WeatherState.
+2. Window daylight parameters are extracted from graph boundary connections.
+3. Indoor daylight rises with outdoor illuminance and window area.
+4. Night / zero outdoor illuminance gives zero daylight.
+5. Curtain / shading reduce daylight.
+6. Artificial lighting off gives zero power.
+7. Artificial lighting on gives lux, power, and energy.
+8. Daylight + artificial lighting combine into indoor illuminance.
+9. Visual comfort status is derived from illuminance target.
+10. DaylightModel.step returns expected outputs.
+11. No thermal / moisture / airflow solver is calculated here.
 
 Expected:
-    PHASE 6 HUMIDITY ARCHITECTURE OK ✅
+    PHASE 7 DAYLIGHT LIGHTING ARCHITECTURE OK ✅
 """
 
 from datetime import datetime as DateTime
@@ -26,82 +28,65 @@ from nexusep.abbey.building.model import (
 
 from nexusep.abbey.building.physics.weather import WeatherState
 
-from nexusep.abbey.building.physics.airflow import (
-    BuildingAirflowNetwork,
-    ZoneOutdoorAirflowRecord,
-    InterzoneAirflowLink,
-    InterzoneAirflowRecord,
-)
-
-from nexusep.abbey.building.physics.moisture import (
-    DEFAULT_MOISTURE_GENERATION_PER_PERSON_KG_H,
-    DEFAULT_ATMOSPHERIC_PRESSURE_PA,
-    MOISTURE_AIR_DENSITY_KG_M3,
-    MOISTURE_SOURCE_PEOPLE,
-    MoistureModel,
-    ZoneMoistureState,
-    BuildingMoistureSourceInputs,
-    ZoneMoistureSourceInput,
-    humidity_ratio_from_rh,
-    relative_humidity_from_humidity_ratio,
+from nexusep.abbey.building.physics.daylight import (
+    DEFAULT_VISUAL_COMFORT_TARGET_LUX,
+    LIGHTING_CONTROL_MODE_MANUAL,
+    VISUAL_COMFORT_STATUS_DARK,
+    VISUAL_COMFORT_STATUS_UNDERLIT,
+    VISUAL_COMFORT_STATUS_COMFORTABLE,
+    VISUAL_COMFORT_STATUS_OVERLIT,
+    DaylightModel,
+    ZoneLightingControlInput,
+    BuildingLightingControlInputs,
+    make_outdoor_daylight_boundary_from_weather_state,
+    make_building_window_daylight_parameters,
+    calculate_building_indoor_daylight_result,
+    calculate_building_lighting_from_controls,
+    calculate_visual_comfort_from_light_state,
 )
 
 
 DT_MINUTES = 15.0
-ZONE_VOLUME_M3 = 50.0
-ZONE_TEMPERATURE_C = 20.0
-PRESSURE_PA = DEFAULT_ATMOSPHERIC_PRESSURE_PA
+FLOOR_AREA_M2 = 20.0
+ZONE_HEIGHT_M = 2.7
 
 
-class FakeThermalZoneState:
-    def __init__(self, zone_id, air_temperature_c):
+class FakeBoundaryConnection:
+    def __init__(
+        self,
+        connection_id,
+        zone_id,
+        area_m2=5.0,
+        orientation_deg=180.0,
+        visible_transmittance=0.60,
+        frame_fraction=0.20,
+        shading_factor=1.00,
+        curtain_open=True,
+        curtain_daylight_reduction_factor=0.35,
+    ):
+        self.connection_id = connection_id
         self.zone_id = zone_id
-        self.air_temperature_c = air_temperature_c
+        self.connection_type = "window"
+        self.area_m2 = area_m2
+        self.orientation_deg = orientation_deg
+
+        self.window_visible_transmittance = visible_transmittance
+        self.frame_fraction = frame_fraction
+        self.shading_factor = shading_factor
+        self.curtain_open = curtain_open
+        self.curtain_daylight_reduction_factor = curtain_daylight_reduction_factor
 
 
-class FakeThermalState:
-    def __init__(self, temperatures_by_zone):
-        self.zone_states = {
-            zone_id: FakeThermalZoneState(
-                zone_id=zone_id,
-                air_temperature_c=temperature_c,
-            )
-            for zone_id, temperature_c in temperatures_by_zone.items()
-        }
-
-    def has_zone(self, zone_id):
-        return zone_id in self.zone_states
-
-    def get_zone_state(self, zone_id):
-        return self.zone_states[zone_id]
-
-
-class SuppliedAirflowNetwork:
-    """
-    Minimal duck-typed airflow network.
-
-    Used to prove moisture.py reads an already-supplied airflow network
-    and does not need to recalculate airflow.
-    """
-
-    def __init__(self, outdoor_airflows_by_zone, interzone_airflow_links=None):
-        self.outdoor_airflows_by_zone = outdoor_airflows_by_zone
-        self.interzone_airflow_links = interzone_airflow_links or {}
-
-    def interzone_links_for_zone(self, zone_id):
-        out = []
-
-        for link in self.interzone_airflow_links.values():
-            if link.zone_a_id == zone_id or link.zone_b_id == zone_id:
-                out.append(link)
-
-        return out
+class FakePhysicsGraph:
+    def __init__(self, boundary_connections):
+        self.boundary_connections = boundary_connections
 
 
 def make_zone(
     zone_id,
-    initial_rh_percent=50.0,
-    air_volume_m3=ZONE_VOLUME_M3,
+    floor_area_m2=FLOOR_AREA_M2,
+    daylight_utilization_factor=0.50,
+    visual_comfort_target_lux=DEFAULT_VISUAL_COMFORT_TARGET_LUX,
 ):
     zone = ZoneModel(
         zone_id=zone_id,
@@ -110,18 +95,19 @@ def make_zone(
         building_id="building_1",
         zone_scope="private",
         zone_use="generic",
-        floor_area_m2=air_volume_m3 / 2.7,
-        height_m=2.7,
-        volume_m3=air_volume_m3,
-        air_volume_m3=air_volume_m3,
-        initial_temp_c=ZONE_TEMPERATURE_C,
+        floor_area_m2=floor_area_m2,
+        height_m=ZONE_HEIGHT_M,
+        volume_m3=floor_area_m2 * ZONE_HEIGHT_M,
+        air_volume_m3=floor_area_m2 * ZONE_HEIGHT_M,
+        initial_temp_c=20.0,
     )
 
-    # Moisture Phase 6 attributes.
-    # ZoneModel may not define these in its constructor, so attach them here.
-    zone.initial_relative_humidity_percent = initial_rh_percent
-    zone.relative_humidity_percent = initial_rh_percent
-    zone.initial_rh_percent = initial_rh_percent
+    # Phase 7 attributes. Attach after construction to avoid ZoneModel
+    # constructor mismatch.
+    zone.daylight_utilization_factor = daylight_utilization_factor
+    zone.visual_comfort_target_lux = visual_comfort_target_lux
+    zone.installed_lighting_lux = 500.0
+    zone.lighting_power_density_w_m2 = 8.0
 
     return zone
 
@@ -145,466 +131,402 @@ def make_building(zone_models):
 
 
 def make_weather(
-    outdoor_rh_percent=50.0,
-    outdoor_temperature_c=ZONE_TEMPERATURE_C,
+    outdoor_illuminance_lux=10000.0,
+    sky_condition="clear",
 ):
     return WeatherState(
-        datetime=DateTime(2021, 1, 1, 12, 0, 0),
-        outdoor_temperature_c=outdoor_temperature_c,
+        datetime=DateTime(2021, 6, 21, 12, 0, 0),
+        outdoor_temperature_c=25.0,
         wind_speed_m_s=0.0,
         wind_direction_deg=0.0,
-        direct_normal_radiation_w_m2=0.0,
-        diffuse_horizontal_radiation_w_m2=0.0,
-        global_horizontal_radiation_w_m2=0.0,
-        outdoor_illuminance_lux=0.0,
-        sky_condition="clear",
+        direct_normal_radiation_w_m2=600.0,
+        diffuse_horizontal_radiation_w_m2=120.0,
+        global_horizontal_radiation_w_m2=700.0,
+        outdoor_illuminance_lux=outdoor_illuminance_lux,
+        sky_condition=sky_condition,
         outdoor_co2_ppm=420.0,
         outdoor_noise_db=45.0,
-        relative_humidity_percent=outdoor_rh_percent,
-        atmospheric_pressure_pa=PRESSURE_PA,
+        relative_humidity_percent=50.0,
+        atmospheric_pressure_pa=101325.0,
     )
 
 
-def make_thermal_state(zone_ids, temperature_c=ZONE_TEMPERATURE_C):
-    return FakeThermalState({
-        zone_id: temperature_c
-        for zone_id in zone_ids
-    })
-
-
-def make_moisture_state(zone_id, rh_percent, temperature_c=ZONE_TEMPERATURE_C):
-    humidity_ratio = humidity_ratio_from_rh(
-        relative_humidity_percent=rh_percent,
-        temperature_c=temperature_c,
-        atmospheric_pressure_pa=PRESSURE_PA,
-    )
-
-    derived_rh = relative_humidity_from_humidity_ratio(
-        humidity_ratio_kg_kg=humidity_ratio,
-        temperature_c=temperature_c,
-        atmospheric_pressure_pa=PRESSURE_PA,
-    )
-
-    return ZoneMoistureState(
+def make_graph(
+    zone_id="living_room",
+    area_m2=5.0,
+    curtain_open=True,
+    shading_factor=1.0,
+):
+    window = FakeBoundaryConnection(
+        connection_id="window_1",
         zone_id=zone_id,
-        humidity_ratio_kg_kg=humidity_ratio,
-        relative_humidity_percent=derived_rh,
+        area_m2=area_m2,
+        orientation_deg=180.0,
+        visible_transmittance=0.60,
+        frame_fraction=0.20,
+        shading_factor=shading_factor,
+        curtain_open=curtain_open,
+        curtain_daylight_reduction_factor=0.35,
     )
 
-
-def make_network_with_outdoor_flow(zone_id, outdoor_flow_m3_h):
-    return BuildingAirflowNetwork(
-        outdoor_airflows_by_zone={
-            zone_id: ZoneOutdoorAirflowRecord(
-                zone_id=zone_id,
-                infiltration_flow_m3_h=outdoor_flow_m3_h,
-                mechanical_ventilation_flow_m3_h=0.0,
-                window_airflow_m3_h=0.0,
-            )
-        },
-        interzone_airflow_links={},
-        interzone_airflow_records={},
-    )
-
-
-def make_network_no_flow(zone_id):
-    return make_network_with_outdoor_flow(
-        zone_id=zone_id,
-        outdoor_flow_m3_h=0.0,
-    )
-
-
-def make_people_sources(zone_id, number_of_people=1.0):
-    return BuildingMoistureSourceInputs(
-        sources_by_zone={
-            zone_id: [
-                ZoneMoistureSourceInput(
-                    zone_id=zone_id,
-                    moisture_generation_kg_h=(
-                        number_of_people
-                        * DEFAULT_MOISTURE_GENERATION_PER_PERSON_KG_H
-                    ),
-                    source_type=MOISTURE_SOURCE_PEOPLE,
-                )
-            ]
+    return FakePhysicsGraph(
+        boundary_connections={
+            "window_1": window,
         }
     )
 
 
-def make_empty_sources():
-    return BuildingMoistureSourceInputs(
-        sources_by_zone={},
+def make_lighting_controls(
+    zone_id="living_room",
+    lights_on=True,
+    dimming_fraction=1.0,
+    requested_lux=300.0,
+):
+    return BuildingLightingControlInputs(
+        controls_by_zone={
+            zone_id: ZoneLightingControlInput(
+                zone_id=zone_id,
+                lights_on=lights_on,
+                dimming_fraction=dimming_fraction,
+                requested_artificial_lighting_lux=requested_lux,
+                control_mode=LIGHTING_CONTROL_MODE_MANUAL,
+            )
+        }
     )
 
 
-def assert_dry_indoor_humid_outdoor_ventilation_raises_humidity():
-    zone = make_zone(
+def assert_outdoor_daylight_boundary_reads_weather():
+    boundary = make_outdoor_daylight_boundary_from_weather_state(
+        make_weather(outdoor_illuminance_lux=12000.0)
+    )
+
+    assert boundary.outdoor_illuminance_lux == 12000.0
+    assert boundary.has_daylight()
+
+    print("OK: outdoor daylight boundary reads WeatherState")
+
+
+def assert_window_daylight_parameters_from_graph():
+    zone = make_zone("living_room")
+    building = make_building({"living_room": zone})
+    graph = make_graph("living_room", area_m2=5.0)
+
+    parameters = make_building_window_daylight_parameters(
+        physics_graph=graph,
+        building_model=building,
+    )
+
+    zone_params = parameters.get_zone_window_parameters("living_room")
+
+    assert zone_params.window_count() == 1
+    assert zone_params.total_effective_daylight_area_m2() > 0.0
+
+    print("OK: window daylight parameters extracted from graph")
+
+
+def assert_indoor_daylight_rises_with_outdoor_illuminance():
+    zone = make_zone("living_room")
+    building = make_building({"living_room": zone})
+    graph = make_graph("living_room", area_m2=5.0)
+
+    window_params = make_building_window_daylight_parameters(
+        physics_graph=graph,
+        building_model=building,
+    )
+
+    low_boundary = make_outdoor_daylight_boundary_from_weather_state(
+        make_weather(outdoor_illuminance_lux=5000.0)
+    )
+
+    high_boundary = make_outdoor_daylight_boundary_from_weather_state(
+        make_weather(outdoor_illuminance_lux=15000.0)
+    )
+
+    low_result = calculate_building_indoor_daylight_result(
+        building_model=building,
+        building_window_daylight_parameters=window_params,
+        outdoor_daylight_boundary=low_boundary,
+    )
+
+    high_result = calculate_building_indoor_daylight_result(
+        building_model=building,
+        building_window_daylight_parameters=window_params,
+        outdoor_daylight_boundary=high_boundary,
+    )
+
+    low_lux = low_result.get_zone_result("living_room").daylight_illuminance_lux
+    high_lux = high_result.get_zone_result("living_room").daylight_illuminance_lux
+
+    assert high_lux > low_lux
+
+    print("OK: indoor daylight rises with outdoor illuminance")
+
+
+def assert_zero_outdoor_illuminance_gives_zero_daylight():
+    zone = make_zone("living_room")
+    building = make_building({"living_room": zone})
+    graph = make_graph("living_room", area_m2=5.0)
+
+    daylight_model = DaylightModel()
+
+    result = daylight_model.step(
+        building_model=building,
+        physics_graph=graph,
+        light_state=daylight_model.make_initial_state(building),
+        weather_state=make_weather(outdoor_illuminance_lux=0.0, sky_condition="night"),
+        lighting_control_inputs=make_lighting_controls(
+            zone_id="living_room",
+            lights_on=False,
+            dimming_fraction=0.0,
+            requested_lux=0.0,
+        ),
+        dt_minutes=DT_MINUTES,
+    )
+
+    daylight_lux = result.daylight_illuminance_by_zone_lux()["living_room"]
+
+    assert daylight_lux == 0.0
+
+    print("OK: zero outdoor illuminance gives zero daylight")
+
+
+def assert_curtain_and_shading_reduce_daylight():
+    zone = make_zone("living_room")
+    building = make_building({"living_room": zone})
+
+    open_graph = make_graph(
         zone_id="living_room",
-        initial_rh_percent=30.0,
+        area_m2=5.0,
+        curtain_open=True,
+        shading_factor=1.0,
     )
 
-    building = make_building({
-        "living_room": zone,
-    })
-
-    moisture_model = MoistureModel()
-
-    moisture_state = moisture_model.make_initial_state(
-        building_model=building,
-        thermal_state=make_thermal_state(["living_room"]),
-    )
-
-    old_w = moisture_state.get_zone_state("living_room").humidity_ratio_kg_kg
-
-    result = moisture_model.step(
-        building_model=building,
-        moisture_state=moisture_state,
-        thermal_state=make_thermal_state(["living_room"]),
-        airflow_network=make_network_with_outdoor_flow(
-            zone_id="living_room",
-            outdoor_flow_m3_h=100.0,
-        ),
-        weather_state=make_weather(outdoor_rh_percent=80.0),
-        moisture_source_inputs=make_empty_sources(),
-        dt_minutes=DT_MINUTES,
-    )
-
-    new_w = (
-        result
-        .updated_moisture_state
-        .get_zone_state("living_room")
-        .humidity_ratio_kg_kg
-    )
-
-    assert new_w > old_w
-
-    print("OK: dry indoor air plus humid outdoor ventilation raises humidity")
-
-
-def assert_humid_indoor_dry_outdoor_ventilation_lowers_humidity():
-    zone = make_zone(
+    shaded_graph = make_graph(
         zone_id="living_room",
-        initial_rh_percent=80.0,
+        area_m2=5.0,
+        curtain_open=False,
+        shading_factor=0.5,
     )
 
-    building = make_building({
-        "living_room": zone,
-    })
+    daylight_model = DaylightModel()
 
-    moisture_model = MoistureModel()
-
-    moisture_state = moisture_model.make_initial_state(
+    open_result = daylight_model.step(
         building_model=building,
-        thermal_state=make_thermal_state(["living_room"]),
-    )
-
-    old_w = moisture_state.get_zone_state("living_room").humidity_ratio_kg_kg
-
-    result = moisture_model.step(
-        building_model=building,
-        moisture_state=moisture_state,
-        thermal_state=make_thermal_state(["living_room"]),
-        airflow_network=make_network_with_outdoor_flow(
+        physics_graph=open_graph,
+        light_state=daylight_model.make_initial_state(building),
+        weather_state=make_weather(outdoor_illuminance_lux=10000.0),
+        lighting_control_inputs=make_lighting_controls(
             zone_id="living_room",
-            outdoor_flow_m3_h=100.0,
-        ),
-        weather_state=make_weather(outdoor_rh_percent=30.0),
-        moisture_source_inputs=make_empty_sources(),
-        dt_minutes=DT_MINUTES,
-    )
-
-    new_w = (
-        result
-        .updated_moisture_state
-        .get_zone_state("living_room")
-        .humidity_ratio_kg_kg
-    )
-
-    assert new_w < old_w
-
-    print("OK: humid indoor air plus dry outdoor ventilation lowers humidity")
-
-
-def assert_people_moisture_no_ventilation_raises_humidity():
-    zone = make_zone(
-        zone_id="living_room",
-        initial_rh_percent=45.0,
-    )
-
-    building = make_building({
-        "living_room": zone,
-    })
-
-    moisture_model = MoistureModel()
-
-    moisture_state = moisture_model.make_initial_state(
-        building_model=building,
-        thermal_state=make_thermal_state(["living_room"]),
-    )
-
-    old_w = moisture_state.get_zone_state("living_room").humidity_ratio_kg_kg
-
-    result = moisture_model.step(
-        building_model=building,
-        moisture_state=moisture_state,
-        thermal_state=make_thermal_state(["living_room"]),
-        airflow_network=make_network_no_flow("living_room"),
-        weather_state=make_weather(outdoor_rh_percent=45.0),
-        moisture_source_inputs=make_people_sources(
-            zone_id="living_room",
-            number_of_people=1.0,
+            lights_on=False,
+            dimming_fraction=0.0,
+            requested_lux=0.0,
         ),
         dt_minutes=DT_MINUTES,
     )
 
-    new_w = (
-        result
-        .updated_moisture_state
-        .get_zone_state("living_room")
-        .humidity_ratio_kg_kg
-    )
-
-    assert new_w > old_w
-
-    print("OK: people moisture with no ventilation raises humidity")
-
-
-def assert_people_moisture_with_ventilation_rises_slower():
-    zone = make_zone(
-        zone_id="living_room",
-        initial_rh_percent=45.0,
-    )
-
-    building = make_building({
-        "living_room": zone,
-    })
-
-    moisture_model = MoistureModel()
-
-    initial_state_no_vent = moisture_model.make_initial_state(
+    shaded_result = daylight_model.step(
         building_model=building,
-        thermal_state=make_thermal_state(["living_room"]),
-    )
-
-    initial_state_vent = moisture_model.make_initial_state(
-        building_model=building,
-        thermal_state=make_thermal_state(["living_room"]),
-    )
-
-    no_vent_result = moisture_model.step(
-        building_model=building,
-        moisture_state=initial_state_no_vent,
-        thermal_state=make_thermal_state(["living_room"]),
-        airflow_network=make_network_no_flow("living_room"),
-        weather_state=make_weather(outdoor_rh_percent=45.0),
-        moisture_source_inputs=make_people_sources(
+        physics_graph=shaded_graph,
+        light_state=daylight_model.make_initial_state(building),
+        weather_state=make_weather(outdoor_illuminance_lux=10000.0),
+        lighting_control_inputs=make_lighting_controls(
             zone_id="living_room",
-            number_of_people=1.0,
+            lights_on=False,
+            dimming_fraction=0.0,
+            requested_lux=0.0,
         ),
         dt_minutes=DT_MINUTES,
     )
 
-    vent_result = moisture_model.step(
+    open_lux = open_result.daylight_illuminance_by_zone_lux()["living_room"]
+    shaded_lux = shaded_result.daylight_illuminance_by_zone_lux()["living_room"]
+
+    assert shaded_lux < open_lux
+
+    print("OK: curtain and shading reduce daylight")
+
+
+def assert_lighting_off_gives_zero_power():
+    zone = make_zone("living_room")
+    building = make_building({"living_room": zone})
+
+    lighting_result = calculate_building_lighting_from_controls(
         building_model=building,
-        moisture_state=initial_state_vent,
-        thermal_state=make_thermal_state(["living_room"]),
-        airflow_network=make_network_with_outdoor_flow(
+        lighting_control_inputs=make_lighting_controls(
             zone_id="living_room",
-            outdoor_flow_m3_h=25.0,
-        ),
-        weather_state=make_weather(outdoor_rh_percent=45.0),
-        moisture_source_inputs=make_people_sources(
-            zone_id="living_room",
-            number_of_people=1.0,
+            lights_on=False,
+            dimming_fraction=0.0,
+            requested_lux=0.0,
         ),
         dt_minutes=DT_MINUTES,
     )
 
-    no_vent_w = (
-        no_vent_result
-        .updated_moisture_state
-        .get_zone_state("living_room")
-        .humidity_ratio_kg_kg
-    )
+    assert lighting_result.lighting_power_by_zone_w()["living_room"] == 0.0
+    assert lighting_result.lighting_energy_by_zone_wh()["living_room"] == 0.0
 
-    vent_w = (
-        vent_result
-        .updated_moisture_state
-        .get_zone_state("living_room")
-        .humidity_ratio_kg_kg
-    )
-
-    initial_w = (
-        initial_state_no_vent
-        .get_zone_state("living_room")
-        .humidity_ratio_kg_kg
-    )
-
-    assert no_vent_w > vent_w
-    assert vent_w > initial_w
-
-    print("OK: people moisture plus ventilation raises humidity slower")
+    print("OK: artificial lighting off gives zero power")
 
 
-def assert_two_zones_open_door_mix_humidity():
-    high_zone = make_zone(
-        zone_id="humid_room",
-        initial_rh_percent=80.0,
-    )
+def assert_lighting_on_gives_lux_power_energy():
+    zone = make_zone("living_room")
+    building = make_building({"living_room": zone})
 
-    low_zone = make_zone(
-        zone_id="dry_room",
-        initial_rh_percent=30.0,
-    )
-
-    building = make_building({
-        "humid_room": high_zone,
-        "dry_room": low_zone,
-    })
-
-    moisture_model = MoistureModel()
-
-    moisture_state = moisture_model.make_initial_state(
+    lighting_result = calculate_building_lighting_from_controls(
         building_model=building,
-        thermal_state=make_thermal_state(["humid_room", "dry_room"]),
-    )
-
-    old_high = moisture_state.get_zone_state("humid_room").humidity_ratio_kg_kg
-    old_low = moisture_state.get_zone_state("dry_room").humidity_ratio_kg_kg
-    old_difference = old_high - old_low
-
-    link = InterzoneAirflowLink(
-        link_id="door_between_rooms",
-        zone_connection_id="door_between_rooms",
-        zone_a_id="humid_room",
-        zone_b_id="dry_room",
-        connection_type="door",
-        base_airflow_m3_h=0.0,
-        max_opening_area_m2=4.0,
-        discharge_coefficient=0.60,
-        opening_fraction=1.0,
-        assumed_mixing_air_speed_m_s=0.20,
-    )
-
-    record = InterzoneAirflowRecord(
-        link_id=link.link_id,
-        zone_connection_id=link.zone_connection_id,
-        zone_a_id=link.zone_a_id,
-        zone_b_id=link.zone_b_id,
-        flow_a_to_b_m3_h=link.mixing_flow_m3_h,
-        flow_b_to_a_m3_h=link.mixing_flow_m3_h,
-    )
-
-    network = BuildingAirflowNetwork(
-        outdoor_airflows_by_zone={
-            "humid_room": ZoneOutdoorAirflowRecord(zone_id="humid_room"),
-            "dry_room": ZoneOutdoorAirflowRecord(zone_id="dry_room"),
-        },
-        interzone_airflow_links={
-            link.link_id: link,
-        },
-        interzone_airflow_records={
-            record.link_id: record,
-        },
-    )
-
-    result = moisture_model.step(
-        building_model=building,
-        moisture_state=moisture_state,
-        thermal_state=make_thermal_state(["humid_room", "dry_room"]),
-        airflow_network=network,
-        weather_state=make_weather(outdoor_rh_percent=50.0),
-        moisture_source_inputs=make_empty_sources(),
+        lighting_control_inputs=make_lighting_controls(
+            zone_id="living_room",
+            lights_on=True,
+            dimming_fraction=1.0,
+            requested_lux=300.0,
+        ),
         dt_minutes=DT_MINUTES,
     )
 
-    new_high = (
-        result
-        .updated_moisture_state
-        .get_zone_state("humid_room")
-        .humidity_ratio_kg_kg
+    zone_result = lighting_result.get_zone_result("living_room")
+
+    assert zone_result.artificial_lighting_illuminance_lux == 300.0
+    assert zone_result.lighting_power_w > 0.0
+    assert zone_result.lighting_energy_wh > 0.0
+
+    print("OK: artificial lighting on gives lux, power, and energy")
+
+
+def assert_daylight_and_artificial_lighting_combine():
+    zone = make_zone("living_room")
+    building = make_building({"living_room": zone})
+    graph = make_graph("living_room", area_m2=5.0)
+
+    daylight_model = DaylightModel()
+
+    result = daylight_model.step(
+        building_model=building,
+        physics_graph=graph,
+        light_state=daylight_model.make_initial_state(building),
+        weather_state=make_weather(outdoor_illuminance_lux=10000.0),
+        lighting_control_inputs=make_lighting_controls(
+            zone_id="living_room",
+            lights_on=True,
+            dimming_fraction=1.0,
+            requested_lux=300.0,
+        ),
+        dt_minutes=DT_MINUTES,
     )
 
-    new_low = (
-        result
-        .updated_moisture_state
-        .get_zone_state("dry_room")
-        .humidity_ratio_kg_kg
+    state = result.updated_light_state.get_zone_state("living_room")
+
+    assert state.indoor_illuminance_lux == (
+        state.daylight_illuminance_lux
+        + state.artificial_lighting_illuminance_lux
     )
 
-    new_difference = new_high - new_low
-
-    assert new_high < old_high
-    assert new_low > old_low
-    assert abs(new_difference) < abs(old_difference)
-
-    print("OK: two zones with open door mix humidity ratios")
+    print("OK: daylight and artificial lighting combine into indoor illuminance")
 
 
-def assert_rh_is_derived_from_temperature_and_humidity_ratio():
-    humidity_ratio = humidity_ratio_from_rh(
-        relative_humidity_percent=50.0,
-        temperature_c=20.0,
-        atmospheric_pressure_pa=PRESSURE_PA,
-    )
-
-    rh_at_20 = relative_humidity_from_humidity_ratio(
-        humidity_ratio_kg_kg=humidity_ratio,
-        temperature_c=20.0,
-        atmospheric_pressure_pa=PRESSURE_PA,
-    )
-
-    rh_at_25 = relative_humidity_from_humidity_ratio(
-        humidity_ratio_kg_kg=humidity_ratio,
-        temperature_c=25.0,
-        atmospheric_pressure_pa=PRESSURE_PA,
-    )
-
-    assert abs(rh_at_20 - 50.0) < 0.5
-    assert rh_at_25 < rh_at_20
-
-    print("OK: RH is derived from temperature and humidity ratio")
-
-
-def assert_humidity_ratio_never_negative():
-    state = ZoneMoistureState(
-        zone_id="bad_room",
-        humidity_ratio_kg_kg=-0.01,
-        relative_humidity_percent=50.0,
-    )
-
-    assert state.humidity_ratio_kg_kg >= 0.0
-
-    print("OK: humidity ratio is physically bounded")
-
-
-def assert_no_thermal_solver_calculated():
-    zone = make_zone(
-        zone_id="living_room",
-        initial_rh_percent=45.0,
-    )
+def assert_visual_comfort_statuses():
+    dark_state = make_zone("dark_room")
+    underlit_state = make_zone("underlit_room")
+    comfortable_state = make_zone("comfortable_room")
+    overlit_state = make_zone("overlit_room")
 
     building = make_building({
-        "living_room": zone,
+        "dark_room": dark_state,
+        "underlit_room": underlit_state,
+        "comfortable_room": comfortable_state,
+        "overlit_room": overlit_state,
     })
 
-    moisture_model = MoistureModel()
-
-    moisture_state = moisture_model.make_initial_state(
-        building_model=building,
-        thermal_state=make_thermal_state(["living_room"]),
+    from nexusep.abbey.building.physics.daylight import (
+        ZoneLightState,
+        BuildingLightState,
     )
 
-    result = moisture_model.step(
+    light_state = BuildingLightState(
+        zone_states={
+            "dark_room": ZoneLightState(
+                zone_id="dark_room",
+                indoor_illuminance_lux=10.0,
+                visual_comfort_target_lux=300.0,
+            ),
+            "underlit_room": ZoneLightState(
+                zone_id="underlit_room",
+                indoor_illuminance_lux=100.0,
+                visual_comfort_target_lux=300.0,
+            ),
+            "comfortable_room": ZoneLightState(
+                zone_id="comfortable_room",
+                indoor_illuminance_lux=300.0,
+                visual_comfort_target_lux=300.0,
+            ),
+            "overlit_room": ZoneLightState(
+                zone_id="overlit_room",
+                indoor_illuminance_lux=1000.0,
+                visual_comfort_target_lux=300.0,
+            ),
+        }
+    )
+
+    comfort_result = calculate_visual_comfort_from_light_state(
         building_model=building,
-        moisture_state=moisture_state,
-        thermal_state=make_thermal_state(["living_room"]),
-        airflow_network=make_network_with_outdoor_flow(
+        building_light_state=light_state,
+    )
+
+    statuses = comfort_result.visual_comfort_status_by_zone()
+
+    assert statuses["dark_room"] == VISUAL_COMFORT_STATUS_DARK
+    assert statuses["underlit_room"] == VISUAL_COMFORT_STATUS_UNDERLIT
+    assert statuses["comfortable_room"] == VISUAL_COMFORT_STATUS_COMFORTABLE
+    assert statuses["overlit_room"] == VISUAL_COMFORT_STATUS_OVERLIT
+
+    print("OK: visual comfort statuses are derived from illuminance target")
+
+
+def assert_daylight_model_step_outputs():
+    zone = make_zone("living_room")
+    building = make_building({"living_room": zone})
+    graph = make_graph("living_room", area_m2=5.0)
+
+    daylight_model = DaylightModel()
+
+    result = daylight_model.step(
+        building_model=building,
+        physics_graph=graph,
+        light_state=daylight_model.make_initial_state(building),
+        weather_state=make_weather(outdoor_illuminance_lux=10000.0),
+        lighting_control_inputs=make_lighting_controls(
             zone_id="living_room",
-            outdoor_flow_m3_h=25.0,
+            lights_on=True,
+            dimming_fraction=1.0,
+            requested_lux=300.0,
         ),
-        weather_state=make_weather(outdoor_rh_percent=50.0),
-        moisture_source_inputs=make_empty_sources(),
+        dt_minutes=DT_MINUTES,
+    )
+
+    assert "living_room" in result.indoor_illuminance_by_zone_lux()
+    assert "living_room" in result.visual_comfort_status_by_zone()
+    assert "living_room" in result.lighting_power_by_zone_w()
+    assert len(result.debug_records) == 1
+
+    print("OK: DaylightModel.step returns expected outputs")
+
+
+def assert_no_other_physics_solvers_calculated():
+    zone = make_zone("living_room")
+    building = make_building({"living_room": zone})
+    graph = make_graph("living_room", area_m2=5.0)
+
+    daylight_model = DaylightModel()
+
+    result = daylight_model.step(
+        building_model=building,
+        physics_graph=graph,
+        light_state=daylight_model.make_initial_state(building),
+        weather_state=make_weather(outdoor_illuminance_lux=10000.0),
+        lighting_control_inputs=make_lighting_controls(
+            zone_id="living_room",
+            lights_on=True,
+            dimming_fraction=1.0,
+            requested_lux=300.0,
+        ),
         dt_minutes=DT_MINUTES,
     )
 
@@ -615,89 +537,39 @@ def assert_no_thermal_solver_calculated():
         "mass_temperature_c",
         "heating_energy_wh",
         "cooling_energy_wh",
-        "hvac_gain_w",
-        "radiative_gain_w",
-        "convective_gain_w",
+        "co2_ppm",
+        "humidity_ratio",
+        "relative_humidity",
+        "airflow_network",
+        "interzone_airflow",
+        "outdoor_airflows_by_zone",
     ]
 
     for term in forbidden_terms:
         assert term not in result_text
 
-    assert "humidity_ratio" in result_text
-    assert "relative_humidity" in result_text
+    assert "indoor_illuminance_lux" in result_text
+    assert "lighting_power_w" in result_text
+    assert "visual_comfort_status" in result_text
 
-    print("OK: no thermal solver calculated")
-
-
-def assert_no_airflow_solver_recalculated_when_network_passed():
-    zone = make_zone(
-        zone_id="living_room",
-        initial_rh_percent=45.0,
-    )
-
-    building = make_building({
-        "living_room": zone,
-    })
-
-    moisture_model = MoistureModel()
-
-    moisture_state = moisture_model.make_initial_state(
-        building_model=building,
-        thermal_state=make_thermal_state(["living_room"]),
-    )
-
-    supplied_flow_m3_h = 42.0
-
-    supplied_network = SuppliedAirflowNetwork(
-        outdoor_airflows_by_zone={
-            "living_room": ZoneOutdoorAirflowRecord(
-                zone_id="living_room",
-                infiltration_flow_m3_h=supplied_flow_m3_h,
-            )
-        },
-        interzone_airflow_links={},
-    )
-
-    result = moisture_model.step(
-        building_model=building,
-        moisture_state=moisture_state,
-        thermal_state=make_thermal_state(["living_room"]),
-        airflow_network=supplied_network,
-        weather_state=make_weather(outdoor_rh_percent=50.0),
-        moisture_source_inputs=make_empty_sources(),
-        dt_minutes=DT_MINUTES,
-    )
-
-    expected_mass_flow_kg_s = (
-        MOISTURE_AIR_DENSITY_KG_M3
-        * supplied_flow_m3_h
-        / 3600.0
-    )
-
-    actual_mass_flow_kg_s = (
-        result
-        .moisture_transport_result
-        .total_dry_air_mass_flow_kg_s_by_zone()["living_room"]
-    )
-
-    assert abs(actual_mass_flow_kg_s - expected_mass_flow_kg_s) < 1e-9
-
-    print("OK: supplied airflow network is used without recalculating airflow")
+    print("OK: no thermal, moisture, CO2, or airflow solver calculated")
 
 
 def run_tests():
-    assert_dry_indoor_humid_outdoor_ventilation_raises_humidity()
-    assert_humid_indoor_dry_outdoor_ventilation_lowers_humidity()
-    assert_people_moisture_no_ventilation_raises_humidity()
-    assert_people_moisture_with_ventilation_rises_slower()
-    assert_two_zones_open_door_mix_humidity()
-    assert_rh_is_derived_from_temperature_and_humidity_ratio()
-    assert_humidity_ratio_never_negative()
-    assert_no_thermal_solver_calculated()
-    assert_no_airflow_solver_recalculated_when_network_passed()
+    assert_outdoor_daylight_boundary_reads_weather()
+    assert_window_daylight_parameters_from_graph()
+    assert_indoor_daylight_rises_with_outdoor_illuminance()
+    assert_zero_outdoor_illuminance_gives_zero_daylight()
+    assert_curtain_and_shading_reduce_daylight()
+    assert_lighting_off_gives_zero_power()
+    assert_lighting_on_gives_lux_power_energy()
+    assert_daylight_and_artificial_lighting_combine()
+    assert_visual_comfort_statuses()
+    assert_daylight_model_step_outputs()
+    assert_no_other_physics_solvers_calculated()
 
     print("")
-    print("PHASE 6 HUMIDITY ARCHITECTURE OK ✅")
+    print("PHASE 7 DAYLIGHT LIGHTING ARCHITECTURE OK ✅")
 
 
 if __name__ == "__main__":
