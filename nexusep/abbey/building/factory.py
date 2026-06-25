@@ -8,7 +8,7 @@ Phase 10:
 - private dwelling zones only
 """
 
-from typing import Dict, Tuple
+from typing import Dict, Tuple, Optional
 
 from nexusep.abbey.building.model import (
     ZoneModel,
@@ -23,6 +23,10 @@ from nexusep.abbey.building.systems import (
     ZoneControlState,
 )
 
+from nexusep.abbey.building.physics.graph import (
+    BuildingPhysicsGraph,
+    ZoneConnection,
+)
 
 def make_default_family_building() -> BuildingModel:
     """
@@ -357,6 +361,229 @@ def make_default_family_building() -> BuildingModel:
     )
 
     return building
+
+def make_default_family_physics_graph(
+    building_model: Optional[BuildingModel] = None,
+    dwelling_id: str = "dwelling_1",
+) -> BuildingPhysicsGraph:
+    """
+    Create the default physical topology for the default family dwelling.
+
+    Phase 11.1:
+        - Adds explicit room-to-room adjacency.
+        - Does not yet solve interzone heat transfer.
+        - Does not yet connect this graph to the default runner.
+
+    The topology is deliberately simple and inspectable.
+    Later phases can replace this with imported geometry/topology.
+    """
+
+    if building_model is None:
+        building_model = make_default_family_building()
+
+    if dwelling_id not in building_model.dwellings:
+        if len(building_model.dwellings) == 1:
+            dwelling_id = next(iter(building_model.dwellings.keys()))
+        else:
+            raise ValueError(
+                "dwelling_id "
+                + str(dwelling_id)
+                + " not found in building_model."
+            )
+
+    zone_ids = set(building_model.all_zone_ids())
+
+    def zid(role: str) -> str:
+        return dwelling_id + "_" + role
+
+    def require_zone(role: str) -> str:
+        zone_id = zid(role)
+
+        if zone_id not in zone_ids:
+            raise ValueError(
+                "Default family physics graph expected zone "
+                + zone_id
+                + " but it was not found in building_model."
+            )
+
+        return zone_id
+
+    living = require_zone("living_room")
+    kitchen = require_zone("kitchen")
+    bedroom_1 = require_zone("bedroom_1")
+    bedroom_2 = require_zone("bedroom_2")
+    bathroom = require_zone("bathroom")
+    laundry = require_zone("laundry")
+    office = require_zone("office")
+    entrance = require_zone("entrance")
+
+    zone_connections = {}
+
+    def add_internal_wall(
+        connection_id: str,
+        from_zone_id: str,
+        to_zone_id: str,
+        area_m2: float,
+        u_value_w_m2k: float = 1.8,
+    ) -> None:
+        zone_connections[connection_id] = ZoneConnection(
+            connection_id=connection_id,
+            from_zone_id=from_zone_id,
+            to_zone_id=to_zone_id,
+            connection_type="internal_wall",
+            area_m2=area_m2,
+            is_openable=False,
+            open_fraction=0.0,
+            max_opening_area_m2=None,
+            base_airflow_m3_h=0.0,
+            u_value_w_m2k=u_value_w_m2k,
+        )
+
+    def add_door(
+        connection_id: str,
+        from_zone_id: str,
+        to_zone_id: str,
+        open_fraction: float = 0.0,
+        door_area_m2: float = 1.7,
+        max_opening_area_m2: float = 1.5,
+        u_value_w_m2k: float = 2.5,
+        base_airflow_m3_h: float = 5.0,
+    ) -> None:
+        zone_connections[connection_id] = ZoneConnection(
+            connection_id=connection_id,
+            from_zone_id=from_zone_id,
+            to_zone_id=to_zone_id,
+            connection_type="door",
+            area_m2=door_area_m2,
+            is_openable=True,
+            open_fraction=open_fraction,
+            max_opening_area_m2=max_opening_area_m2,
+            base_airflow_m3_h=base_airflow_m3_h,
+            u_value_w_m2k=u_value_w_m2k,
+        )
+
+    # ------------------------------------------------------------
+    # Main circulation / access topology.
+    # ------------------------------------------------------------
+    add_door(
+        connection_id="door_entrance_living_room",
+        from_zone_id=entrance,
+        to_zone_id=living,
+        open_fraction=0.0,
+    )
+
+    add_door(
+        connection_id="door_living_room_kitchen",
+        from_zone_id=living,
+        to_zone_id=kitchen,
+        open_fraction=0.5,
+        door_area_m2=2.5,
+        max_opening_area_m2=2.2,
+        base_airflow_m3_h=15.0,
+    )
+
+    add_door(
+        connection_id="door_living_room_bedroom_1",
+        from_zone_id=living,
+        to_zone_id=bedroom_1,
+        open_fraction=0.0,
+    )
+
+    add_door(
+        connection_id="door_living_room_bedroom_2",
+        from_zone_id=living,
+        to_zone_id=bedroom_2,
+        open_fraction=0.0,
+    )
+
+    add_door(
+        connection_id="door_living_room_office",
+        from_zone_id=living,
+        to_zone_id=office,
+        open_fraction=0.0,
+    )
+
+    add_door(
+        connection_id="door_living_room_bathroom",
+        from_zone_id=living,
+        to_zone_id=bathroom,
+        open_fraction=0.0,
+    )
+
+    add_door(
+        connection_id="door_kitchen_laundry",
+        from_zone_id=kitchen,
+        to_zone_id=laundry,
+        open_fraction=0.0,
+    )
+
+    # ------------------------------------------------------------
+    # Internal partitions.
+    # These are separate from doors so the thermal adapter can later
+    # treat wall conduction and door/opening coupling separately.
+    # ------------------------------------------------------------
+    add_internal_wall(
+        connection_id="wall_living_room_bedroom_1",
+        from_zone_id=living,
+        to_zone_id=bedroom_1,
+        area_m2=9.0,
+        u_value_w_m2k=1.8,
+    )
+
+    add_internal_wall(
+        connection_id="wall_living_room_bedroom_2",
+        from_zone_id=living,
+        to_zone_id=bedroom_2,
+        area_m2=8.0,
+        u_value_w_m2k=1.8,
+    )
+
+    add_internal_wall(
+        connection_id="wall_living_room_office",
+        from_zone_id=living,
+        to_zone_id=office,
+        area_m2=7.0,
+        u_value_w_m2k=1.8,
+    )
+
+    add_internal_wall(
+        connection_id="wall_living_room_bathroom",
+        from_zone_id=living,
+        to_zone_id=bathroom,
+        area_m2=6.0,
+        u_value_w_m2k=1.8,
+    )
+
+    add_internal_wall(
+        connection_id="wall_living_room_kitchen",
+        from_zone_id=living,
+        to_zone_id=kitchen,
+        area_m2=5.0,
+        u_value_w_m2k=1.8,
+    )
+
+    add_internal_wall(
+        connection_id="wall_kitchen_laundry",
+        from_zone_id=kitchen,
+        to_zone_id=laundry,
+        area_m2=5.0,
+        u_value_w_m2k=1.8,
+    )
+
+    add_internal_wall(
+        connection_id="wall_bathroom_laundry",
+        from_zone_id=bathroom,
+        to_zone_id=laundry,
+        area_m2=4.0,
+        u_value_w_m2k=1.8,
+    )
+
+    return BuildingPhysicsGraph(
+        building_model=building_model,
+        zone_connections=zone_connections,
+        boundary_connections={},
+        validate_on_init=True,
+    )
 
 
 def default_family_space_role_map(

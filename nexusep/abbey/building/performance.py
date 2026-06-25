@@ -65,6 +65,7 @@ class BuildingPerformanceStepResult:
     internal_source_result: Any = None
     physics_inputs: Dict[str, Any] = field(default_factory=dict)
     physics_engine_result: Any = None
+    interzone_thermal_flow_records: List[Dict[str, Any]] = field(default_factory=list)
     physics_engine_active: bool = False
     physics_engine_error: Optional[str] = None
     
@@ -213,7 +214,8 @@ class SimpleBuildingPerformanceModel:
         legacy_fallback_reason = None
         internal_source_result = None
         physics_inputs = {}
-
+        interzone_thermal_flow_records = []
+        
         if self.use_physics_engine:
             try:
                 weather_state = self._make_weather_state_for_engine(
@@ -261,7 +263,14 @@ class SimpleBuildingPerformanceModel:
         if physics_engine_active:
             internal_source_result = physics_engine_result.internal_source_result
             physics_inputs = physics_engine_result.physics_inputs or {}
-
+            interzone_thermal_flow_records = (
+                self._make_interzone_thermal_flow_records(
+                    step=step,
+                    day=day,
+                    hour=hour,
+                    physics_engine_result=physics_engine_result,
+                )
+            )
             bridge_inputs_by_zone = {}
 
             if internal_source_result is not None and hasattr(
@@ -360,7 +369,26 @@ class SimpleBuildingPerformanceModel:
                     "thermal_radiative_gain_w",
                     0.0,
                 )
-
+                record["interzone_thermal_link_count"] = engine_zone_record.get(
+                    "interzone_thermal_link_count",
+                    0,
+                )
+                record["interzone_thermal_total_h_w_k"] = engine_zone_record.get(
+                    "interzone_thermal_total_h_w_k",
+                    0.0,
+                )
+                record["interzone_heat_gain_w"] = engine_zone_record.get(
+                    "interzone_heat_gain_w",
+                    0.0,
+                )
+                record["interzone_heat_loss_w"] = engine_zone_record.get(
+                    "interzone_heat_loss_w",
+                    0.0,
+                )
+                record["interzone_net_heat_gain_w"] = engine_zone_record.get(
+                    "interzone_net_heat_gain_w",
+                    0.0,
+                )
                 zone_records.append(record)
 
         else:
@@ -537,7 +565,9 @@ class SimpleBuildingPerformanceModel:
         building_record["performance_path"] = performance_path
         building_record["legacy_fallback_used"] = legacy_fallback_used
         building_record["legacy_fallback_reason"] = legacy_fallback_reason
-        
+        building_record["interzone_thermal_flow_record_count"] = len(
+            interzone_thermal_flow_records
+        )        
         if physics_engine_result is not None:
             building_record["physics_engine_source"] = getattr(
                 physics_engine_result,
@@ -546,6 +576,32 @@ class SimpleBuildingPerformanceModel:
             )
             building_record["physics_engine_has_thermal_step_result"] = (
                 physics_engine_result.thermal_step_result is not None
+            )
+            building_record["physics_engine_has_interzone_thermal_network"] = (
+                getattr(physics_engine_result, "interzone_thermal_network", None)
+                is not None
+            )
+            building_record["physics_engine_interzone_thermal_link_count"] = (
+                len(
+                    getattr(
+                        getattr(
+                            physics_engine_result,
+                            "interzone_thermal_network",
+                            None,
+                        ),
+                        "links",
+                        {},
+                    )
+                )
+            )
+            building_record["physics_engine_interzone_thermal_flow_record_count"] = (
+                len(
+                    getattr(
+                        physics_engine_result,
+                        "interzone_thermal_flow_records",
+                        [],
+                    )
+                )
             )
             building_record["physics_engine_has_airflow_network"] = (
                 physics_engine_result.airflow_network is not None
@@ -575,6 +631,7 @@ class SimpleBuildingPerformanceModel:
             internal_source_result=internal_source_result,
             physics_inputs=physics_inputs,
             physics_engine_result=physics_engine_result,
+            interzone_thermal_flow_records=interzone_thermal_flow_records,
             physics_engine_active=physics_engine_active,
             physics_engine_error=physics_engine_error,
             performance_path=performance_path,
@@ -949,7 +1006,46 @@ class SimpleBuildingPerformanceModel:
     # ============================================================
     # RECORDS
     # ============================================================
+    def _make_interzone_thermal_flow_records(
+        self,
+        step: Any,
+        day: Any,
+        hour: Any,
+        physics_engine_result: Any,
+    ) -> List[Dict[str, Any]]:
+        if physics_engine_result is None:
+            return []
 
+        raw_records = getattr(
+            physics_engine_result,
+            "interzone_thermal_flow_records",
+            [],
+        )
+
+        rows = []
+
+        time_hour = None
+
+        if day is not None and hour is not None:
+            time_hour = float(day) * 24.0 + float(hour)
+
+        for record in raw_records:
+            if hasattr(record, "to_dict"):
+                row = record.to_dict()
+            else:
+                row = dict(record)
+
+            row["step"] = step
+            row["day"] = day
+            row["hour"] = hour
+            row["time_hour"] = time_hour
+            row["building_id"] = self.building_model.building_id
+            row["source"] = "physics_engine_interzone_thermal"
+
+            rows.append(row)
+
+        return rows
+    
     def _make_zone_record(
         self,
         step: Any,

@@ -33,15 +33,12 @@ from nexusep.abbey.building.performance import (
 
 from nexusep.abbey.building.factory import (
     make_default_family_building,
+    make_default_family_physics_graph,
     default_family_space_role_map,
     default_family_ids,
 )
 
-from nexusep.abbey.building import (
-    make_default_family_building,
-    default_family_space_role_map,
-    default_family_ids,
-)
+
 
 from nexusep.abbey.building.control_bridge import (
     apply_control_action_bridge,
@@ -83,6 +80,8 @@ __all__ = [
     "SimpleBuildingPerformanceModel",
     "BuildingPerformanceStepResult",
     "make_default_family_building",
+    "make_default_family_physics_graph",
+    
     "default_family_space_role_map",
     "default_family_ids",
     "apply_control_action_bridge",

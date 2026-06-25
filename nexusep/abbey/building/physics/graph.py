@@ -9,7 +9,7 @@ Phase 1, revised:
 No thermal, airflow, daylight, or acoustic equations here.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional
 
 from nexusep.abbey.building.model import BuildingModel, ZoneModel
@@ -560,7 +560,110 @@ class BuildingPhysicsGraph:
                         zone_model.zone_scope,
                     )
                 )
-                
+
+    def get_zone_connection(
+        self,
+        connection_id: str,
+    ) -> ZoneConnection:
+        if connection_id not in self.zone_connections:
+            raise KeyError(
+                "ZoneConnection '" + str(connection_id) + "' not found."
+            )
+
+        return self.zone_connections[connection_id]
+
+    def set_zone_connection_open_fraction(
+        self,
+        connection_id: str,
+        open_fraction: float,
+        require_openable: bool = True,
+        validate_after_update: bool = True,
+    ) -> ZoneConnection:
+        """
+        Update the static graph state of an openable interzone connection.
+
+        Phase 11.4:
+            This is still graph-level state, not an agent action bridge.
+
+        Later:
+            agent action -> door operation bridge -> this graph update
+        """
+
+        connection = self.get_zone_connection(connection_id)
+
+        if require_openable and not bool(connection.is_openable):
+            raise ValueError(
+                "ZoneConnection '"
+                + str(connection_id)
+                + "' is not openable."
+            )
+
+        new_open_fraction = clamp_fraction(open_fraction)
+
+        updated = replace(
+            connection,
+            open_fraction=new_open_fraction,
+        )
+
+        self.zone_connections[connection_id] = updated
+
+        if validate_after_update:
+            self.validate()
+
+        return updated
+
+    def set_door_open_fraction_between_zones(
+        self,
+        zone_a_id: str,
+        zone_b_id: str,
+        open_fraction: float,
+        validate_after_update: bool = True,
+    ) -> ZoneConnection:
+        """
+        Convenience helper for static door-state tests.
+
+        Finds the unique door connection between two zones and updates
+        its open_fraction.
+        """
+
+        matches = []
+
+        wanted_pair = set([zone_a_id, zone_b_id])
+
+        for connection in self.zone_connections.values():
+            if connection.connection_type != "door":
+                continue
+
+            pair = set([connection.from_zone_id, connection.to_zone_id])
+
+            if pair == wanted_pair:
+                matches.append(connection)
+
+        if len(matches) == 0:
+            raise KeyError(
+                "No door ZoneConnection found between "
+                + str(zone_a_id)
+                + " and "
+                + str(zone_b_id)
+                + "."
+            )
+
+        if len(matches) > 1:
+            raise ValueError(
+                "Multiple door ZoneConnections found between "
+                + str(zone_a_id)
+                + " and "
+                + str(zone_b_id)
+                + ". Use connection_id explicitly."
+            )
+
+        return self.set_zone_connection_open_fraction(
+            connection_id=matches[0].connection_id,
+            open_fraction=open_fraction,
+            require_openable=True,
+            validate_after_update=validate_after_update,
+        )
+    
     def openable_boundary_connections_for_zone(
         self,
         zone_id: str,

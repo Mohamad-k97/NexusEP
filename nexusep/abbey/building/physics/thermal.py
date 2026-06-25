@@ -59,6 +59,14 @@ DEFAULT_THERMAL_BRIDGE_FACTOR = 1.0
 
 DEFAULT_INTERZONE_U_VALUE_W_M2K = 1.8
 
+DEFAULT_INTERZONE_INTERNAL_WALL_U_VALUE_W_M2K = 1.8
+DEFAULT_INTERZONE_FLOOR_CEILING_U_VALUE_W_M2K = 1.5
+DEFAULT_INTERZONE_CLOSED_DOOR_U_VALUE_W_M2K = 2.5
+DEFAULT_INTERZONE_GENERIC_U_VALUE_W_M2K = 1.8
+
+DEFAULT_INTERZONE_DOOR_AREA_M2 = 1.7
+DEFAULT_INTERZONE_OPEN_DOOR_EFFECTIVE_U_VALUE_W_M2K = 15.0
+
 VENTILATION_SOURCE_INFILTRATION = "default_infiltration"
 VENTILATION_SOURCE_MECHANICAL = "mechanical_ventilation"
 VENTILATION_SOURCE_WINDOW_OPENING = "window_opening_later"
@@ -1417,6 +1425,10 @@ class InterzoneThermalLink:
     u_value_w_m2k: float = DEFAULT_INTERZONE_U_VALUE_W_M2K
     h_w_k: float = 0.0
 
+    is_openable: bool = False
+    open_fraction: float = 0.0
+    max_opening_area_m2: Optional[float] = None
+
     source: str = "ZoneConnection"
 
     def __post_init__(self) -> None:
@@ -1461,7 +1473,14 @@ class InterzoneThermalLink:
             "h_w_k",
             self.link_id,
         )
+        self.open_fraction = _clamp_unit_interval(self.open_fraction)
 
+        if self.max_opening_area_m2 is not None:
+            self.max_opening_area_m2 = _non_negative_float(
+                self.max_opening_area_m2,
+                "max_opening_area_m2",
+                self.link_id,
+            )
     def heat_gain_to_zone_a_w(
         self,
         zone_a_air_temperature_c: float,
@@ -1498,6 +1517,9 @@ class InterzoneThermalLink:
             "area_m2": self.area_m2,
             "u_value_w_m2k": self.u_value_w_m2k,
             "h_w_k": self.h_w_k,
+            "is_openable": self.is_openable,
+            "open_fraction": self.open_fraction,
+            "max_opening_area_m2": self.max_opening_area_m2,
             "resistance_k_w": resistance_from_conductance(self.h_w_k),
             "source": self.source,
         }
@@ -1525,12 +1547,19 @@ class InterzoneThermalFlowRecord:
     q_to_zone_a_w: float
     q_to_zone_b_w: float
 
+    connection_type: str = "generic_interzone"
+    is_openable: bool = False
+    open_fraction: float = 0.0
+    
     def __post_init__(self) -> None:
         self.h_w_k = float(self.h_w_k)
         self.zone_a_air_temperature_c = float(self.zone_a_air_temperature_c)
         self.zone_b_air_temperature_c = float(self.zone_b_air_temperature_c)
         self.q_to_zone_a_w = float(self.q_to_zone_a_w)
         self.q_to_zone_b_w = float(self.q_to_zone_b_w)
+        self.connection_type = str(self.connection_type).strip().lower()
+        self.is_openable = bool(self.is_openable)
+        self.open_fraction = _clamp_unit_interval(self.open_fraction)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -1543,6 +1572,9 @@ class InterzoneThermalFlowRecord:
             "zone_b_air_temperature_c": self.zone_b_air_temperature_c,
             "q_to_zone_a_w": self.q_to_zone_a_w,
             "q_to_zone_b_w": self.q_to_zone_b_w,
+            "connection_type": self.connection_type,
+            "is_openable": self.is_openable,
+            "open_fraction": self.open_fraction,
         }
 
 
@@ -2537,20 +2569,23 @@ def calculate_simplified_solar_gains_by_zone_w(
     return result.solar_gains_by_zone_w()
 
 
-def make_interzone_thermal_network_from_graph(
+def make_interzone_thermal_network_from_physics_graph(
     physics_graph: Any,
+    skip_zero_conductance_links: bool = True,
 ) -> BuildingInterzoneThermalNetwork:
     """
     Build pairwise interzone thermal links from BuildingPhysicsGraph.
 
-    Uses each ZoneConnection:
-    - zone_a_id
-    - zone_b_id
-    - connection_type
-    - area_m2
-    - u_value_w_m2k, if available
+    This is the Phase 11.2 graph -> thermal adapter.
 
-    No timestep solving here.
+    Uses each ZoneConnection:
+        from_zone_id / to_zone_id
+        connection_type
+        area_m2
+        u_value_w_m2k
+        open_fraction
+
+    No timestep solving happens here.
     """
 
     if physics_graph is None:
@@ -2564,7 +2599,12 @@ def make_interzone_thermal_network_from_graph(
     links = {}
 
     for connection_id, connection in physics_graph.zone_connections.items():
-        link = make_interzone_thermal_link_from_zone_connection(connection)
+        link = make_interzone_thermal_link_from_zone_connection(
+            connection=connection
+        )
+
+        if skip_zero_conductance_links and link.h_w_k <= 0.0:
+            continue
 
         links[link.link_id] = link
 
@@ -2573,30 +2613,74 @@ def make_interzone_thermal_network_from_graph(
     )
 
 
+def make_interzone_thermal_network_from_graph(
+    physics_graph: Any,
+    skip_zero_conductance_links: bool = True,
+) -> BuildingInterzoneThermalNetwork:
+    """
+    Backward-compatible alias.
+
+    Preferred Phase 11 name:
+        make_interzone_thermal_network_from_physics_graph(...)
+    """
+
+    return make_interzone_thermal_network_from_physics_graph(
+        physics_graph=physics_graph,
+        skip_zero_conductance_links=skip_zero_conductance_links,
+    )
+
+
 def make_interzone_thermal_link_from_zone_connection(
     connection: Any,
 ) -> InterzoneThermalLink:
+    """
+    Convert one graph ZoneConnection into one thermal link.
+
+    Rules:
+        internal_wall:
+            H = U_wall * area
+
+        floor_ceiling:
+            H = U_floor_ceiling * area
+
+        closed door:
+            H = U_closed_door * door_area
+
+        open door:
+            H = H_closed + open_fraction * U_open_effective * opening_area
+
+        generic_interzone:
+            H = U_generic * area
+    """
+
     if connection is None:
         raise ValueError("connection cannot be None.")
 
     connection_id = _required_attr(connection, "connection_id")
-    zone_a_id = _required_attr(connection, "zone_a_id")
-    zone_b_id = _required_attr(connection, "zone_b_id")
 
-    connection_type = _get_attr_or_default(
-        connection,
-        "connection_type",
-        "generic_interzone",
-    )
+    zone_a_id = _required_attr(connection, "from_zone_id")
+    zone_b_id = _required_attr(connection, "to_zone_id")
+
+    connection_type = str(
+        _get_attr_or_default(
+            connection,
+            "connection_type",
+            "generic_interzone",
+        )
+    ).strip().lower()
 
     area_m2 = _get_attr_or_default(
         connection,
         "area_m2",
-        0.0,
+        None,
     )
 
-    if area_m2 is None:
-        area_m2 = 0.0
+    if area_m2 is not None:
+        area_m2 = _non_negative_float(
+            area_m2,
+            "area_m2",
+            connection_id,
+        )
 
     u_value_w_m2k = _get_attr_or_default(
         connection,
@@ -2604,24 +2688,222 @@ def make_interzone_thermal_link_from_zone_connection(
         None,
     )
 
-    if u_value_w_m2k is None:
-        u_value_w_m2k = DEFAULT_INTERZONE_U_VALUE_W_M2K
+    if u_value_w_m2k is not None:
+        u_value_w_m2k = _non_negative_float(
+            u_value_w_m2k,
+            "u_value_w_m2k",
+            connection_id,
+        )
 
-    h_w_k = conductance_from_u_area(
-        u_value_w_m2k=u_value_w_m2k,
+    h_w_k = _interzone_conductance_from_zone_connection(
+        connection=connection,
+        connection_type=connection_type,
         area_m2=area_m2,
+        u_value_w_m2k=u_value_w_m2k,
     )
 
+    effective_area_m2 = area_m2
+
+    if effective_area_m2 is None:
+        effective_area_m2 = _default_interzone_area_for_connection_type(
+            connection_type=connection_type
+        )
+
+    effective_u_value_w_m2k = u_value_w_m2k
+
+    if effective_u_value_w_m2k is None:
+        effective_u_value_w_m2k = _default_interzone_u_value_for_connection_type(
+            connection_type=connection_type
+        )
+    is_openable = bool(
+        _get_attr_or_default(
+            connection,
+            "is_openable",
+            False,
+        )
+    )
+
+    open_fraction = _clamp_unit_interval(
+        _get_attr_or_default(
+            connection,
+            "open_fraction",
+            0.0,
+        )
+    )
+
+    max_opening_area_m2 = _get_attr_or_default(
+        connection,
+        "max_opening_area_m2",
+        None,
+    )
+
+    if max_opening_area_m2 is not None:
+        max_opening_area_m2 = _non_negative_float(
+            max_opening_area_m2,
+            "max_opening_area_m2",
+            connection_id,
+        )
     return InterzoneThermalLink(
         link_id=connection_id,
         connection_id=connection_id,
         zone_a_id=zone_a_id,
         zone_b_id=zone_b_id,
         connection_type=connection_type,
-        area_m2=area_m2,
-        u_value_w_m2k=u_value_w_m2k,
+        area_m2=effective_area_m2,
+        u_value_w_m2k=effective_u_value_w_m2k,
         h_w_k=h_w_k,
+        is_openable=is_openable,
+        open_fraction=open_fraction,
+        max_opening_area_m2=max_opening_area_m2,
+        source="BuildingPhysicsGraph.ZoneConnection",
     )
+
+
+def _interzone_conductance_from_zone_connection(
+    connection: Any,
+    connection_type: str,
+    area_m2: Optional[float],
+    u_value_w_m2k: Optional[float],
+) -> float:
+    """
+    Calculate interzone conductance H [W/K] from a graph connection.
+    """
+
+    connection_type = str(connection_type).strip().lower()
+
+    if connection_type == "door":
+        return _door_interzone_conductance_from_zone_connection(
+            connection=connection,
+            area_m2=area_m2,
+            u_value_w_m2k=u_value_w_m2k,
+        )
+
+    if area_m2 is None:
+        area_m2 = 0.0
+
+    if u_value_w_m2k is None:
+        u_value_w_m2k = _default_interzone_u_value_for_connection_type(
+            connection_type=connection_type
+        )
+
+    return conductance_from_u_area(
+        u_value_w_m2k=u_value_w_m2k,
+        area_m2=area_m2,
+    )
+
+
+def _door_interzone_conductance_from_zone_connection(
+    connection: Any,
+    area_m2: Optional[float],
+    u_value_w_m2k: Optional[float],
+) -> float:
+    """
+    Simplified closed/open door thermal coupling.
+
+    Closed part:
+        conductive/moderate coupling through the door leaf.
+
+    Open part:
+        stronger effective coupling through the opening.
+        This is not an airflow solver; airflow coupling remains in airflow.py.
+    """
+
+    if area_m2 is None:
+        area_m2 = _get_attr_or_default(
+            connection,
+            "max_opening_area_m2",
+            DEFAULT_INTERZONE_DOOR_AREA_M2,
+        )
+
+    if area_m2 is None:
+        area_m2 = DEFAULT_INTERZONE_DOOR_AREA_M2
+
+    area_m2 = _non_negative_float(
+        area_m2,
+        "door_area_m2",
+        _required_attr(connection, "connection_id"),
+    )
+
+    if u_value_w_m2k is None:
+        u_value_w_m2k = DEFAULT_INTERZONE_CLOSED_DOOR_U_VALUE_W_M2K
+
+    closed_h_w_k = conductance_from_u_area(
+        u_value_w_m2k=u_value_w_m2k,
+        area_m2=area_m2,
+    )
+
+    is_openable = bool(
+        _get_attr_or_default(
+            connection,
+            "is_openable",
+            False,
+        )
+    )
+
+    if not is_openable:
+        return closed_h_w_k
+
+    open_fraction = _clamp_unit_interval(
+        _get_attr_or_default(
+            connection,
+            "open_fraction",
+            0.0,
+        )
+    )
+
+    max_opening_area_m2 = _get_attr_or_default(
+        connection,
+        "max_opening_area_m2",
+        area_m2,
+    )
+
+    if max_opening_area_m2 is None:
+        max_opening_area_m2 = area_m2
+
+    max_opening_area_m2 = _non_negative_float(
+        max_opening_area_m2,
+        "max_opening_area_m2",
+        _required_attr(connection, "connection_id"),
+    )
+
+    open_h_w_k = conductance_from_u_area(
+        u_value_w_m2k=DEFAULT_INTERZONE_OPEN_DOOR_EFFECTIVE_U_VALUE_W_M2K,
+        area_m2=max_opening_area_m2,
+        multiplier=open_fraction,
+    )
+
+    return closed_h_w_k + open_h_w_k
+
+
+def _default_interzone_u_value_for_connection_type(
+    connection_type: str,
+) -> float:
+    connection_type = str(connection_type).strip().lower()
+
+    if connection_type == "internal_wall":
+        return DEFAULT_INTERZONE_INTERNAL_WALL_U_VALUE_W_M2K
+
+    if connection_type == "floor_ceiling":
+        return DEFAULT_INTERZONE_FLOOR_CEILING_U_VALUE_W_M2K
+
+    if connection_type == "door":
+        return DEFAULT_INTERZONE_CLOSED_DOOR_U_VALUE_W_M2K
+
+    if connection_type == "generic_interzone":
+        return DEFAULT_INTERZONE_GENERIC_U_VALUE_W_M2K
+
+    return DEFAULT_INTERZONE_U_VALUE_W_M2K
+
+
+def _default_interzone_area_for_connection_type(
+    connection_type: str,
+) -> float:
+    connection_type = str(connection_type).strip().lower()
+
+    if connection_type == "door":
+        return DEFAULT_INTERZONE_DOOR_AREA_M2
+
+    return 0.0
 
 def add_interzone_links_to_conductance_network(
     conductance_network: BuildingThermalConductanceNetwork,
@@ -3307,6 +3589,23 @@ def calculate_interzone_heat_flow_records(
                 zone_b_air_temperature_c=state_b.air_temperature_c,
                 q_to_zone_a_w=q_to_a_w,
                 q_to_zone_b_w=q_to_b_w,
+                connection_type=_get_attr_or_default(
+                    link,
+                    "connection_type",
+                    "generic_interzone",
+                ),
+                is_openable=bool(
+                    _get_attr_or_default(
+                        link,
+                        "is_openable",
+                        False,
+                    )
+                ),
+                open_fraction=_get_attr_or_default(
+                    link,
+                    "open_fraction",
+                    0.0,
+                ),
             )
         )
 

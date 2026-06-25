@@ -33,7 +33,14 @@ def save_debug_building_outputs(
     zone_df = sim.building_zone_records_to_dataframe()
     dwelling_df = sim.building_dwelling_records_to_dataframe()
     building_df = sim.building_records_to_dataframe()
-
+    if hasattr(sim, "building_interzone_thermal_records_to_dataframe"):
+        interzone_thermal_df = sim.building_interzone_thermal_records_to_dataframe()
+    else:
+        interzone_thermal_df = pd.DataFrame()
+    if hasattr(sim, "building_interzone_thermal_records_to_dataframe"):
+        interzone_thermal_df = sim.building_interzone_thermal_records_to_dataframe()
+    else:
+        interzone_thermal_df = pd.DataFrame()
     bridge_df = sim.building_control_bridge_records_to_dataframe()
     action_df = sim.building_action_event_records_to_dataframe()
     internal_source_df = sim.building_internal_source_records_to_dataframe()
@@ -51,6 +58,17 @@ def save_debug_building_outputs(
     paths["zone_timestep_csv"] = zone_path
     paths["dwelling_timestep_csv"] = dwelling_path
     paths["building_timestep_csv"] = building_path
+    if not interzone_thermal_df.empty:
+        interzone_thermal_path = csv_folder / (
+            prefix + "_interzone_thermal_timestep.csv"
+        )
+
+        interzone_thermal_df.to_csv(
+            interzone_thermal_path,
+            index=False,
+        )
+
+        paths["interzone_thermal_timestep_csv"] = interzone_thermal_path
 
     if not bridge_df.empty:
         bridge_path = csv_folder / (prefix + "_control_bridge_timestep.csv")
@@ -158,6 +176,14 @@ def save_yearly_building_outputs(
     zone_df = sim.building_zone_records_to_dataframe()
     dwelling_df = sim.building_dwelling_records_to_dataframe()
     building_df = sim.building_records_to_dataframe()
+    if hasattr(sim, "building_interzone_thermal_records_to_dataframe"):
+        interzone_thermal_df = sim.building_interzone_thermal_records_to_dataframe()
+    else:
+        interzone_thermal_df = pd.DataFrame()
+    if hasattr(sim, "building_interzone_thermal_records_to_dataframe"):
+        interzone_thermal_df = sim.building_interzone_thermal_records_to_dataframe()
+    else:
+        interzone_thermal_df = pd.DataFrame()
     internal_source_zone_df = sim.building_internal_source_zone_records_to_dataframe()
     internal_source_building_df = sim.building_internal_source_building_records_to_dataframe()
     
@@ -311,7 +337,26 @@ def save_yearly_building_outputs(
             paths["daily_internal_source_building_summary_csv"] = (
                 daily_internal_building_path
             )
-            
+
+    if not interzone_thermal_df.empty:
+        _add_time_columns(interzone_thermal_df)
+
+        daily_interzone_thermal = make_daily_interzone_thermal_summary(
+            interzone_thermal_df
+        )
+
+        interzone_thermal_summary_path = csv_folder / (
+            prefix + "_daily_interzone_thermal_summary.csv"
+        )
+
+        daily_interzone_thermal.to_csv(
+            interzone_thermal_summary_path,
+            index=False,
+        )
+
+        paths["daily_interzone_thermal_summary_csv"] = (
+            interzone_thermal_summary_path
+        )        
     return paths
 
 
@@ -371,6 +416,62 @@ def _fallback_agg_map(df: pd.DataFrame) -> Dict[str, tuple]:
 
     return agg_map
 
+def make_daily_interzone_thermal_summary(
+    interzone_df: pd.DataFrame,
+) -> pd.DataFrame:
+    df = interzone_df.copy()
+    _add_time_columns(df)
+
+    group_cols = [
+        col for col in [
+            "building_id",
+            "day",
+            "link_id",
+            "connection_id",
+            "zone_a_id",
+            "zone_b_id",
+            "connection_type",
+        ]
+        if col in df.columns
+    ]
+
+    agg_map = {}
+
+    if "h_w_k" in df.columns:
+        agg_map["h_w_k_mean"] = ("h_w_k", "mean")
+        agg_map["h_w_k_max"] = ("h_w_k", "max")
+
+    if "open_fraction" in df.columns:
+        agg_map["open_fraction_mean"] = ("open_fraction", "mean")
+        agg_map["open_fraction_max"] = ("open_fraction", "max")
+
+    if "q_to_zone_a_w" in df.columns:
+        agg_map["q_to_zone_a_w_mean"] = ("q_to_zone_a_w", "mean")
+        agg_map["q_to_zone_a_w_min"] = ("q_to_zone_a_w", "min")
+        agg_map["q_to_zone_a_w_max"] = ("q_to_zone_a_w", "max")
+
+    if "q_to_zone_b_w" in df.columns:
+        agg_map["q_to_zone_b_w_mean"] = ("q_to_zone_b_w", "mean")
+        agg_map["q_to_zone_b_w_min"] = ("q_to_zone_b_w", "min")
+        agg_map["q_to_zone_b_w_max"] = ("q_to_zone_b_w", "max")
+
+    if "zone_a_air_temperature_c" in df.columns:
+        agg_map["zone_a_air_temperature_c_mean"] = (
+            "zone_a_air_temperature_c",
+            "mean",
+        )
+
+    if "zone_b_air_temperature_c" in df.columns:
+        agg_map["zone_b_air_temperature_c_mean"] = (
+            "zone_b_air_temperature_c",
+            "mean",
+        )
+
+    if not group_cols or not agg_map:
+        return pd.DataFrame()
+
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
+
 def make_hourly_zone_summary(zone_df: pd.DataFrame) -> pd.DataFrame:
     df = zone_df.copy()
     _add_time_columns(df)
@@ -396,6 +497,7 @@ def make_hourly_zone_summary(zone_df: pd.DataFrame) -> pd.DataFrame:
 
     agg_map.update(_energy_agg_map(df))
     agg_map.update(_fallback_agg_map(df))
+    agg_map.update(_interzone_zone_agg_map(df))
     return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
@@ -423,6 +525,7 @@ def make_daily_zone_summary(zone_df: pd.DataFrame) -> pd.DataFrame:
 
     agg_map.update(_energy_agg_map(df))
     agg_map.update(_fallback_agg_map(df))
+    agg_map.update(_interzone_zone_agg_map(df))
     return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
@@ -741,6 +844,57 @@ def _plot_control_active_hours_by_zone(
 
     return path
 
+
+def _interzone_zone_agg_map(df: pd.DataFrame) -> Dict[str, tuple]:
+    agg_map = {}
+
+    if "interzone_thermal_link_count" in df.columns:
+        agg_map["interzone_link_count"] = (
+            "interzone_thermal_link_count",
+            "max",
+        )
+
+    if "interzone_thermal_total_h_w_k" in df.columns:
+        agg_map["interzone_thermal_total_h_w_k_mean"] = (
+            "interzone_thermal_total_h_w_k",
+            "mean",
+        )
+
+    if "interzone_heat_gain_w" in df.columns:
+        agg_map["interzone_heat_gain_w_mean"] = (
+            "interzone_heat_gain_w",
+            "mean",
+        )
+        agg_map["interzone_heat_gain_w_max"] = (
+            "interzone_heat_gain_w",
+            "max",
+        )
+
+    if "interzone_heat_loss_w" in df.columns:
+        agg_map["interzone_heat_loss_w_mean"] = (
+            "interzone_heat_loss_w",
+            "mean",
+        )
+        agg_map["interzone_heat_loss_w_max"] = (
+            "interzone_heat_loss_w",
+            "max",
+        )
+
+    if "interzone_net_heat_gain_w" in df.columns:
+        agg_map["interzone_net_heat_gain_w_mean"] = (
+            "interzone_net_heat_gain_w",
+            "mean",
+        )
+        agg_map["interzone_net_heat_gain_w_min"] = (
+            "interzone_net_heat_gain_w",
+            "min",
+        )
+        agg_map["interzone_net_heat_gain_w_max"] = (
+            "interzone_net_heat_gain_w",
+            "max",
+        )
+
+    return agg_map
 
 # ============================================================
 # INTERNAL UTILS

@@ -91,6 +91,7 @@ def validate_abbey_config(config: dict[str, Any]) -> None:
         for section in REQUIRED_TOP_LEVEL_SECTIONS
         if section not in config
     ]
+    print(missing)
 
     if missing:
         raise KeyError(

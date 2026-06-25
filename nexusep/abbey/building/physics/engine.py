@@ -291,6 +291,11 @@ class BuildingPhysicsStepResult:
     thermal_state: Any = None
     thermal_parameters: Any = None
     thermal_ventilation_exchange: Any = None
+
+    interzone_thermal_network: Any = None
+    interzone_thermal_flow_records: List[Any] = field(default_factory=list)
+    interzone_heat_gains_by_zone_w: Dict[str, float] = field(default_factory=dict)
+
     thermal_step_result: Any = None
 
     proposed_zone_states: Dict[str, Any] = field(default_factory=dict)
@@ -299,7 +304,18 @@ class BuildingPhysicsStepResult:
     building_record: Dict[str, Any] = field(default_factory=dict)
 
     source: str = "physics.engine.Phase10.2"
+    
+    def interzone_thermal_flow_records_as_dicts(self) -> List[Dict[str, Any]]:
+        rows = []
 
+        for record in self.interzone_thermal_flow_records:
+            if hasattr(record, "to_dict"):
+                rows.append(record.to_dict())
+            else:
+                rows.append(dict(record))
+
+        return rows
+    
     def to_dict(self) -> Dict[str, Any]:
         return {
             "source": self.source,
@@ -324,6 +340,15 @@ class BuildingPhysicsStepResult:
             "has_thermal_state": self.thermal_state is not None,
             "has_thermal_parameters": self.thermal_parameters is not None,
             "has_thermal_ventilation_exchange": self.thermal_ventilation_exchange is not None,
+            "has_interzone_thermal_network": self.interzone_thermal_network is not None,
+            "interzone_thermal_link_count": (
+                len(getattr(self.interzone_thermal_network, "links", {}))
+                if self.interzone_thermal_network is not None
+                else 0
+            ),
+            "interzone_thermal_flow_record_count": len(
+                self.interzone_thermal_flow_records
+            ),
             "has_thermal_step_result": self.thermal_step_result is not None,
             "proposed_zone_state_count": len(self.proposed_zone_states),
             "zone_record_count": len(self.zone_records),
@@ -683,6 +708,9 @@ def run_building_physics_step(
     from nexusep.abbey.building.physics.thermal import (
         make_building_thermal_parameters,
         make_ventilation_heat_exchange_for_thermal,
+        make_interzone_thermal_network_from_physics_graph,
+        calculate_interzone_heat_flow_records,
+        aggregate_interzone_heat_gains_by_zone_w,
         step_building_thermal_state_semi_implicit,
     )
 
@@ -694,7 +722,23 @@ def run_building_physics_step(
         building_model=building_model,
         airflow_network=airflow_network,
     )
+    interzone_thermal_network = None
+    interzone_thermal_flow_records = []
+    interzone_heat_gains_by_zone_w = {}
 
+    if physics_graph is not None:
+        interzone_thermal_network = make_interzone_thermal_network_from_physics_graph(
+            physics_graph=physics_graph,
+        )
+
+        interzone_thermal_flow_records = calculate_interzone_heat_flow_records(
+            interzone_network=interzone_thermal_network,
+            thermal_state=thermal_state,
+        )
+
+        interzone_heat_gains_by_zone_w = aggregate_interzone_heat_gains_by_zone_w(
+            interzone_thermal_flow_records
+        )
     additional_outside_conductance_by_zone_w_k = {}
 
     if window_boundary_result is not None and hasattr(
@@ -710,7 +754,7 @@ def run_building_physics_step(
         building_parameters=thermal_parameters,
         weather_state=weather_state,
         building_gains=thermal_gains,
-        interzone_network=None,
+        interzone_network=interzone_thermal_network,
         ventilation_exchange=thermal_ventilation_exchange,
         additional_outside_conductance_by_zone_w_k=additional_outside_conductance_by_zone_w_k,
         dt_minutes=dt_minutes,
@@ -740,6 +784,8 @@ def run_building_physics_step(
         light_state=light_state,
         airflow_network=airflow_network,
         thermal_ventilation_exchange=thermal_ventilation_exchange,
+        interzone_thermal_network=interzone_thermal_network,
+        interzone_heat_gains_by_zone_w=interzone_heat_gains_by_zone_w,
         zone_control_commands=zone_control_commands,
         zone_system_specs=zone_system_specs,
     )
@@ -751,6 +797,8 @@ def run_building_physics_step(
         co2_step_result=co2_step_result,
         moisture_step_result=moisture_step_result,
         thermal_step_result=thermal_step_result,
+        interzone_thermal_network=interzone_thermal_network,
+        interzone_thermal_flow_records=interzone_thermal_flow_records,
         command_constraint_records=command_constraint_records,
     )
 
@@ -777,6 +825,9 @@ def run_building_physics_step(
         thermal_state=thermal_state,
         thermal_parameters=thermal_parameters,
         thermal_ventilation_exchange=thermal_ventilation_exchange,
+        interzone_thermal_network=interzone_thermal_network,
+        interzone_thermal_flow_records=interzone_thermal_flow_records,
+        interzone_heat_gains_by_zone_w=interzone_heat_gains_by_zone_w,
         thermal_step_result=thermal_step_result,
         proposed_zone_states=proposed_zone_states,
         zone_records=zone_records,
@@ -1103,6 +1154,8 @@ def _make_engine_zone_records(
     light_state: Any = None,
     airflow_network: Any = None,
     thermal_ventilation_exchange: Any = None,
+    interzone_thermal_network: Any = None,
+    interzone_heat_gains_by_zone_w: Optional[Dict[str, float]] = None,
     zone_control_commands: Optional[Dict[str, Any]] = None,
     zone_system_specs: Optional[Dict[str, Any]] = None,
 ) -> List[Dict[str, Any]]:
@@ -1110,6 +1163,7 @@ def _make_engine_zone_records(
     records = []
     zone_control_commands = zone_control_commands or {}
     zone_system_specs = zone_system_specs or {}
+    interzone_heat_gains_by_zone_w = interzone_heat_gains_by_zone_w or {}
     internal_bridge_by_zone = {}
 
     if internal_source_result is not None and hasattr(
@@ -1225,7 +1279,23 @@ def _make_engine_zone_records(
 
         if hasattr(thermal_step_result, "dt_minutes"):
             dt_hours = float(thermal_step_result.dt_minutes) / 60.0
-            
+        interzone_thermal_link_count = 0
+        interzone_thermal_total_h_w_k = 0.0
+
+        if interzone_thermal_network is not None:
+            links_for_zone = interzone_thermal_network.links_for_zone(zone_id)
+            interzone_thermal_link_count = len(links_for_zone)
+            interzone_thermal_total_h_w_k = sum(
+                float(_get_attr_or_key(link, "h_w_k", 0.0))
+                for link in links_for_zone
+            )
+
+        interzone_net_heat_gain_w = float(
+            interzone_heat_gains_by_zone_w.get(zone_id, 0.0)
+        )
+
+        interzone_heat_gain_w = max(interzone_net_heat_gain_w, 0.0)
+        interzone_heat_loss_w = max(-interzone_net_heat_gain_w, 0.0)            
         record = {
             "physics_path": "engine",
             "legacy_fallback_used": False,
@@ -1301,6 +1371,11 @@ def _make_engine_zone_records(
             "airflow_interzone_exchange_m3_h": interzone_exchange_m3_h,
             "airflow_total_exchange_m3_h": total_air_exchange_m3_h,
             "thermal_ventilation_h_w_k": thermal_ventilation_h_w_k,
+            "interzone_thermal_link_count": interzone_thermal_link_count,
+            "interzone_thermal_total_h_w_k": interzone_thermal_total_h_w_k,
+            "interzone_heat_gain_w": interzone_heat_gain_w,
+            "interzone_heat_loss_w": interzone_heat_loss_w,
+            "interzone_net_heat_gain_w": interzone_net_heat_gain_w,
             "command_lights_on": bool(_get_attr_or_key(command, "lights_on", False)),
             "command_lighting_power_w": float(
                 _get_attr_or_key(command, "lighting_power_w", 0.0)
@@ -1341,11 +1416,14 @@ def _make_engine_building_record(
     co2_step_result: Any = None,
     moisture_step_result: Any = None,
     thermal_step_result: Any = None,
+    interzone_thermal_network: Any = None,
+    interzone_thermal_flow_records: Optional[List[Any]] = None,
     command_constraint_records: Optional[List[Dict[str, Any]]] = None,
 ) -> Dict[str, Any]:
     if command_constraint_records is None:
         command_constraint_records = []
-
+    if interzone_thermal_flow_records is None:
+        interzone_thermal_flow_records = []
     record = {
         "physics_path": "engine",
         "legacy_fallback_used": False,
@@ -1356,6 +1434,13 @@ def _make_engine_building_record(
         "has_co2_step_result": co2_step_result is not None,
         "has_moisture_step_result": moisture_step_result is not None,
         "has_thermal_step_result": thermal_step_result is not None,
+        "has_interzone_thermal_network": interzone_thermal_network is not None,
+        "interzone_thermal_link_count": (
+            len(getattr(interzone_thermal_network, "links", {}))
+            if interzone_thermal_network is not None
+            else 0
+        ),
+        "interzone_thermal_flow_record_count": len(interzone_thermal_flow_records),
         "command_constraint_record_count": len(command_constraint_records),
         "command_constraints_applied": len(command_constraint_records) > 0,
     }

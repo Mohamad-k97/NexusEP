@@ -40,6 +40,7 @@ from nexusep.abbey.building import (
     BuildingModel,
     SimpleBuildingPerformanceModel,
     make_default_family_building,
+    make_default_family_physics_graph,
     default_family_space_role_map,
     apply_control_action_bridge,
 )
@@ -72,14 +73,15 @@ class AbbeySimulation:
     dt_minutes: float = 15.0
     use_household_execution: bool = False
 
-    # New building-performance path.
     building_model: Optional[BuildingModel] = None
+    building_physics_graph: Optional[Any] = None
     building_performance_model: Optional[SimpleBuildingPerformanceModel] = None
     use_building_performance: bool = True
 
     building_zone_records: Optional[List[Dict[str, Any]]] = None
     building_dwelling_records: Optional[List[Dict[str, Any]]] = None
     building_records: Optional[List[Dict[str, Any]]] = None
+    building_interzone_thermal_records: Optional[List[Dict[str, Any]]] = None
     building_control_bridge_records: Optional[List[Dict[str, Any]]] = None
     building_action_event_records: Optional[List[Dict[str, Any]]] = None
     
@@ -98,6 +100,9 @@ class AbbeySimulation:
         if self.building_records is None:
             self.building_records = []
 
+        if self.building_interzone_thermal_records is None:
+            self.building_interzone_thermal_records = []
+            
         if self.building_control_bridge_records is None:
             self.building_control_bridge_records = []
 
@@ -181,6 +186,7 @@ class AbbeySimulation:
         use_household_execution: bool = False,
 
         building_model: Optional[BuildingModel] = None,
+        building_physics_graph: Optional[Any] = None,
         building_performance_model: Optional[SimpleBuildingPerformanceModel] = None,
         use_building_performance: bool = True,
 
@@ -301,12 +307,26 @@ class AbbeySimulation:
         if use_building_performance and building_model is None:
             building_model = make_default_family_building()
 
+        if use_building_performance and building_physics_graph is None:
+            building_physics_graph = make_default_family_physics_graph(
+                building_model=building_model,
+            )
+
         if use_building_performance and building_performance_model is None:
             building_performance_model = SimpleBuildingPerformanceModel(
                 building_model=building_model,
+                physics_graph=building_physics_graph,
                 use_physics_engine=True,
                 allow_legacy_physics_fallback=False,
             )
+
+        elif (
+            use_building_performance
+            and building_performance_model is not None
+            and getattr(building_performance_model, "physics_graph", None) is None
+        ):
+            building_performance_model.physics_graph = building_physics_graph
+            
         return cls(
             config=config,
             people=people,
@@ -325,11 +345,13 @@ class AbbeySimulation:
             rng=random.Random(random_seed),
             dt_minutes=float(dt_minutes),
             building_model=building_model,
+            building_physics_graph=building_physics_graph,
             building_performance_model=building_performance_model,
             use_building_performance=use_building_performance,
             building_zone_records=[],
             building_dwelling_records=[],
             building_records=[],
+            building_interzone_thermal_records=[],
             building_control_bridge_records=[],
             building_action_event_records=[],
             building_internal_source_records=[],
@@ -599,10 +621,21 @@ class AbbeySimulation:
         if self.building_model is None:
             self.building_model = make_default_family_building()
 
+        if self.building_physics_graph is None:
+            self.building_physics_graph = make_default_family_physics_graph(
+                building_model=self.building_model,
+            )
+
         if self.building_performance_model is None:
             self.building_performance_model = SimpleBuildingPerformanceModel(
                 building_model=self.building_model,
+                physics_graph=self.building_physics_graph,
+                use_physics_engine=True,
+                allow_legacy_physics_fallback=False,
             )
+
+        elif getattr(self.building_performance_model, "physics_graph", None) is None:
+            self.building_performance_model.physics_graph = self.building_physics_graph
 
         building_locations = self._locations_for_building_performance()
         role_to_zone_id = default_family_space_role_map(
@@ -632,6 +665,7 @@ class AbbeySimulation:
             "chunk_records": chunk_records or [],
             "action_energy_wh": action_energy_wh or {},
             "role_to_zone_id": role_to_zone_id,
+            "physics_graph": self.building_physics_graph,
         }
 
         result = self.building_performance_model.step(
@@ -643,6 +677,13 @@ class AbbeySimulation:
         self._sync_systems_from_observation()
         self.building_zone_records.extend(result.zone_records)
         self.building_dwelling_records.extend(result.dwelling_records)
+        self._store_building_interzone_thermal_records(
+            getattr(
+                result,
+                "interzone_thermal_flow_records",
+                [],
+            )
+        )
         self.last_internal_source_result = getattr(
             result,
             "internal_source_result",
@@ -655,6 +696,21 @@ class AbbeySimulation:
         if result.building_record:
             self.building_records.append(result.building_record)
 
+    def _store_building_interzone_thermal_records(
+        self,
+        records: Optional[List[Dict[str, Any]]],
+    ) -> None:
+        if records is None:
+            return
+
+        for record in records:
+            if hasattr(record, "to_dict"):
+                row = record.to_dict()
+            else:
+                row = dict(record)
+
+            self.building_interzone_thermal_records.append(row)
+            
     def _store_building_action_events(
         self,
         action_events: List[Dict[str, Any]],
@@ -1291,7 +1347,9 @@ class AbbeySimulation:
         import pandas as pd
         return pd.DataFrame(self.building_records)
 
-
+    def building_interzone_thermal_records_to_dataframe(self):
+        import pandas as pd
+        return pd.DataFrame(self.building_interzone_thermal_records)
     
     def building_control_bridge_records_to_dataframe(self):
         import pandas as pd
