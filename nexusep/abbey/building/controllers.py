@@ -17,8 +17,19 @@ from nexusep.abbey.building.systems import (
     ZoneSystemSpec,
     ZoneControlState,
     ZoneControlCommand,
+    constrain_zone_control_command_to_system_spec,
 )
 
+THERMOSTAT_CONTROL_MODES = {
+    "semi_auto",
+    "auto",
+    "bms",
+}
+
+BMS_CONTROL_MODES = {
+    "auto",
+    "bms",
+}
 
 class ManualController:
     """
@@ -71,7 +82,7 @@ class ManualController:
             and control_state.manual_curtain_open
         )
 
-        return ZoneControlCommand(
+        command = ZoneControlCommand(
             zone_id=control_state.zone_id,
             dwelling_id=control_state.dwelling_id,
             building_id=control_state.building_id,
@@ -89,6 +100,10 @@ class ManualController:
             curtain_open=curtain_open,
         )
 
+        return constrain_zone_control_command_to_system_spec(
+            command=command,
+            system_spec=system_spec,
+        ).command
 
 class ThermostatController:
     """
@@ -160,7 +175,7 @@ class ThermostatController:
             system_spec=system_spec,
         )
 
-        return ZoneControlCommand(
+        command = ZoneControlCommand(
             zone_id=control_state.zone_id,
             dwelling_id=control_state.dwelling_id,
             building_id=control_state.building_id,
@@ -176,6 +191,26 @@ class ThermostatController:
             curtain_open=curtain_open,
         )
 
+        return constrain_zone_control_command_to_system_spec(
+            command=command,
+            system_spec=system_spec,
+        ).command
+
+    def _deadband_for_control_state(
+        self,
+        control_state: ZoneControlState,
+    ) -> float:
+        value = getattr(control_state, "thermostat_deadband_c", self.deadband_c)
+
+        if value is None:
+            value = self.deadband_c
+
+        value = float(value)
+
+        if value < 0.0:
+            return 0.0
+
+        return value
     def _decide_heating(
         self,
         temp_c: float,
@@ -192,14 +227,17 @@ class ThermostatController:
         if control_state.heating_mode == "manual":
             return bool(control_state.manual_heating_on)
 
-        if control_state.heating_mode in {"semi_auto", "auto"}:
-            lower = control_state.heating_setpoint_c - self.deadband_c
-            upper = control_state.heating_setpoint_c + self.deadband_c
+        if control_state.heating_mode in THERMOSTAT_CONTROL_MODES:
+            deadband_c = self._deadband_for_control_state(control_state)
+            half_band = 0.5 * deadband_c
 
-            if temp_c < lower:
+            turn_on_below_c = control_state.heating_setpoint_c - half_band
+            turn_off_above_c = control_state.heating_setpoint_c + half_band
+
+            if temp_c < turn_on_below_c:
                 return True
 
-            if temp_c > upper:
+            if temp_c > turn_off_above_c:
                 return False
 
             if previous_command is not None:
@@ -225,14 +263,17 @@ class ThermostatController:
         if control_state.cooling_mode == "manual":
             return bool(control_state.manual_cooling_on)
 
-        if control_state.cooling_mode in {"semi_auto", "auto"}:
-            lower = control_state.cooling_setpoint_c - self.deadband_c
-            upper = control_state.cooling_setpoint_c + self.deadband_c
+        if control_state.cooling_mode in THERMOSTAT_CONTROL_MODES:
+            deadband_c = self._deadband_for_control_state(control_state)
+            half_band = 0.5 * deadband_c
 
-            if temp_c > upper:
+            turn_on_above_c = control_state.cooling_setpoint_c + half_band
+            turn_off_below_c = control_state.cooling_setpoint_c - half_band
+
+            if temp_c > turn_on_above_c:
                 return True
 
-            if temp_c < lower:
+            if temp_c < turn_off_below_c:
                 return False
 
             if previous_command is not None:
@@ -259,7 +300,7 @@ class ThermostatController:
                 return system_spec.ventilation_flow_m3_h
             return 0.0
 
-        if control_state.ventilation_mode in {"semi_auto", "auto"}:
+        if control_state.ventilation_mode in THERMOSTAT_CONTROL_MODES:
             if zone_state.number_of_people > 0:
                 return system_spec.ventilation_flow_m3_h
             return 0.25 * system_spec.ventilation_flow_m3_h
@@ -281,7 +322,7 @@ class ThermostatController:
         if control_state.lighting_mode == "manual":
             return bool(control_state.manual_lights_on)
 
-        if control_state.lighting_mode in {"semi_auto", "auto"}:
+        if control_state.lighting_mode in THERMOSTAT_CONTROL_MODES:
             return (
                 zone_state.number_of_people > 0
                 and zone_state.indoor_daylight < 0.35
@@ -304,7 +345,7 @@ class ThermostatController:
             return bool(control_state.manual_window_open)
 
         # v0.3: no smart window logic yet.
-        if control_state.window_mode in {"semi_auto", "auto"}:
+        if control_state.window_mode in THERMOSTAT_CONTROL_MODES:
             return bool(control_state.manual_window_open)
 
         return False
@@ -324,7 +365,7 @@ class ThermostatController:
             return bool(control_state.manual_curtain_open)
 
         # v0.3: no smart shading logic yet.
-        if control_state.shading_mode in {"semi_auto", "auto"}:
+        if control_state.shading_mode in THERMOSTAT_CONTROL_MODES:
             return bool(control_state.manual_curtain_open)
 
         return True
@@ -334,13 +375,22 @@ class SimpleBMSController:
     """
     Placeholder BMS controller.
 
-    For v0.3, it delegates to ThermostatController.
-    Later this can become:
-    - occupancy predictive
-    - weather predictive
-    - tariff-aware
-    - central/shared-system-aware
+    Phase 10.7 behavior:
+    - BMS/auto mode is available.
+    - It delegates to the thermostat controller for now.
+    - It does not optimize.
+    - It does not apply physical effects directly.
+
+    Future:
+    - occupancy-predictive control
+    - weather-predictive control
+    - tariff-aware operation
+    - centralized/shared HVAC coordination
+    - load shifting
     """
+
+    controller_family = "bms_placeholder"
+    controller_strategy = "delegate_to_thermostat"
 
     def __init__(self, deadband_c: float = 0.5):
         self.thermostat = ThermostatController(deadband_c=deadband_c)
@@ -361,18 +411,30 @@ class SimpleBMSController:
             context=context,
         )
 
-
 def controller_for_control_state(
     control_state: ZoneControlState,
-    deadband_c: float = 0.5,
+    deadband_c: Optional[float] = None,
 ) -> Any:
     """
     Return a controller suitable for the current control state.
 
-    If any major subsystem is auto, use SimpleBMSController.
-    If any major subsystem is semi_auto, use ThermostatController.
-    Otherwise use ManualController.
+    manual:
+        direct human intent -> command
+
+    semi_auto:
+        setpoint thermostat -> command
+
+    auto/bms:
+        placeholder BMS -> currently delegates to thermostat -> command
+
+    The returned controller still produces ZoneControlCommand.
+    It never applies physical effects directly.
     """
+
+    if deadband_c is None:
+        deadband_c = getattr(control_state, "thermostat_deadband_c", 0.5)
+
+    deadband_c = float(deadband_c)
 
     modes = {
         control_state.heating_mode,
@@ -383,7 +445,7 @@ def controller_for_control_state(
         control_state.shading_mode,
     }
 
-    if "auto" in modes:
+    if modes.intersection(BMS_CONTROL_MODES):
         return SimpleBMSController(deadband_c=deadband_c)
 
     if "semi_auto" in modes:

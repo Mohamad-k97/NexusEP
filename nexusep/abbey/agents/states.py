@@ -1,6 +1,5 @@
 from dataclasses import dataclass, asdict, replace, field
-from typing import Any, Dict
-
+from typing import Any, Dict, Optional
 
 @dataclass
 class PersonState:
@@ -143,10 +142,15 @@ class ZoneObservation:
     indoor_daylight: float = 0.5
     indoor_noise: float = 0.2
 
+    indoor_relative_humidity_percent: Optional[float] = None
+    indoor_humidity_ratio_kg_kg: Optional[float] = None
+
     heating_on: bool = False
     cooling_on: bool = False
+    mechanical_ventilation_on: bool = False
     lights_on: bool = False
     window_open: bool = False
+    curtain_open: bool = True
 
     occupied_person_ids: list = field(default_factory=list)
     number_of_people: int = 0
@@ -171,6 +175,10 @@ class DwellingObservation:
     co2_ppm: float = 600.0
     indoor_daylight: float = 0.5
     indoor_noise: float = 0.2
+
+    indoor_relative_humidity_percent: Optional[float] = None
+    indoor_humidity_ratio_kg_kg: Optional[float] = None
+
     electricity_tariff: float = 0.25
 
     default_zone_id: str = "main_room"
@@ -196,6 +204,8 @@ class DwellingObservation:
             co2_ppm=self.co2_ppm,
             indoor_daylight=self.indoor_daylight,
             indoor_noise=self.indoor_noise,
+            indoor_relative_humidity_percent=self.indoor_relative_humidity_percent,
+            indoor_humidity_ratio_kg_kg=self.indoor_humidity_ratio_kg_kg,
         )
 
     def to_dict(self) -> Dict[str, Any]:

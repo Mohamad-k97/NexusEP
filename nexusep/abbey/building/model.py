@@ -425,6 +425,7 @@ class ZoneModel:
             dwelling_id=self.dwelling_id,
             building_id=self.building_id,
             indoor_temp_c=self.initial_air_temperature_c,
+            indoor_mass_temp_c=self.initial_mass_temperature_c,
             co2_ppm=self.co2_initial_ppm,
             indoor_daylight=0.5,
             indoor_noise=0.2,
@@ -497,13 +498,48 @@ class ZoneState:
     building_id: str
 
     indoor_temp_c: float = 20.0
+    indoor_mass_temp_c: Optional[float] = None
+
     co2_ppm: float = 600.0
     indoor_daylight: float = 0.5
     indoor_noise: float = 0.2
 
+    indoor_relative_humidity_percent: Optional[float] = None
+    indoor_humidity_ratio_kg_kg: Optional[float] = None
+
     occupied_person_ids: List[str] = field(default_factory=list)
     number_of_people: int = 0
 
+    def __post_init__(self) -> None:
+        self.indoor_temp_c = float(self.indoor_temp_c)
+
+        if self.indoor_mass_temp_c is None:
+            self.indoor_mass_temp_c = self.indoor_temp_c
+
+        self.indoor_mass_temp_c = float(self.indoor_mass_temp_c)
+        self.co2_ppm = float(self.co2_ppm)
+        self.indoor_daylight = float(self.indoor_daylight)
+        self.indoor_noise = float(self.indoor_noise)
+        if self.indoor_relative_humidity_percent is not None:
+            self.indoor_relative_humidity_percent = float(
+                self.indoor_relative_humidity_percent
+            )
+
+            if self.indoor_relative_humidity_percent < 0.0:
+                self.indoor_relative_humidity_percent = 0.0
+
+            if self.indoor_relative_humidity_percent > 100.0:
+                self.indoor_relative_humidity_percent = 100.0
+
+        if self.indoor_humidity_ratio_kg_kg is not None:
+            self.indoor_humidity_ratio_kg_kg = float(
+                self.indoor_humidity_ratio_kg_kg
+            )
+
+            if self.indoor_humidity_ratio_kg_kg < 0.0:
+                self.indoor_humidity_ratio_kg_kg = 0.0
+        self.number_of_people = int(self.number_of_people)
+        
     def copy(self, **updates: Any) -> "ZoneState":
         if not updates:
             return copy.deepcopy(self)
@@ -524,9 +560,12 @@ class ZoneState:
             "dwelling_id": self.dwelling_id,
             "building_id": self.building_id,
             "indoor_temp_c": self.indoor_temp_c,
+            "indoor_mass_temp_c": self.indoor_mass_temp_c,
             "co2_ppm": self.co2_ppm,
             "indoor_daylight": self.indoor_daylight,
             "indoor_noise": self.indoor_noise,
+            "indoor_relative_humidity_percent": self.indoor_relative_humidity_percent,
+            "indoor_humidity_ratio_kg_kg": self.indoor_humidity_ratio_kg_kg,
             "occupied_person_ids": list(self.occupied_person_ids),
             "number_of_people": self.number_of_people,
         }

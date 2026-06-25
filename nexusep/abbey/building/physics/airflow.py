@@ -668,6 +668,50 @@ class DoorOpeningInput:
         }
 
 @dataclass
+class MechanicalVentilationInput:
+    """
+    Clean mechanical ventilation command for one zone.
+
+    This is dynamic control input, not static ZoneModel capability.
+    The command must already be sanitized upstream against system availability.
+    """
+
+    zone_id: str
+    ventilation_flow_m3_h: float = 0.0
+    source: str = "ZoneControlCommand"
+
+    def __post_init__(self) -> None:
+        if not self.zone_id:
+            raise ValueError("MechanicalVentilationInput.zone_id cannot be empty.")
+
+        self.ventilation_flow_m3_h = _non_negative_float(
+            self.ventilation_flow_m3_h,
+            "ventilation_flow_m3_h",
+            self.zone_id,
+        )
+
+    def ventilation_flow_m3_s(self) -> float:
+        return self.ventilation_flow_m3_h / 3600.0
+
+    def is_active(self) -> bool:
+        return self.ventilation_flow_m3_h > 0.0
+
+    def copy(self, **updates: Any) -> "MechanicalVentilationInput":
+        if not updates:
+            return copy.deepcopy(self)
+
+        return replace(self, **updates)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "zone_id": self.zone_id,
+            "ventilation_flow_m3_h": self.ventilation_flow_m3_h,
+            "ventilation_flow_m3_s": self.ventilation_flow_m3_s(),
+            "is_active": self.is_active(),
+            "source": self.source,
+        }
+    
+@dataclass
 class BuildingAirflowControlInputs:
     """
     Clean physical control inputs for airflow/CO2.
@@ -680,7 +724,7 @@ class BuildingAirflowControlInputs:
     occupancy_by_zone: Dict[str, ZoneOccupancyInput] = None
     window_openings: Dict[str, WindowOpeningInput] = None
     door_openings: Dict[str, DoorOpeningInput] = None
-
+    mechanical_ventilation_by_zone: Dict[str, MechanicalVentilationInput] = None
     source: str = "external_bridge"
 
     def __post_init__(self) -> None:
@@ -692,7 +736,8 @@ class BuildingAirflowControlInputs:
 
         if self.door_openings is None:
             self.door_openings = {}
-
+        if self.mechanical_ventilation_by_zone is None:
+            self.mechanical_ventilation_by_zone = {}
         self.occupancy_by_zone = self._validate_occupancy_inputs(
             self.occupancy_by_zone
         )
@@ -704,7 +749,50 @@ class BuildingAirflowControlInputs:
         self.door_openings = self._validate_door_inputs(
             self.door_openings
         )
+        self.mechanical_ventilation_by_zone = (
+            self._validate_mechanical_ventilation_inputs(
+                self.mechanical_ventilation_by_zone
+            )
+        )
+        
+    def _validate_mechanical_ventilation_inputs(
+        self,
+        inputs: Dict[str, MechanicalVentilationInput],
+    ) -> Dict[str, MechanicalVentilationInput]:
+        cleaned = {}
 
+        for zone_id, item in inputs.items():
+            if not isinstance(item, MechanicalVentilationInput):
+                raise TypeError(
+                    "mechanical_ventilation_by_zone must contain "
+                    "MechanicalVentilationInput objects."
+                )
+
+            if zone_id != item.zone_id:
+                raise ValueError(
+                    "mechanical_ventilation_by_zone key "
+                    + zone_id
+                    + " does not match item.zone_id "
+                    + item.zone_id
+                )
+
+            cleaned[zone_id] = item
+
+        return cleaned
+    
+    def get_mechanical_ventilation_for_zone(
+        self,
+        zone_id: str,
+    ) -> MechanicalVentilationInput:
+        if zone_id not in self.mechanical_ventilation_by_zone:
+            return MechanicalVentilationInput(
+                zone_id=zone_id,
+                ventilation_flow_m3_h=0.0,
+                source="default_off",
+            )
+
+        return self.mechanical_ventilation_by_zone[zone_id]
+    
     def _validate_occupancy_inputs(
         self,
         inputs: Dict[str, ZoneOccupancyInput],
@@ -862,6 +950,10 @@ class BuildingAirflowControlInputs:
             "door_openings": {
                 zone_connection_id: item.to_dict()
                 for zone_connection_id, item in self.door_openings.items()
+            },
+            "mechanical_ventilation_by_zone": {
+                zone_id: item.to_dict()
+                for zone_id, item in self.mechanical_ventilation_by_zone.items()
             },
             "occupied_zone_ids": self.occupied_zone_ids(),
             "open_window_ids": self.open_window_ids(),
@@ -3054,6 +3146,45 @@ def assemble_building_airflow_network(
         pressure_solution=AIRFLOW_NETWORK_PRESSURE_SOLVE,
     )
 
+def calculate_building_mechanical_only_airflow_network(
+    building_model: Any,
+    airflow_control_inputs: Optional[BuildingAirflowControlInputs] = None,
+) -> BuildingAirflowNetwork:
+    """
+    Build an outdoor-only airflow network without a physics graph.
+
+    Used when mechanical ventilation exists but no window/interzone graph
+    is available yet.
+
+    Includes:
+    - ZoneModel default infiltration
+    - commanded mechanical ventilation
+    - no window airflow
+    - no interzone airflow
+    """
+
+    if building_model is None:
+        raise ValueError("building_model cannot be None.")
+
+    if airflow_control_inputs is None:
+        airflow_control_inputs = make_empty_airflow_control_inputs()
+
+    building_airflow_parameters = make_building_airflow_parameters(
+        building_model
+    )
+
+    outdoor_airflow_result = make_building_outdoor_airflow_result(
+        building_airflow_parameters=building_airflow_parameters,
+        airflow_control_inputs=airflow_control_inputs,
+    )
+
+    return BuildingAirflowNetwork(
+        outdoor_airflows_by_zone=outdoor_airflow_result.zone_records,
+        interzone_airflow_links={},
+        interzone_airflow_records={},
+        mode=AIRFLOW_NETWORK_MODE,
+        pressure_solution=AIRFLOW_NETWORK_PRESSURE_SOLVE,
+    )
 
 def calculate_building_airflow_network(
     building_model: Any,
@@ -3258,6 +3389,7 @@ def calculate_building_interzone_airflows(
 def make_zone_outdoor_airflow_record(
     zone_parameters: ZoneAirflowParameters,
     window_airflow_m3_h: float = 0.0,
+    mechanical_ventilation_flow_m3_h: Optional[float] = None,
 ) -> ZoneOutdoorAirflowRecord:
     """
     Assemble outdoor airflow for one zone.
@@ -3276,11 +3408,20 @@ def make_zone_outdoor_airflow_record(
         "window_airflow_m3_h",
         zone_parameters.zone_id,
     )
+    if mechanical_ventilation_flow_m3_h is None:
+        mechanical_ventilation_flow_m3_h = (
+            zone_parameters.mechanical_ventilation_flow_m3_h
+        )
 
+    mechanical_ventilation_flow_m3_h = _non_negative_float(
+        mechanical_ventilation_flow_m3_h,
+        "mechanical_ventilation_flow_m3_h",
+        zone_parameters.zone_id,
+    )
     return ZoneOutdoorAirflowRecord(
         zone_id=zone_parameters.zone_id,
         infiltration_flow_m3_h=zone_parameters.default_infiltration_flow_m3_h,
-        mechanical_ventilation_flow_m3_h=zone_parameters.mechanical_ventilation_flow_m3_h,
+        mechanical_ventilation_flow_m3_h=mechanical_ventilation_flow_m3_h,
         window_airflow_m3_h=window_airflow_m3_h,
         source=OUTDOOR_AIRFLOW_MIXING_MODE,
     )
@@ -3290,6 +3431,7 @@ def make_building_outdoor_airflow_result(
     building_airflow_parameters: BuildingAirflowParameters,
     window_airflow_result: Optional[BuildingWindowOutdoorAirflowResult] = None,
     window_boundary_result: Any = None,
+    airflow_control_inputs: Optional[BuildingAirflowControlInputs] = None,
 ) -> BuildingOutdoorAirflowResult:
     """
     Assemble outdoor airflow records for all zones.
@@ -3324,9 +3466,19 @@ def make_building_outdoor_airflow_result(
     zone_records = {}
 
     for zone_id, parameters in building_airflow_parameters.zone_parameters.items():
+        mechanical_ventilation_flow_m3_h = None
+
+        if airflow_control_inputs is not None:
+            mechanical_ventilation_flow_m3_h = (
+                airflow_control_inputs
+                .get_mechanical_ventilation_for_zone(zone_id)
+                .ventilation_flow_m3_h
+            )
+
         zone_records[zone_id] = make_zone_outdoor_airflow_record(
             zone_parameters=parameters,
             window_airflow_m3_h=window_airflow_by_zone.get(zone_id, 0.0),
+            mechanical_ventilation_flow_m3_h=mechanical_ventilation_flow_m3_h,
         )
 
     return BuildingOutdoorAirflowResult(
@@ -3366,6 +3518,7 @@ def calculate_building_outdoor_airflow_result(
     return make_building_outdoor_airflow_result(
         building_airflow_parameters=building_airflow_parameters,
         window_boundary_result=window_boundary_result,
+        airflow_control_inputs=airflow_control_inputs,
     )
 
 def calculate_window_outdoor_airflow_record(
@@ -3530,16 +3683,13 @@ def calculate_building_window_outdoor_airflows(
     )
 
 def make_empty_airflow_control_inputs() -> BuildingAirflowControlInputs:
-    """
-    Empty/default control input object.
-
-    Means:
-    - no people
-    - all windows closed
-    - all doors closed
-    """
-
-    return BuildingAirflowControlInputs()
+    return BuildingAirflowControlInputs(
+        occupancy_by_zone={},
+        window_openings={},
+        door_openings={},
+        mechanical_ventilation_by_zone={},
+        source="empty",
+    )
 
 def is_building_window_boundary_result_like(
     window_boundary_result: Any,

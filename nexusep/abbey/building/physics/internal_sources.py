@@ -3010,7 +3010,7 @@ def make_building_internal_source_result(
     dt_minutes=DEFAULT_INTERNAL_SOURCE_DT_MINUTES,
     include_people=True,
     include_lighting=True,
-    include_hvac=True,
+    include_hvac=False,
     zone_system_specs=None,
     lighting_power_result=None,
     zone_control_commands=None,
@@ -3321,7 +3321,11 @@ def internal_source_records_from_hvac_commands(
     Sign convention:
         heating -> positive sensible_heat_w
         cooling -> negative sensible_heat_w
-
+    Warning:
+        This function is diagnostic/backward-compatible only.
+        In Phase 10.10+, HVAC should normally be recorded by the
+        system-energy path, not as an internal source, to avoid
+        double counting.
     electricity_wh is always non-negative.
     """
 

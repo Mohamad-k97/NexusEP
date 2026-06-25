@@ -62,7 +62,9 @@ def make_default_family_building() -> BuildingModel:
             "heating_w_m2": 80.0,
             "has_cooling": False,
             "cooling_w_m2": 0.0,
+            "has_ventilation": True,
             "ventilation_ach": 0.5,
+            "has_lighting": True,
             "lighting_w_m2": 6.0,
             "has_window": True,
             "has_shading": True,
@@ -82,7 +84,9 @@ def make_default_family_building() -> BuildingModel:
             "heating_w_m2": 75.0,
             "has_cooling": False,
             "cooling_w_m2": 0.0,
+            "has_ventilation": True,
             "ventilation_ach": 0.5,
+            "has_lighting": True,
             "lighting_w_m2": 5.0,
             "has_window": True,
             "has_shading": True,
@@ -102,7 +106,9 @@ def make_default_family_building() -> BuildingModel:
             "heating_w_m2": 75.0,
             "has_cooling": False,
             "cooling_w_m2": 0.0,
+            "has_ventilation": True,
             "ventilation_ach": 0.5,
+            "has_lighting": True,
             "lighting_w_m2": 5.0,
             "has_window": True,
             "has_shading": True,
@@ -122,7 +128,9 @@ def make_default_family_building() -> BuildingModel:
             "heating_w_m2": 70.0,
             "has_cooling": False,
             "cooling_w_m2": 0.0,
+            "has_ventilation": True,
             "ventilation_ach": 0.8,
+            "has_lighting": True,
             "lighting_w_m2": 7.0,
             "has_window": True,
             "has_shading": True,
@@ -142,7 +150,9 @@ def make_default_family_building() -> BuildingModel:
             "heating_w_m2": 100.0,
             "has_cooling": False,
             "cooling_w_m2": 0.0,
+            "has_ventilation": True,
             "ventilation_ach": 1.2,
+            "has_lighting": True,
             "lighting_w_m2": 8.0,
             "has_window": True,
             "has_shading": False,
@@ -162,7 +172,9 @@ def make_default_family_building() -> BuildingModel:
             "heating_w_m2": 0.0,
             "has_cooling": False,
             "cooling_w_m2": 0.0,
+            "has_ventilation": True,
             "ventilation_ach": 0.8,
+            "has_lighting": True,
             "lighting_w_m2": 6.0,
             "has_window": False,
             "has_shading": False,
@@ -182,7 +194,9 @@ def make_default_family_building() -> BuildingModel:
             "heating_w_m2": 75.0,
             "has_cooling": False,
             "cooling_w_m2": 0.0,
+            "has_ventilation": True,
             "ventilation_ach": 0.5,
+            "has_lighting": True,
             "lighting_w_m2": 7.0,
             "has_window": True,
             "has_shading": True,
@@ -202,7 +216,9 @@ def make_default_family_building() -> BuildingModel:
             "heating_w_m2": 0.0,
             "has_cooling": False,
             "cooling_w_m2": 0.0,
+            "has_ventilation": False,
             "ventilation_ach": 0.4,
+            "has_lighting": True,
             "lighting_w_m2": 5.0,
             "has_window": False,
             "has_shading": False,
@@ -221,6 +237,37 @@ def make_default_family_building() -> BuildingModel:
         else:
             zone_use = role
 
+        has_heating = bool(item.get("has_heating", True))
+        has_cooling = bool(item.get("has_cooling", False))
+        has_ventilation = bool(item.get("has_ventilation", True))
+        has_lighting = bool(item.get("has_lighting", True))
+        has_window = bool(item.get("has_window", False))
+        has_shading = bool(item.get("has_shading", False))
+
+        heating_capacity_w = (
+            float(item["heating_w_m2"]) * float(item["area"])
+            if has_heating
+            else 0.0
+        )
+
+        cooling_capacity_w = (
+            float(item["cooling_w_m2"]) * float(item["area"])
+            if has_cooling
+            else 0.0
+        )
+
+        ventilation_flow_m3_h = (
+            float(item["ventilation_ach"]) * volume_m3
+            if has_ventilation
+            else 0.0
+        )
+
+        lighting_power_w = (
+            float(item["lighting_w_m2"]) * float(item["area"])
+            if has_lighting
+            else 0.0
+        )
+
         zone_model = ZoneModel(
             zone_id=zone_id,
             zone_name=item["name"],
@@ -235,30 +282,24 @@ def make_default_family_building() -> BuildingModel:
             thermal_capacity_j_per_k=float(item["thermal_capacity"]),
             initial_temp_c=float(item["initial_temp"]),
             initial_co2_ppm=float(item["initial_co2"]),
+            mechanical_ventilation_available=has_ventilation,
+            mechanical_ventilation_flow_m3_h=ventilation_flow_m3_h,
         )
-        
+
         system_spec = ZoneSystemSpec(
             zone_id=zone_id,
             dwelling_id=dwelling_id,
             building_id=building_id,
-            heating_capacity_w=(
-                float(item["heating_w_m2"]) * float(item["area"])
-            ),
-            cooling_capacity_w=(
-                float(item["cooling_w_m2"]) * float(item["area"])
-            ),
-            ventilation_flow_m3_h=(
-                float(item["ventilation_ach"]) * volume_m3
-            ),
-            lighting_power_w=(
-                float(item["lighting_w_m2"]) * float(item["area"])
-            ),
-            has_heating=bool(item["has_heating"]),
-            has_cooling=bool(item["has_cooling"]),
-            has_ventilation=True,
-            has_lighting=True,
-            has_operable_window=bool(item["has_window"]),
-            has_shading=bool(item["has_shading"]),
+            heating_capacity_w=heating_capacity_w,
+            cooling_capacity_w=cooling_capacity_w,
+            ventilation_flow_m3_h=ventilation_flow_m3_h,
+            lighting_power_w=lighting_power_w,
+            has_heating=has_heating,
+            has_cooling=has_cooling,
+            has_ventilation=has_ventilation,
+            has_lighting=has_lighting,
+            has_operable_window=has_window,
+            has_shading=has_shading,
         )
 
         control_state = ZoneControlState(
@@ -272,7 +313,7 @@ def make_default_family_building() -> BuildingModel:
             cooling_setpoint_c=26.0,
             manual_cooling_on=False,
             ventilation_mode="manual",
-            manual_ventilation_on=True,
+            manual_ventilation_on=has_ventilation,
             lighting_mode="manual",
             manual_lights_on=False,
             window_mode="manual",

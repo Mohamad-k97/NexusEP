@@ -34,6 +34,42 @@ CONTROL_ACTION_ALIASES = {
     "turn_off_cooling": "turn_cooling_off",
     "cooling_off": "turn_cooling_off",
 
+    "raise_heating_setpoint": "raise_heating_setpoint",
+    "increase_heating_setpoint": "raise_heating_setpoint",
+    "heating_setpoint_up": "raise_heating_setpoint",
+    "warmer": "raise_heating_setpoint",
+
+    "lower_heating_setpoint": "lower_heating_setpoint",
+    "decrease_heating_setpoint": "lower_heating_setpoint",
+    "heating_setpoint_down": "lower_heating_setpoint",
+
+    "set_heating_setpoint": "set_heating_setpoint",
+    "change_heating_setpoint": "set_heating_setpoint",
+
+    "raise_cooling_setpoint": "raise_cooling_setpoint",
+    "increase_cooling_setpoint": "raise_cooling_setpoint",
+    "cooling_setpoint_up": "raise_cooling_setpoint",
+
+    "lower_cooling_setpoint": "lower_cooling_setpoint",
+    "decrease_cooling_setpoint": "lower_cooling_setpoint",
+    "cooling_setpoint_down": "lower_cooling_setpoint",
+    "cooler": "lower_cooling_setpoint",
+
+    "set_cooling_setpoint": "set_cooling_setpoint",
+    "change_cooling_setpoint": "set_cooling_setpoint",
+    
+    "turn_ventilation_on": "turn_ventilation_on",
+    "turn_on_ventilation": "turn_ventilation_on",
+    "ventilation_on": "turn_ventilation_on",
+    "turn_fan_on": "turn_ventilation_on",
+    "fan_on": "turn_ventilation_on",
+
+    "turn_ventilation_off": "turn_ventilation_off",
+    "turn_off_ventilation": "turn_ventilation_off",
+    "ventilation_off": "turn_ventilation_off",
+    "turn_fan_off": "turn_ventilation_off",
+    "fan_off": "turn_ventilation_off",
+
     "turn_lights_on": "turn_lights_on",
     "turn_light_on": "turn_lights_on",
     "switch_lights_on": "turn_lights_on",
@@ -66,6 +102,8 @@ def apply_control_action_bridge(
     heating_off_setpoint_c: float = 16.0,
     cooling_on_setpoint_c: float = 24.0,
     cooling_off_setpoint_c: float = 30.0,
+    setpoint_step_c: float = 0.5,
+    minimum_heat_cool_gap_c: float = 1.0,
 ) -> List[Dict[str, Any]]:
     """
     Apply human control actions to the ZoneControlState of the occupied zone.
@@ -150,6 +188,9 @@ def apply_control_action_bridge(
             heating_off_setpoint_c=heating_off_setpoint_c,
             cooling_on_setpoint_c=cooling_on_setpoint_c,
             cooling_off_setpoint_c=cooling_off_setpoint_c,
+            action_value=event.get("action_value"),
+            setpoint_step_c=setpoint_step_c,
+            minimum_heat_cool_gap_c=minimum_heat_cool_gap_c,
         )
 
         after = control_state.to_dict()
@@ -190,71 +231,145 @@ def _apply_action_to_control_state(
     heating_off_setpoint_c: float,
     cooling_on_setpoint_c: float,
     cooling_off_setpoint_c: float,
+    action_value: Optional[Any] = None,
+    setpoint_step_c: float = 0.5,
+    minimum_heat_cool_gap_c: float = 1.0,
 ) -> tuple:
-    if action_name == "turn_heating_on":
-        if control_state.heating_mode == "auto":
+    
+    if action_name == "raise_heating_setpoint":
+        if _is_auto_or_bms_mode(control_state.heating_mode):
             return False, "auto_placeholder_no_override"
 
-        if control_state.heating_mode == "semi_auto":
-            control_state.heating_setpoint_c = max(
-                control_state.heating_setpoint_c,
-                heating_on_setpoint_c,
-            )
-            return True, "semi_auto_heating_setpoint_raised"
+        delta_c = _delta_or_default(action_value, setpoint_step_c)
 
-        if control_state.heating_mode == "off":
-            control_state.heating_mode = "manual"
+        return _set_heating_setpoint(
+            control_state=control_state,
+            new_setpoint_c=control_state.heating_setpoint_c + delta_c,
+            minimum_heat_cool_gap_c=minimum_heat_cool_gap_c,
+            reason="heating_setpoint_raised",
+        )
 
+    if action_name == "lower_heating_setpoint":
+        if _is_auto_or_bms_mode(control_state.heating_mode):
+            return False, "auto_placeholder_no_override"
+
+        delta_c = _delta_or_default(action_value, setpoint_step_c)
+
+        return _set_heating_setpoint(
+            control_state=control_state,
+            new_setpoint_c=control_state.heating_setpoint_c - delta_c,
+            minimum_heat_cool_gap_c=minimum_heat_cool_gap_c,
+            reason="heating_setpoint_lowered",
+        )
+
+    if action_name == "set_heating_setpoint":
+        if _is_auto_or_bms_mode(control_state.heating_mode):
+            return False, "auto_placeholder_no_override"
+
+        value = _float_or_none(action_value)
+
+        if value is None:
+            return False, "missing_heating_setpoint_value"
+
+        return _set_heating_setpoint(
+            control_state=control_state,
+            new_setpoint_c=value,
+            minimum_heat_cool_gap_c=minimum_heat_cool_gap_c,
+            reason="heating_setpoint_set",
+        )
+
+    if action_name == "raise_cooling_setpoint":
+        if _is_auto_or_bms_mode(control_state.cooling_mode):
+            return False, "auto_placeholder_no_override"
+
+        delta_c = _delta_or_default(action_value, setpoint_step_c)
+
+        return _set_cooling_setpoint(
+            control_state=control_state,
+            new_setpoint_c=control_state.cooling_setpoint_c + delta_c,
+            minimum_heat_cool_gap_c=minimum_heat_cool_gap_c,
+            reason="cooling_setpoint_raised",
+        )
+
+    if action_name == "lower_cooling_setpoint":
+        if _is_auto_or_bms_mode(control_state.cooling_mode):
+            return False, "auto_placeholder_no_override"
+
+        delta_c = _delta_or_default(action_value, setpoint_step_c)
+
+        return _set_cooling_setpoint(
+            control_state=control_state,
+            new_setpoint_c=control_state.cooling_setpoint_c - delta_c,
+            minimum_heat_cool_gap_c=minimum_heat_cool_gap_c,
+            reason="cooling_setpoint_lowered",
+        )
+
+    if action_name == "set_cooling_setpoint":
+        if _is_auto_or_bms_mode(control_state.cooling_mode):
+            return False, "auto_placeholder_no_override"
+
+        value = _float_or_none(action_value)
+
+        if value is None:
+            return False, "missing_cooling_setpoint_value"
+
+        return _set_cooling_setpoint(
+            control_state=control_state,
+            new_setpoint_c=value,
+            minimum_heat_cool_gap_c=minimum_heat_cool_gap_c,
+            reason="cooling_setpoint_set",
+        )
+    
+    if action_name == "turn_heating_on":
+        if _is_auto_or_bms_mode(control_state.heating_mode):
+            return False, "auto_placeholder_no_override"
+
+        control_state.heating_mode = "manual"
         control_state.manual_heating_on = True
         return True, "manual_heating_on"
 
     if action_name == "turn_heating_off":
-        if control_state.heating_mode == "auto":
+        if _is_auto_or_bms_mode(control_state.heating_mode):
             return False, "auto_placeholder_no_override"
 
-        if control_state.heating_mode == "semi_auto":
-            control_state.heating_setpoint_c = min(
-                control_state.heating_setpoint_c,
-                heating_off_setpoint_c,
-            )
-            return True, "semi_auto_heating_setback"
-
+        control_state.heating_mode = "manual"
         control_state.manual_heating_on = False
         return True, "manual_heating_off"
 
     if action_name == "turn_cooling_on":
-        if control_state.cooling_mode == "auto":
+        if _is_auto_or_bms_mode(control_state.cooling_mode):
             return False, "auto_placeholder_no_override"
 
-        if control_state.cooling_mode == "semi_auto":
-            control_state.cooling_setpoint_c = min(
-                control_state.cooling_setpoint_c,
-                cooling_on_setpoint_c,
-            )
-            return True, "semi_auto_cooling_setpoint_lowered"
-
-        if control_state.cooling_mode == "off":
-            control_state.cooling_mode = "manual"
-
+        control_state.cooling_mode = "manual"
         control_state.manual_cooling_on = True
         return True, "manual_cooling_on"
 
     if action_name == "turn_cooling_off":
-        if control_state.cooling_mode == "auto":
+        if _is_auto_or_bms_mode(control_state.cooling_mode):
             return False, "auto_placeholder_no_override"
 
-        if control_state.cooling_mode == "semi_auto":
-            control_state.cooling_setpoint_c = max(
-                control_state.cooling_setpoint_c,
-                cooling_off_setpoint_c,
-            )
-            return True, "semi_auto_cooling_setback"
-
+        control_state.cooling_mode = "manual"
         control_state.manual_cooling_on = False
         return True, "manual_cooling_off"
 
+    if action_name == "turn_ventilation_on":
+        if _is_auto_or_bms_mode(control_state.ventilation_mode):
+            return False, "auto_placeholder_no_override"
+
+        control_state.ventilation_mode = "manual"
+        control_state.manual_ventilation_on = True
+        return True, "manual_ventilation_on"
+
+    if action_name == "turn_ventilation_off":
+        if _is_auto_or_bms_mode(control_state.ventilation_mode):
+            return False, "auto_placeholder_no_override"
+
+        control_state.ventilation_mode = "manual"
+        control_state.manual_ventilation_on = False
+        return True, "manual_ventilation_off"
+
     if action_name == "turn_lights_on":
-        if control_state.lighting_mode == "auto":
+        if _is_auto_or_bms_mode(control_state.lighting_mode):
             return False, "auto_placeholder_no_override"
 
         control_state.lighting_mode = "manual"
@@ -262,7 +377,7 @@ def _apply_action_to_control_state(
         return True, "manual_lights_on"
 
     if action_name == "turn_lights_off":
-        if control_state.lighting_mode == "auto":
+        if _is_auto_or_bms_mode(control_state.lighting_mode):
             return False, "auto_placeholder_no_override"
 
         control_state.lighting_mode = "manual"
@@ -270,7 +385,7 @@ def _apply_action_to_control_state(
         return True, "manual_lights_off"
 
     if action_name == "open_window":
-        if control_state.window_mode == "auto":
+        if _is_auto_or_bms_mode(control_state.window_mode):
             return False, "auto_placeholder_no_override"
 
         control_state.window_mode = "manual"
@@ -278,7 +393,7 @@ def _apply_action_to_control_state(
         return True, "manual_window_open"
 
     if action_name == "close_window":
-        if control_state.window_mode == "auto":
+        if _is_auto_or_bms_mode(control_state.window_mode):
             return False, "auto_placeholder_no_override"
 
         control_state.window_mode = "manual"
@@ -286,7 +401,7 @@ def _apply_action_to_control_state(
         return True, "manual_window_closed"
 
     if action_name == "open_curtain":
-        if control_state.shading_mode == "auto":
+        if _is_auto_or_bms_mode(control_state.shading_mode):
             return False, "auto_placeholder_no_override"
 
         control_state.shading_mode = "manual"
@@ -294,7 +409,7 @@ def _apply_action_to_control_state(
         return True, "manual_curtain_open"
 
     if action_name == "close_curtain":
-        if control_state.shading_mode == "auto":
+        if _is_auto_or_bms_mode(control_state.shading_mode):
             return False, "auto_placeholder_no_override"
 
         control_state.shading_mode = "manual"
@@ -374,6 +489,7 @@ def _extract_action_events(
                 {
                     "occupant_id": occupant_id,
                     "action_name": action_name,
+                    "action_value": None,
                     "source": "action_name_by_occupant",
                 }
             )
@@ -388,6 +504,7 @@ def _extract_action_events(
                     {
                         "occupant_id": key,
                         "action_name": value,
+                        "action_value": None,
                         "source": "action_records_mapping",
                     }
                 )
@@ -403,6 +520,7 @@ def _extract_action_events(
                     {
                         "occupant_id": occupant_id,
                         "action_name": action_name,
+                        "action_value": _extract_action_value(value),
                         "source": "action_records_dict",
                     }
                 )
@@ -420,6 +538,7 @@ def _extract_action_events(
             {
                 "occupant_id": occupant_id,
                 "action_name": action_name,
+                "action_value": _extract_action_value(record),
                 "source": "action_records_list",
             }
         )
@@ -476,6 +595,148 @@ def _extract_action_name(record: Any) -> Optional[str]:
 
     return None
 
+def _extract_action_value(record: Any) -> Optional[Any]:
+    if record is None:
+        return None
+
+    if isinstance(record, str):
+        return None
+
+    keys = [
+        "action_value",
+        "value",
+        "setpoint_c",
+        "temperature_c",
+        "target_c",
+        "delta_c",
+        "amount_c",
+    ]
+
+    for key in keys:
+        value = _get_attr_or_key(record, key, None)
+
+        if value is not None:
+            return value
+
+    return None
+
+
+def _delta_or_default(value: Any, default_delta_c: float) -> float:
+    parsed = _float_or_none(value)
+
+    if parsed is None:
+        parsed = default_delta_c
+
+    parsed = abs(float(parsed))
+
+    if parsed <= 0.0:
+        parsed = abs(float(default_delta_c))
+
+    return parsed
+
+
+def _float_or_none(value: Any) -> Optional[float]:
+    if value is None:
+        return None
+
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def _bounded_setpoint_c(value: float) -> float:
+    value = float(value)
+
+    if value < 5.0:
+        return 5.0
+
+    if value > 35.0:
+        return 35.0
+
+    return value
+
+
+def _set_heating_setpoint(
+    control_state: ZoneControlState,
+    new_setpoint_c: float,
+    minimum_heat_cool_gap_c: float,
+    reason: str,
+) -> tuple:
+    old_mode = control_state.heating_mode
+    old_setpoint = float(control_state.heating_setpoint_c)
+
+    minimum_heat_cool_gap_c = max(0.0, float(minimum_heat_cool_gap_c))
+
+    new_setpoint_c = _bounded_setpoint_c(new_setpoint_c)
+
+    max_allowed = (
+        float(control_state.cooling_setpoint_c)
+        - minimum_heat_cool_gap_c
+    )
+
+    clipped = False
+
+    if new_setpoint_c > max_allowed:
+        new_setpoint_c = max_allowed
+        clipped = True
+
+    control_state.heating_mode = "semi_auto"
+    control_state.heating_setpoint_c = float(new_setpoint_c)
+
+    changed = (
+        old_mode != control_state.heating_mode
+        or abs(old_setpoint - control_state.heating_setpoint_c) > 1e-9
+    )
+
+    if not changed:
+        return False, "heating_setpoint_unchanged"
+
+    if clipped:
+        return True, reason + "_clipped_by_cooling_setpoint"
+
+    return True, reason
+
+
+def _set_cooling_setpoint(
+    control_state: ZoneControlState,
+    new_setpoint_c: float,
+    minimum_heat_cool_gap_c: float,
+    reason: str,
+) -> tuple:
+    old_mode = control_state.cooling_mode
+    old_setpoint = float(control_state.cooling_setpoint_c)
+
+    minimum_heat_cool_gap_c = max(0.0, float(minimum_heat_cool_gap_c))
+
+    new_setpoint_c = _bounded_setpoint_c(new_setpoint_c)
+
+    min_allowed = (
+        float(control_state.heating_setpoint_c)
+        + minimum_heat_cool_gap_c
+    )
+
+    clipped = False
+
+    if new_setpoint_c < min_allowed:
+        new_setpoint_c = min_allowed
+        clipped = True
+
+    control_state.cooling_mode = "semi_auto"
+    control_state.cooling_setpoint_c = float(new_setpoint_c)
+
+    changed = (
+        old_mode != control_state.cooling_mode
+        or abs(old_setpoint - control_state.cooling_setpoint_c) > 1e-9
+    )
+
+    if not changed:
+        return False, "cooling_setpoint_unchanged"
+
+    if clipped:
+        return True, reason + "_clipped_by_heating_setpoint"
+
+    return True, reason
 
 def _make_bridge_record(
     occupant_id: Optional[str],
@@ -502,6 +763,8 @@ def _make_bridge_record(
         "after": after,
     }
 
+def _is_auto_or_bms_mode(value: Any) -> bool:
+    return str(value).strip().lower() in {"auto", "bms"}
 
 def _get_attr_or_key(obj: Any, name: str, default: Any = None) -> Any:
     if obj is None:

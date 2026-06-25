@@ -8,7 +8,7 @@ import random
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, List, Mapping, Optional, Union
-
+from types import SimpleNamespace
 from nexusep.abbey.household import HouseholdState, update_household_dirty_clothes
 from nexusep.abbey.agents.decision import choose_action
 from nexusep.abbey.agents.health import update_health
@@ -75,7 +75,7 @@ class AbbeySimulation:
     # New building-performance path.
     building_model: Optional[BuildingModel] = None
     building_performance_model: Optional[SimpleBuildingPerformanceModel] = None
-    use_building_performance: bool = False
+    use_building_performance: bool = True
 
     building_zone_records: Optional[List[Dict[str, Any]]] = None
     building_dwelling_records: Optional[List[Dict[str, Any]]] = None
@@ -83,7 +83,6 @@ class AbbeySimulation:
     building_control_bridge_records: Optional[List[Dict[str, Any]]] = None
     building_action_event_records: Optional[List[Dict[str, Any]]] = None
     
-    building_internal_source_records: Optional[List[Dict[str, Any]]] = None
     building_internal_source_records: Optional[List[Dict[str, Any]]] = None
     building_internal_source_zone_records: Optional[List[Dict[str, Any]]] = None
     building_internal_source_building_records: Optional[List[Dict[str, Any]]] = None
@@ -183,7 +182,7 @@ class AbbeySimulation:
 
         building_model: Optional[BuildingModel] = None,
         building_performance_model: Optional[SimpleBuildingPerformanceModel] = None,
-        use_building_performance: bool = False,
+        use_building_performance: bool = True,
 
         random_seed: int = 42,
     ) -> "AbbeySimulation":
@@ -305,8 +304,9 @@ class AbbeySimulation:
         if use_building_performance and building_performance_model is None:
             building_performance_model = SimpleBuildingPerformanceModel(
                 building_model=building_model,
+                use_physics_engine=True,
+                allow_legacy_physics_fallback=False,
             )
-
         return cls(
             config=config,
             people=people,
@@ -638,11 +638,9 @@ class AbbeySimulation:
             performance_input=performance_input,
             dt_minutes=self.dt_minutes,
         )
-        self._store_building_internal_source_records(
-            internal_source_result=getattr(result, "internal_source_result", None),
-        )
-        self.observation = result.observation
 
+        self.observation = result.observation
+        self._sync_systems_from_observation()
         self.building_zone_records.extend(result.zone_records)
         self.building_dwelling_records.extend(result.dwelling_records)
         self.last_internal_source_result = getattr(
@@ -749,6 +747,52 @@ class AbbeySimulation:
         except Exception:
             return default
 
+    def _sync_systems_from_observation(self) -> None:
+        """
+        Keep agent-facing SystemState consistent with the final
+        building-performance observation.
+
+        The building/control path is now the source of truth for actual
+        control states after the physics timestep.
+        """
+
+        if self.observation is None:
+            return
+
+        zone_observations = getattr(
+            self.observation,
+            "zone_observations",
+            {},
+        )
+
+        if not zone_observations:
+            return
+
+        systems = self.systems
+
+        for zone_id, zone in zone_observations.items():
+            updates = {
+                "heating_on": bool(getattr(zone, "heating_on", False)),
+                "cooling_on": bool(getattr(zone, "cooling_on", False)),
+                "mechanical_ventilation_on": bool(
+                    getattr(zone, "mechanical_ventilation_on", False)
+                ),
+                "lights_on": bool(getattr(zone, "lights_on", False)),
+                "window_open": bool(getattr(zone, "window_open", False)),
+            }
+
+            curtain_open = getattr(zone, "curtain_open", None)
+
+            if curtain_open is not None:
+                updates["curtain_closed"] = not bool(curtain_open)
+
+            systems = systems.set_space_controls(
+                zone_id,
+                **updates,
+            )
+
+        self.systems = systems
+        
     def _store_building_internal_source_outputs(
         self,
         internal_source_result: Any,
@@ -970,10 +1014,26 @@ class AbbeySimulation:
         if action_name is None or occupant_id is None:
             return None
 
-        return {
+        event = {
             "occupant_id": str(occupant_id),
             "action_name": str(action_name),
         }
+
+        for key in [
+            "action_value",
+            "value",
+            "setpoint_c",
+            "temperature_c",
+            "target_c",
+            "delta_c",
+            "amount_c",
+        ]:
+            value = self._get_attr_or_key(record, key, None)
+
+            if value is not None:
+                event[key] = value
+
+        return event
 
     def _parse_action_list(self, value: Any) -> List[Any]:
         if value is None:
@@ -1026,12 +1086,11 @@ class AbbeySimulation:
                 continue
 
             seen.add(key)
-            out.append(
-                {
-                    "occupant_id": str(occupant_id),
-                    "action_name": str(action_name),
-                }
-            )
+            clean_event = dict(event)
+            clean_event["occupant_id"] = str(occupant_id)
+            clean_event["action_name"] = str(action_name)
+
+            out.append(clean_event)
 
         return out
 
@@ -1147,14 +1206,22 @@ class AbbeySimulation:
             household=self.household,
         )
 
-        performance_output = self.performance_model.step(
-            previous_observation=self.observation,
-            performance_input=performance_input,
-        )
+        if self.use_building_performance:
+            performance_output = SimpleNamespace(
+                performance_log={
+                    "legacy_performance_skipped": True,
+                    "reason": "use_building_performance_active",
+                    "active_performance_path": "building_physics_engine",
+                }
+            )
+        else:
+            performance_output = self.performance_model.step(
+                previous_observation=self.observation,
+                performance_input=performance_input,
+            )
 
-        self.observation = performance_output.observation
+            self.observation = performance_output.observation
 
-        # 5. New building/dwelling performance model.
         # Do not pass scalar action_energy_wh here, because the new model can
         # already map appliance energy from chunk_records by actor/location.
         self._run_building_performance_if_enabled(
@@ -1224,9 +1291,7 @@ class AbbeySimulation:
         import pandas as pd
         return pd.DataFrame(self.building_records)
 
-    def building_internal_source_records_to_dataframe(self):
-        import pandas as pd
-        return pd.DataFrame(self.building_internal_source_records)
+
     
     def building_control_bridge_records_to_dataframe(self):
         import pandas as pd

@@ -319,6 +319,58 @@ def save_yearly_building_outputs(
 # SUMMARY TABLES
 # ============================================================
 
+def _optional_sum_agg(df: pd.DataFrame, columns: list) -> Dict[str, tuple]:
+    return {
+        col: (col, "sum")
+        for col in columns
+        if col in df.columns
+    }
+
+
+def _energy_agg_map(df: pd.DataFrame) -> Dict[str, tuple]:
+    """
+    Common energy aggregation map.
+
+    Old energy columns are kept.
+    New Phase 10.10 HVAC-accounting columns are added only if present.
+    """
+
+    agg_map = {}
+
+    for col in [
+        "heating_energy_wh",
+        "cooling_energy_wh",
+        "lighting_energy_wh",
+        "appliance_energy_wh",
+        "total_energy_wh",
+    ]:
+        if col in df.columns:
+            agg_map[col] = (col, "sum")
+
+    agg_map.update(
+        _optional_sum_agg(
+            df,
+            [
+                "heating_delivered_energy_wh",
+                "cooling_delivered_energy_wh",
+                "ventilation_fan_energy_wh",
+                "hvac_delivered_energy_wh",
+                "hvac_input_energy_wh",
+            ],
+        )
+    )
+
+    return agg_map
+
+def _fallback_agg_map(df: pd.DataFrame) -> Dict[str, tuple]:
+    agg_map = {}
+
+    if "legacy_fallback_used" in df.columns:
+        df["legacy_fallback_used"] = df["legacy_fallback_used"].astype(bool)
+        agg_map["legacy_fallback_steps"] = ("legacy_fallback_used", "sum")
+
+    return agg_map
+
 def make_hourly_zone_summary(zone_df: pd.DataFrame) -> pd.DataFrame:
     df = zone_df.copy()
     _add_time_columns(df)
@@ -332,22 +384,19 @@ def make_hourly_zone_summary(zone_df: pd.DataFrame) -> pd.DataFrame:
         "hour_index",
     ]
 
-    out = df.groupby(group_cols, as_index=False).agg(
-        indoor_temp_c_mean=("indoor_temp_c", "mean"),
-        indoor_temp_c_min=("indoor_temp_c", "min"),
-        indoor_temp_c_max=("indoor_temp_c", "max"),
-        co2_ppm_mean=("co2_ppm", "mean"),
-        co2_ppm_max=("co2_ppm", "max"),
-        occupancy_mean=("number_of_people", "mean"),
-        occupancy_max=("number_of_people", "max"),
-        heating_energy_wh=("heating_energy_wh", "sum"),
-        cooling_energy_wh=("cooling_energy_wh", "sum"),
-        lighting_energy_wh=("lighting_energy_wh", "sum"),
-        appliance_energy_wh=("appliance_energy_wh", "sum"),
-        total_energy_wh=("total_energy_wh", "sum"),
-    )
+    agg_map = {
+        "indoor_temp_c_mean": ("indoor_temp_c", "mean"),
+        "indoor_temp_c_min": ("indoor_temp_c", "min"),
+        "indoor_temp_c_max": ("indoor_temp_c", "max"),
+        "co2_ppm_mean": ("co2_ppm", "mean"),
+        "co2_ppm_max": ("co2_ppm", "max"),
+        "occupancy_mean": ("number_of_people", "mean"),
+        "occupancy_max": ("number_of_people", "max"),
+    }
 
-    return out
+    agg_map.update(_energy_agg_map(df))
+    agg_map.update(_fallback_agg_map(df))
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
 def make_daily_zone_summary(zone_df: pd.DataFrame) -> pd.DataFrame:
@@ -362,22 +411,19 @@ def make_daily_zone_summary(zone_df: pd.DataFrame) -> pd.DataFrame:
         "day",
     ]
 
-    out = df.groupby(group_cols, as_index=False).agg(
-        indoor_temp_c_mean=("indoor_temp_c", "mean"),
-        indoor_temp_c_min=("indoor_temp_c", "min"),
-        indoor_temp_c_max=("indoor_temp_c", "max"),
-        co2_ppm_mean=("co2_ppm", "mean"),
-        co2_ppm_max=("co2_ppm", "max"),
-        occupancy_mean=("number_of_people", "mean"),
-        occupancy_max=("number_of_people", "max"),
-        heating_energy_wh=("heating_energy_wh", "sum"),
-        cooling_energy_wh=("cooling_energy_wh", "sum"),
-        lighting_energy_wh=("lighting_energy_wh", "sum"),
-        appliance_energy_wh=("appliance_energy_wh", "sum"),
-        total_energy_wh=("total_energy_wh", "sum"),
-    )
+    agg_map = {
+        "indoor_temp_c_mean": ("indoor_temp_c", "mean"),
+        "indoor_temp_c_min": ("indoor_temp_c", "min"),
+        "indoor_temp_c_max": ("indoor_temp_c", "max"),
+        "co2_ppm_mean": ("co2_ppm", "mean"),
+        "co2_ppm_max": ("co2_ppm", "max"),
+        "occupancy_mean": ("number_of_people", "mean"),
+        "occupancy_max": ("number_of_people", "max"),
+    }
 
-    return out
+    agg_map.update(_energy_agg_map(df))
+    agg_map.update(_fallback_agg_map(df))
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
 def make_daily_dwelling_summary(dwelling_df: pd.DataFrame) -> pd.DataFrame:
@@ -390,17 +436,14 @@ def make_daily_dwelling_summary(dwelling_df: pd.DataFrame) -> pd.DataFrame:
         "day",
     ]
 
-    out = df.groupby(group_cols, as_index=False).agg(
-        total_occupancy_mean=("total_occupancy", "mean"),
-        total_occupancy_max=("total_occupancy", "max"),
-        heating_energy_wh=("heating_energy_wh", "sum"),
-        cooling_energy_wh=("cooling_energy_wh", "sum"),
-        lighting_energy_wh=("lighting_energy_wh", "sum"),
-        appliance_energy_wh=("appliance_energy_wh", "sum"),
-        total_energy_wh=("total_energy_wh", "sum"),
-    )
+    agg_map = {
+        "total_occupancy_mean": ("total_occupancy", "mean"),
+        "total_occupancy_max": ("total_occupancy", "max"),
+    }
 
-    return out
+    agg_map.update(_energy_agg_map(df))
+    agg_map.update(_fallback_agg_map(df))
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
 def make_daily_building_summary(building_df: pd.DataFrame) -> pd.DataFrame:
@@ -416,7 +459,6 @@ def make_daily_building_summary(building_df: pd.DataFrame) -> pd.DataFrame:
         "number_of_dwellings": ("number_of_dwellings", "max"),
         "total_occupancy_mean": ("total_occupancy", "mean"),
         "total_occupancy_max": ("total_occupancy", "max"),
-        "total_energy_wh": ("total_energy_wh", "sum"),
     }
 
     for col in [
@@ -427,16 +469,22 @@ def make_daily_building_summary(building_df: pd.DataFrame) -> pd.DataFrame:
         "lighting_energy_wh",
         "appliance_energy_wh",
         "shared_system_energy_wh",
+        "total_energy_wh",
+        "heating_delivered_energy_wh",
+        "cooling_delivered_energy_wh",
+        "ventilation_fan_energy_wh",
+        "hvac_delivered_energy_wh",
+        "hvac_input_energy_wh",
     ]:
         if col in df.columns:
             agg_map[col] = (col, "sum")
-
-    out = df.groupby(group_cols, as_index=False).agg(**agg_map)
-
-    return out
+    agg_map.update(_fallback_agg_map(df))
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
 def make_energy_by_zone(zone_df: pd.DataFrame) -> pd.DataFrame:
+    df = zone_df.copy()
+
     group_cols = [
         "building_id",
         "dwelling_id",
@@ -444,38 +492,32 @@ def make_energy_by_zone(zone_df: pd.DataFrame) -> pd.DataFrame:
         "zone_scope",
     ]
 
-    return zone_df.groupby(group_cols, as_index=False).agg(
-        heating_energy_wh=("heating_energy_wh", "sum"),
-        cooling_energy_wh=("cooling_energy_wh", "sum"),
-        lighting_energy_wh=("lighting_energy_wh", "sum"),
-        appliance_energy_wh=("appliance_energy_wh", "sum"),
-        total_energy_wh=("total_energy_wh", "sum"),
-    )
+    agg_map = _energy_agg_map(df)
+    agg_map.update(_fallback_agg_map(df))
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
 def make_energy_by_dwelling(dwelling_df: pd.DataFrame) -> pd.DataFrame:
+    df = dwelling_df.copy()
+
     group_cols = [
         "building_id",
         "dwelling_id",
     ]
 
-    return dwelling_df.groupby(group_cols, as_index=False).agg(
-        heating_energy_wh=("heating_energy_wh", "sum"),
-        cooling_energy_wh=("cooling_energy_wh", "sum"),
-        lighting_energy_wh=("lighting_energy_wh", "sum"),
-        appliance_energy_wh=("appliance_energy_wh", "sum"),
-        total_energy_wh=("total_energy_wh", "sum"),
-    )
+    agg_map = _energy_agg_map(df)
+    agg_map.update(_fallback_agg_map(df))
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
 def make_energy_by_building(building_df: pd.DataFrame) -> pd.DataFrame:
+    df = building_df.copy()
+
     group_cols = [
         "building_id",
     ]
 
-    agg_map = {
-        "total_energy_wh": ("total_energy_wh", "sum"),
-    }
+    agg_map = {}
 
     for col in [
         "private_zone_energy_wh",
@@ -485,27 +527,40 @@ def make_energy_by_building(building_df: pd.DataFrame) -> pd.DataFrame:
         "lighting_energy_wh",
         "appliance_energy_wh",
         "shared_system_energy_wh",
+        "total_energy_wh",
+        "heating_delivered_energy_wh",
+        "cooling_delivered_energy_wh",
+        "ventilation_fan_energy_wh",
+        "hvac_delivered_energy_wh",
+        "hvac_input_energy_wh",
     ]:
-        if col in building_df.columns:
+        if col in df.columns:
             agg_map[col] = (col, "sum")
-
-    return building_df.groupby(group_cols, as_index=False).agg(**agg_map)
+    agg_map.update(_fallback_agg_map(df))
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
 def make_control_active_hours_by_zone(zone_df: pd.DataFrame) -> pd.DataFrame:
     df = zone_df.copy()
     dt_hours = _infer_dt_hours(df)
 
-    for col in [
+    control_cols = [
         "heating_on",
         "cooling_on",
         "lights_on",
         "window_open",
-    ]:
-        if col not in df.columns:
-            df[col] = False
+        "mechanical_ventilation_on",
+    ]
 
-        df[col + "_hours"] = df[col].astype(bool).astype(float) * dt_hours
+    active_hour_cols = []
+
+    for col in control_cols:
+        if col not in df.columns:
+            continue
+
+        hour_col = col + "_hours"
+        df[hour_col] = df[col].astype(bool).astype(float) * dt_hours
+        active_hour_cols.append(hour_col)
 
     group_cols = [
         "building_id",
@@ -514,13 +569,12 @@ def make_control_active_hours_by_zone(zone_df: pd.DataFrame) -> pd.DataFrame:
         "zone_scope",
     ]
 
-    return df.groupby(group_cols, as_index=False).agg(
-        heating_on_hours=("heating_on_hours", "sum"),
-        cooling_on_hours=("cooling_on_hours", "sum"),
-        lights_on_hours=("lights_on_hours", "sum"),
-        window_open_hours=("window_open_hours", "sum"),
-    )
-
+    agg_map = {
+        col: (col, "sum")
+        for col in active_hour_cols
+    }
+    agg_map.update(_fallback_agg_map(df))
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 # ============================================================
 # PLOTS
@@ -617,6 +671,12 @@ def _plot_energy_by_dwelling(
 
     return path
 
+def _optional_sum_agg(df: pd.DataFrame, columns: list) -> Dict[str, tuple]:
+    return {
+        col: (col, "sum")
+        for col in columns
+        if col in df.columns
+    }
 
 def _plot_energy_by_building(
     building_df: pd.DataFrame,

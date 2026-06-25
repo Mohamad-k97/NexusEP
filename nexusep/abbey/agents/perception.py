@@ -113,11 +113,20 @@ def compute_thermal_perception(
     ta = zone.indoor_temp
     tr = ta
 
+    rh_percent = getattr(
+        zone,
+        "indoor_relative_humidity_percent",
+        None,
+    )
+
+    if rh_percent is None:
+        rh_percent = float(cfg["relative_humidity_percent"])
+
     pmv = fanger_pmv(
         ta_c=ta,
         tr_c=tr,
         vel_m_s=float(cfg["air_velocity_m_s"]),
-        rh_percent=float(cfg["relative_humidity_percent"]),
+        rh_percent=float(rh_percent),
         met=float(cfg["met"]),
         clo=float(cfg["clo"]),
     )
@@ -187,7 +196,7 @@ def visual_stressor(
     effective_light = zone.indoor_daylight
     zone_controls = systems.get_space_controls(location.current_space_id)
     
-    if zone_controls.lights_on:
+    if zone.lights_on or zone_controls.lights_on:
         effective_light += float(cfg["artificial_light_equivalent"])
 
     deficit = max(

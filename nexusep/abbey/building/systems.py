@@ -9,8 +9,8 @@ This module defines:
 - energy result containers
 """
 
-from dataclasses import dataclass, replace
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, field, replace
+from typing import Any, Dict, List, Optional
 import copy
 
 
@@ -19,6 +19,7 @@ VALID_CONTROL_MODES = {
     "manual",
     "semi_auto",
     "auto",
+    "bms",
 }
 
 VALID_SYSTEM_SCOPES = {
@@ -50,7 +51,8 @@ class ZoneSystemSpec:
     cooling_capacity_w: float = 0.0
     ventilation_flow_m3_h: float = 0.0
     lighting_power_w: float = 0.0
-
+    ventilation_fan_power_w: float = 0.0
+    
     heating_efficiency_or_cop: float = 1.0
     cooling_efficiency_or_cop: float = 3.0
 
@@ -72,6 +74,7 @@ class ZoneSystemSpec:
         _check_nonnegative(self.heating_capacity_w, "heating_capacity_w", self.zone_id)
         _check_nonnegative(self.cooling_capacity_w, "cooling_capacity_w", self.zone_id)
         _check_nonnegative(self.ventilation_flow_m3_h, "ventilation_flow_m3_h", self.zone_id)
+        _check_nonnegative(self.ventilation_fan_power_w, "ventilation_fan_power_w", self.zone_id)
         _check_nonnegative(self.lighting_power_w, "lighting_power_w", self.zone_id)
 
         _check_positive(
@@ -112,6 +115,7 @@ class ZoneSystemSpec:
             "heating_capacity_w": self.heating_capacity_w,
             "cooling_capacity_w": self.cooling_capacity_w,
             "ventilation_flow_m3_h": self.ventilation_flow_m3_h,
+            "ventilation_fan_power_w": self.ventilation_fan_power_w,
             "lighting_power_w": self.lighting_power_w,
             "heating_efficiency_or_cop": self.heating_efficiency_or_cop,
             "cooling_efficiency_or_cop": self.cooling_efficiency_or_cop,
@@ -246,11 +250,26 @@ class ZoneControlState:
         _check_control_mode(self.lighting_mode, "lighting_mode", self.zone_id)
         _check_control_mode(self.window_mode, "window_mode", self.zone_id)
         _check_control_mode(self.shading_mode, "shading_mode", self.zone_id)
+
+        self.heating_setpoint_c = float(self.heating_setpoint_c)
+        self.cooling_setpoint_c = float(self.cooling_setpoint_c)
+        self.thermostat_deadband_c = float(self.thermostat_deadband_c)
+
         _check_nonnegative(
             self.thermostat_deadband_c,
             "thermostat_deadband_c",
             self.zone_id,
         )
+
+        if self.heating_setpoint_c >= self.cooling_setpoint_c:
+            raise ValueError(
+                "heating_setpoint_c must be lower than cooling_setpoint_c for "
+                + self.zone_id
+                + ". Got heating="
+                + str(self.heating_setpoint_c)
+                + ", cooling="
+                + str(self.cooling_setpoint_c)
+            )
 
     def copy(self, **updates: Any) -> "ZoneControlState":
         if not updates:
@@ -343,6 +362,273 @@ class ZoneControlCommand:
             "curtain_open": self.curtain_open,
         }
 
+@dataclass
+class ZoneControlCommandConstraintResult:
+    """
+    Result of constraining a physical command to the systems actually
+    available in the zone.
+
+    This is a defensive safety layer:
+        controller command + system spec -> physically admissible command
+    """
+
+    command: ZoneControlCommand
+    records: List[Dict[str, Any]] = field(default_factory=list)
+
+    @property
+    def changed(self) -> bool:
+        return len(self.records) > 0
+
+
+def constrain_zone_control_command_to_system_spec(
+    command: ZoneControlCommand,
+    system_spec: ZoneSystemSpec,
+) -> ZoneControlCommandConstraintResult:
+    """
+    Clip/disable command fields that are impossible for the zone system.
+
+    Example:
+        has_cooling=False -> cooling_on=False and cooling_power_fraction=0
+        has_ventilation=False -> ventilation_flow_m3_h=0
+        has_operable_window=False -> window_open=False and opening_fraction=0
+
+    This function does not decide comfort. It only enforces physical availability.
+    """
+
+    if command is None:
+        raise ValueError("command cannot be None.")
+
+    if system_spec is None:
+        raise ValueError("system_spec cannot be None.")
+
+    updates = {}
+    records = []
+
+    def set_field(field_name: str, new_value: Any, reason: str) -> None:
+        old_value = getattr(command, field_name)
+
+        if old_value == new_value:
+            return
+
+        updates[field_name] = new_value
+
+        records.append(
+            {
+                "building_id": command.building_id,
+                "dwelling_id": command.dwelling_id,
+                "zone_id": command.zone_id,
+                "field": field_name,
+                "old_value": old_value,
+                "new_value": new_value,
+                "reason": reason,
+            }
+        )
+
+    # Heating availability.
+    if (not system_spec.has_heating) or float(system_spec.heating_capacity_w) <= 0.0:
+        set_field("heating_on", False, "heating_not_available")
+        set_field("heating_power_fraction", 0.0, "heating_not_available")
+    else:
+        heating_fraction = _clip_fraction_value(command.heating_power_fraction)
+
+        if not command.heating_on:
+            heating_fraction = 0.0
+
+        set_field("heating_power_fraction", heating_fraction, "heating_fraction_clipped")
+
+    # Cooling availability.
+    if (not system_spec.has_cooling) or float(system_spec.cooling_capacity_w) <= 0.0:
+        set_field("cooling_on", False, "cooling_not_available")
+        set_field("cooling_power_fraction", 0.0, "cooling_not_available")
+    else:
+        cooling_fraction = _clip_fraction_value(command.cooling_power_fraction)
+
+        if not command.cooling_on:
+            cooling_fraction = 0.0
+
+        set_field("cooling_power_fraction", cooling_fraction, "cooling_fraction_clipped")
+
+    # Mechanical ventilation availability.
+    if (not system_spec.has_ventilation) or float(system_spec.ventilation_flow_m3_h) <= 0.0:
+        set_field("ventilation_flow_m3_h", 0.0, "ventilation_not_available")
+    else:
+        flow = float(command.ventilation_flow_m3_h)
+
+        if flow < 0.0:
+            flow = 0.0
+
+        if flow > float(system_spec.ventilation_flow_m3_h):
+            flow = float(system_spec.ventilation_flow_m3_h)
+
+        set_field("ventilation_flow_m3_h", flow, "ventilation_flow_clipped_to_capacity")
+
+    # Lighting availability.
+    if (not system_spec.has_lighting) or float(system_spec.lighting_power_w) <= 0.0:
+        set_field("lights_on", False, "lighting_not_available")
+        set_field("lighting_power_w", 0.0, "lighting_not_available")
+    else:
+        lighting_power_w = float(command.lighting_power_w)
+
+        if not command.lights_on:
+            lighting_power_w = 0.0
+
+        if lighting_power_w < 0.0:
+            lighting_power_w = 0.0
+
+        if lighting_power_w > float(system_spec.lighting_power_w):
+            lighting_power_w = float(system_spec.lighting_power_w)
+
+        set_field("lighting_power_w", lighting_power_w, "lighting_power_clipped_to_capacity")
+
+    # Window availability.
+    if not system_spec.has_operable_window:
+        set_field("window_open", False, "operable_window_not_available")
+        set_field("window_opening_fraction", 0.0, "operable_window_not_available")
+    else:
+        opening_fraction = _clip_fraction_value(command.window_opening_fraction)
+
+        if not command.window_open:
+            opening_fraction = 0.0
+
+        set_field("window_opening_fraction", opening_fraction, "window_opening_fraction_clipped")
+
+    # Shading availability.
+    # If no shading exists, treat curtain as open/non-blocking.
+    if not system_spec.has_shading:
+        set_field("curtain_open", True, "shading_not_available")
+
+    if updates:
+        return ZoneControlCommandConstraintResult(
+            command=command.copy(**updates),
+            records=records,
+        )
+
+    return ZoneControlCommandConstraintResult(
+        command=command,
+        records=records,
+    )
+
+def heating_power_w_from_zone_control_command(
+    command: ZoneControlCommand,
+    system_spec: ZoneSystemSpec,
+) -> float:
+    """
+    Physical heating power requested by the final command.
+
+    This is defensive even if the command was already sanitized.
+    """
+
+    if command is None or system_spec is None:
+        return 0.0
+
+    if not command.heating_on:
+        return 0.0
+
+    if not system_spec.has_heating:
+        return 0.0
+
+    capacity_w = max(0.0, float(system_spec.heating_capacity_w))
+    fraction = _clip_fraction_value(command.heating_power_fraction)
+
+    return min(capacity_w, fraction * capacity_w)
+
+
+def cooling_power_w_from_zone_control_command(
+    command: ZoneControlCommand,
+    system_spec: ZoneSystemSpec,
+) -> float:
+    """
+    Physical cooling power requested by the final command.
+
+    Returned value is positive cooling capacity.
+    Thermal gain uses negative sign later.
+    """
+
+    if command is None or system_spec is None:
+        return 0.0
+
+    if not command.cooling_on:
+        return 0.0
+
+    if not system_spec.has_cooling:
+        return 0.0
+
+    capacity_w = max(0.0, float(system_spec.cooling_capacity_w))
+    fraction = _clip_fraction_value(command.cooling_power_fraction)
+
+    return min(capacity_w, fraction * capacity_w)
+
+
+def hvac_thermal_gain_w_from_zone_control_command(
+    command: ZoneControlCommand,
+    system_spec: ZoneSystemSpec,
+) -> float:
+    """
+    Convert final HVAC command to sensible thermal gain.
+
+    Sign convention:
+        heating = positive gain
+        cooling = negative gain
+    """
+
+    heating_power_w = heating_power_w_from_zone_control_command(
+        command=command,
+        system_spec=system_spec,
+    )
+
+    cooling_power_w = cooling_power_w_from_zone_control_command(
+        command=command,
+        system_spec=system_spec,
+    )
+
+    return heating_power_w - cooling_power_w
+
+def make_default_zone_system_spec_from_zone_model(
+    zone_model: Any,
+) -> ZoneSystemSpec:
+    """
+    Clear fallback default for missing zone system specs.
+
+    This is intentionally conservative:
+    - heating exists for conditioned zones
+    - cooling is absent by default
+    - ventilation follows zone mechanical ventilation fields if present
+    - lighting exists for occupied spaces
+    - windows/shading are assumed absent unless provided elsewhere
+    """
+
+    floor_area_m2 = float(getattr(zone_model, "floor_area_m2", 0.0) or 0.0)
+    volume_m3 = float(getattr(zone_model, "volume_m3", 0.0) or 0.0)
+
+    is_conditioned = bool(getattr(zone_model, "is_conditioned", True))
+    is_occupied_space = bool(getattr(zone_model, "is_occupied_space", True))
+
+    has_ventilation = bool(
+        getattr(zone_model, "mechanical_ventilation_available", False)
+    )
+
+    ventilation_flow_m3_h = float(
+        getattr(zone_model, "mechanical_ventilation_flow_m3_h", 0.0) or 0.0
+    )
+
+    if has_ventilation and ventilation_flow_m3_h <= 0.0:
+        ventilation_flow_m3_h = 0.5 * volume_m3
+
+    return ZoneSystemSpec(
+        zone_id=zone_model.zone_id,
+        dwelling_id=zone_model.dwelling_id,
+        building_id=zone_model.building_id,
+        heating_capacity_w=80.0 * floor_area_m2 if is_conditioned else 0.0,
+        cooling_capacity_w=0.0,
+        ventilation_flow_m3_h=ventilation_flow_m3_h if has_ventilation else 0.0,
+        lighting_power_w=6.0 * floor_area_m2 if is_occupied_space else 0.0,
+        has_heating=is_conditioned,
+        has_cooling=False,
+        has_ventilation=has_ventilation,
+        has_lighting=is_occupied_space,
+        has_operable_window=False,
+        has_shading=False,
+    )
 
 # ============================================================
 # ENERGY RESULTS
@@ -354,22 +640,57 @@ class ZoneEnergyResult:
     dwelling_id: str
     building_id: str
 
+    heating_delivered_energy_wh: float = 0.0
+    cooling_delivered_energy_wh: float = 0.0
+
     heating_energy_wh: float = 0.0
     cooling_energy_wh: float = 0.0
+    ventilation_fan_energy_wh: float = 0.0
+
     lighting_energy_wh: float = 0.0
     appliance_energy_wh: float = 0.0
+
+    hvac_delivered_energy_wh: Optional[float] = None
+    hvac_input_energy_wh: Optional[float] = None
     total_energy_wh: Optional[float] = None
 
     def __post_init__(self) -> None:
+        _check_nonnegative(
+            self.heating_delivered_energy_wh,
+            "heating_delivered_energy_wh",
+            self.zone_id,
+        )
+        _check_nonnegative(
+            self.cooling_delivered_energy_wh,
+            "cooling_delivered_energy_wh",
+            self.zone_id,
+        )
         _check_nonnegative(self.heating_energy_wh, "heating_energy_wh", self.zone_id)
         _check_nonnegative(self.cooling_energy_wh, "cooling_energy_wh", self.zone_id)
+        _check_nonnegative(
+            self.ventilation_fan_energy_wh,
+            "ventilation_fan_energy_wh",
+            self.zone_id,
+        )
         _check_nonnegative(self.lighting_energy_wh, "lighting_energy_wh", self.zone_id)
         _check_nonnegative(self.appliance_energy_wh, "appliance_energy_wh", self.zone_id)
 
-        if self.total_energy_wh is None:
-            self.total_energy_wh = (
+        if self.hvac_delivered_energy_wh is None:
+            self.hvac_delivered_energy_wh = (
+                self.heating_delivered_energy_wh
+                + self.cooling_delivered_energy_wh
+            )
+
+        if self.hvac_input_energy_wh is None:
+            self.hvac_input_energy_wh = (
                 self.heating_energy_wh
                 + self.cooling_energy_wh
+                + self.ventilation_fan_energy_wh
+            )
+
+        if self.total_energy_wh is None:
+            self.total_energy_wh = (
+                self.hvac_input_energy_wh
                 + self.lighting_energy_wh
                 + self.appliance_energy_wh
             )
@@ -385,10 +706,15 @@ class ZoneEnergyResult:
             "zone_id": self.zone_id,
             "dwelling_id": self.dwelling_id,
             "building_id": self.building_id,
+            "heating_delivered_energy_wh": self.heating_delivered_energy_wh,
+            "cooling_delivered_energy_wh": self.cooling_delivered_energy_wh,
             "heating_energy_wh": self.heating_energy_wh,
             "cooling_energy_wh": self.cooling_energy_wh,
+            "ventilation_fan_energy_wh": self.ventilation_fan_energy_wh,
             "lighting_energy_wh": self.lighting_energy_wh,
             "appliance_energy_wh": self.appliance_energy_wh,
+            "hvac_delivered_energy_wh": self.hvac_delivered_energy_wh,
+            "hvac_input_energy_wh": self.hvac_input_energy_wh,
             "total_energy_wh": self.total_energy_wh,
         }
 
@@ -403,17 +729,34 @@ class DwellingEnergyResult:
     lighting_energy_wh: float = 0.0
     appliance_energy_wh: float = 0.0
     total_energy_wh: Optional[float] = None
-
+    heating_delivered_energy_wh: float = 0.0
+    cooling_delivered_energy_wh: float = 0.0
+    ventilation_fan_energy_wh: float = 0.0
+    hvac_delivered_energy_wh: Optional[float] = None
+    hvac_input_energy_wh: Optional[float] = None
+    
     def __post_init__(self) -> None:
         _check_nonnegative(self.heating_energy_wh, "heating_energy_wh", self.dwelling_id)
         _check_nonnegative(self.cooling_energy_wh, "cooling_energy_wh", self.dwelling_id)
         _check_nonnegative(self.lighting_energy_wh, "lighting_energy_wh", self.dwelling_id)
         _check_nonnegative(self.appliance_energy_wh, "appliance_energy_wh", self.dwelling_id)
 
-        if self.total_energy_wh is None:
-            self.total_energy_wh = (
+        if self.hvac_delivered_energy_wh is None:
+            self.hvac_delivered_energy_wh = (
+                self.heating_delivered_energy_wh
+                + self.cooling_delivered_energy_wh
+            )
+
+        if self.hvac_input_energy_wh is None:
+            self.hvac_input_energy_wh = (
                 self.heating_energy_wh
                 + self.cooling_energy_wh
+                + self.ventilation_fan_energy_wh
+            )
+
+        if self.total_energy_wh is None:
+            self.total_energy_wh = (
+                self.hvac_input_energy_wh
                 + self.lighting_energy_wh
                 + self.appliance_energy_wh
             )
@@ -432,6 +775,15 @@ class DwellingEnergyResult:
             cooling_energy_wh=sum(r.cooling_energy_wh for r in zone_results.values()),
             lighting_energy_wh=sum(r.lighting_energy_wh for r in zone_results.values()),
             appliance_energy_wh=sum(r.appliance_energy_wh for r in zone_results.values()),
+            heating_delivered_energy_wh=sum(
+                r.heating_delivered_energy_wh for r in zone_results.values()
+            ),
+            cooling_delivered_energy_wh=sum(
+                r.cooling_delivered_energy_wh for r in zone_results.values()
+            ),
+            ventilation_fan_energy_wh=sum(
+                r.ventilation_fan_energy_wh for r in zone_results.values()
+            ),
         )
 
     def copy(self, **updates: Any) -> "DwellingEnergyResult":
@@ -462,7 +814,12 @@ class BuildingEnergyResult:
     appliance_energy_wh: float = 0.0
     shared_system_energy_wh: float = 0.0
     total_energy_wh: Optional[float] = None
-
+    heating_delivered_energy_wh: float = 0.0
+    cooling_delivered_energy_wh: float = 0.0
+    ventilation_fan_energy_wh: float = 0.0
+    hvac_delivered_energy_wh: Optional[float] = None
+    hvac_input_energy_wh: Optional[float] = None
+    
     def __post_init__(self) -> None:
         _check_nonnegative(self.heating_energy_wh, "heating_energy_wh", self.building_id)
         _check_nonnegative(self.cooling_energy_wh, "cooling_energy_wh", self.building_id)
@@ -470,13 +827,24 @@ class BuildingEnergyResult:
         _check_nonnegative(self.appliance_energy_wh, "appliance_energy_wh", self.building_id)
         _check_nonnegative(self.shared_system_energy_wh, "shared_system_energy_wh", self.building_id)
 
-        if self.total_energy_wh is None:
-            self.total_energy_wh = (
+        if self.hvac_delivered_energy_wh is None:
+            self.hvac_delivered_energy_wh = (
+                self.heating_delivered_energy_wh
+                + self.cooling_delivered_energy_wh
+            )
+
+        if self.hvac_input_energy_wh is None:
+            self.hvac_input_energy_wh = (
                 self.heating_energy_wh
                 + self.cooling_energy_wh
+                + self.ventilation_fan_energy_wh
+            )
+
+        if self.total_energy_wh is None:
+            self.total_energy_wh = (
+                self.hvac_input_energy_wh
                 + self.lighting_energy_wh
                 + self.appliance_energy_wh
-                + self.shared_system_energy_wh
             )
 
     @classmethod
@@ -492,6 +860,15 @@ class BuildingEnergyResult:
             cooling_energy_wh=sum(r.cooling_energy_wh for r in dwelling_results.values()),
             lighting_energy_wh=sum(r.lighting_energy_wh for r in dwelling_results.values()),
             appliance_energy_wh=sum(r.appliance_energy_wh for r in dwelling_results.values()),
+            heating_delivered_energy_wh=sum(
+                r.heating_delivered_energy_wh for r in dwelling_results.values()
+            ),
+            cooling_delivered_energy_wh=sum(
+                r.cooling_delivered_energy_wh for r in dwelling_results.values()
+            ),
+            ventilation_fan_energy_wh=sum(
+                r.ventilation_fan_energy_wh for r in dwelling_results.values()
+            ),
             shared_system_energy_wh=shared_system_energy_wh,
         )
 
@@ -516,6 +893,17 @@ class BuildingEnergyResult:
 # ============================================================
 # VALIDATION HELPERS
 # ============================================================
+
+def _clip_fraction_value(value: float) -> float:
+    value = float(value)
+
+    if value < 0.0:
+        return 0.0
+
+    if value > 1.0:
+        return 1.0
+
+    return value
 
 def _check_positive(value: float, field_name: str, object_id: str) -> None:
     if value <= 0:

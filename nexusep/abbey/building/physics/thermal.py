@@ -2714,16 +2714,18 @@ def make_zone_hvac_input(
         zone_system_spec,
         [
             "max_heating_power_w",
+            "heating_capacity_w",
             "heating_power_w",
             "design_heating_power_w",
         ],
         0.0,
     )
-
+    
     max_cooling_power_w = _first_existing_attr_or_default(
         zone_system_spec,
         [
             "max_cooling_power_w",
+            "cooling_capacity_w",
             "cooling_power_w",
             "design_cooling_power_w",
         ],
@@ -2753,7 +2755,27 @@ def make_zone_hvac_input(
         "thermostat_deadband_c",
         DEFAULT_THERMOSTAT_DEADBAND_C,
     )
+    heating_mode = str(
+        _get_attr_or_default(
+            zone_control_state,
+            "heating_mode",
+            "off",
+        )
+    ).strip().lower()
 
+    cooling_mode = str(
+        _get_attr_or_default(
+            zone_control_state,
+            "cooling_mode",
+            "off",
+        )
+    ).strip().lower()
+
+    if heating_mode not in {"semi_auto", "auto", "bms"}:
+        has_heating = False
+
+    if cooling_mode not in {"semi_auto", "auto", "bms"}:
+        has_cooling = False
     return ZoneHVACInput(
         zone_id=zone_id,
         has_heating=has_heating,
