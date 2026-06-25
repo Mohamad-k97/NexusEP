@@ -66,6 +66,52 @@ PHASE_12_ENGINE_ZONE_DIAGNOSTIC_KEYS = [
     "moisture_generation_kg_h",
     "moisture_transport_airflow_m3_h",
 ]
+
+PHASE_13_ENGINE_ZONE_DIAGNOSTIC_KEYS = [
+    "proposed_indoor_daylight",
+
+    "window_count",
+    "window_orientation_deg_list",
+    "window_curtain_open_count",
+    "window_curtain_closed_count",
+    "window_solar_alignment_factor_max",
+    "window_daylight_alignment_factor_max",
+    "window_effective_solar_factor_sum",
+    "window_effective_solar_factor_max",
+    "window_effective_visible_transmittance_sum",
+    "window_effective_visible_transmittance_max",
+
+    "solar_gain_w",
+    "solar_gain_wh",
+
+    "daylight_illuminance_lux",
+    "indoor_illuminance_lux",
+    "artificial_lighting_illuminance_lux",
+    "visual_comfort_status",
+
+    "lighting_result_lights_on",
+    "lighting_result_power_w",
+    "lighting_result_energy_wh",
+    "lighting_result_requested_lux",
+    "lighting_result_dimming_fraction",
+]
+
+
+PHASE_13_ENGINE_BUILDING_DIAGNOSTIC_KEYS = [
+    "window_count",
+    "window_curtain_closed_count",
+    "total_solar_gain_w",
+    "total_solar_gain_w_from_zone_records",
+    "max_zone_solar_gain_w",
+    "average_zone_daylight_illuminance_lux",
+    "max_zone_daylight_illuminance_lux",
+    "average_zone_indoor_illuminance_lux",
+    "max_zone_indoor_illuminance_lux",
+    "total_lighting_power_result_w",
+    "total_lighting_result_energy_wh",
+]
+
+
 @dataclass
 class BuildingPerformanceStepResult:
     observation: DwellingObservation
@@ -433,7 +479,9 @@ class SimpleBuildingPerformanceModel:
                 for key in PHASE_12_ENGINE_ZONE_DIAGNOSTIC_KEYS:
                     if key in engine_zone_record:
                         record[key] = engine_zone_record.get(key)
-
+                for key in PHASE_13_ENGINE_ZONE_DIAGNOSTIC_KEYS:
+                    if key in engine_zone_record:
+                        record[key] = engine_zone_record.get(key)
         else:
         
             # --------------------------------------------------------
@@ -662,6 +710,15 @@ class SimpleBuildingPerformanceModel:
             building_record["physics_engine_has_moisture_step_result"] = (
                 physics_engine_result.moisture_step_result is not None
             )
+            engine_building_record = getattr(
+                physics_engine_result,
+                "building_record",
+                {},
+            ) or {}
+
+            for key in PHASE_13_ENGINE_BUILDING_DIAGNOSTIC_KEYS:
+                if key in engine_building_record:
+                    building_record[key] = engine_building_record.get(key)
     
         updated_observation = self._make_updated_observation(
             previous_observation=observation,

@@ -789,6 +789,10 @@ def run_building_physics_step(
         interzone_heat_gains_by_zone_w=interzone_heat_gains_by_zone_w,
         zone_control_commands=zone_control_commands,
         zone_system_specs=zone_system_specs,
+        window_boundary_result=window_boundary_result,
+        daylight_result=daylight_result,
+        lighting_power_result=lighting_power_result,
+        solar_gain_result=solar_gain_result,
     )
     building_record = _make_engine_building_record(
         zone_records=zone_records,
@@ -801,6 +805,10 @@ def run_building_physics_step(
         interzone_thermal_network=interzone_thermal_network,
         interzone_thermal_flow_records=interzone_thermal_flow_records,
         command_constraint_records=command_constraint_records,
+        window_boundary_result=window_boundary_result,
+        daylight_result=daylight_result,
+        lighting_power_result=lighting_power_result,
+        light_state=light_state,
     )
 
     return BuildingPhysicsStepResult(
@@ -1187,7 +1195,77 @@ def _make_proposed_zone_states(
 
     return proposed
 
+def _iter_container_values(value: Any) -> List[Any]:
+    if value is None:
+        return []
 
+    if isinstance(value, dict):
+        return list(value.values())
+
+    if isinstance(value, list):
+        return list(value)
+
+    if isinstance(value, tuple):
+        return list(value)
+
+    return []
+
+
+def _safe_max(values: List[float], default: float = 0.0) -> float:
+    cleaned = [
+        float(value)
+        for value in values
+        if value is not None
+    ]
+
+    if not cleaned:
+        return float(default)
+
+    return max(cleaned)
+
+
+def _safe_sum(values: List[float]) -> float:
+    return sum(
+        float(value)
+        for value in values
+        if value is not None
+    )
+
+
+def _semicolon_join(values: List[Any]) -> str:
+    return ";".join(
+        str(value)
+        for value in values
+        if value is not None
+    )
+
+
+def _window_results_by_zone_from_boundary_result(
+    window_boundary_result: Any,
+) -> Dict[str, List[Any]]:
+    out = {}
+
+    if window_boundary_result is None:
+        return out
+
+    raw_results = getattr(
+        window_boundary_result,
+        "window_results_by_id",
+        {},
+    )
+
+    for result in _iter_container_values(raw_results):
+        zone_id = str(_get_attr_or_key(result, "zone_id", "")).strip()
+
+        if not zone_id:
+            continue
+
+        if zone_id not in out:
+            out[zone_id] = []
+
+        out[zone_id].append(result)
+
+    return out
 def _make_engine_zone_records(
     building_model: Any,
     proposed_zone_states: Dict[str, Any],
@@ -1202,6 +1280,10 @@ def _make_engine_zone_records(
     interzone_heat_gains_by_zone_w: Optional[Dict[str, float]] = None,
     zone_control_commands: Optional[Dict[str, Any]] = None,
     zone_system_specs: Optional[Dict[str, Any]] = None,
+    window_boundary_result: Any = None,
+    daylight_result: Any = None,
+    lighting_power_result: Any = None,
+    solar_gain_result: Any = None,
 ) -> List[Dict[str, Any]]:
     
     records = []
@@ -1209,7 +1291,17 @@ def _make_engine_zone_records(
     zone_system_specs = zone_system_specs or {}
     interzone_heat_gains_by_zone_w = interzone_heat_gains_by_zone_w or {}
     internal_bridge_by_zone = {}
+    solar_gains_by_zone_w = {}
 
+    if solar_gain_result is not None and hasattr(
+        solar_gain_result,
+        "solar_gains_by_zone_w",
+    ):
+        solar_gains_by_zone_w = solar_gain_result.solar_gains_by_zone_w()
+
+    window_results_by_zone = _window_results_by_zone_from_boundary_result(
+        window_boundary_result
+    )
     if internal_source_result is not None and hasattr(
         internal_source_result,
         "physics_bridge_inputs_by_zone",
@@ -1428,7 +1520,133 @@ def _make_engine_zone_records(
                     [],
                 )
             )
-        
+        zone_window_results = window_results_by_zone.get(zone_id, [])
+
+        window_count = len(zone_window_results)
+
+        window_orientation_values = [
+            _get_attr_or_key(result, "orientation_deg", None)
+            for result in zone_window_results
+        ]
+
+        window_solar_alignment_values = [
+            _get_attr_or_key(result, "solar_alignment_factor", 0.0)
+            for result in zone_window_results
+        ]
+
+        window_daylight_alignment_values = [
+            _get_attr_or_key(result, "daylight_alignment_factor", 0.0)
+            for result in zone_window_results
+        ]
+
+        window_effective_solar_factor_values = [
+            _get_attr_or_key(result, "effective_solar_factor", 0.0)
+            for result in zone_window_results
+        ]
+
+        window_effective_visible_transmittance_values = [
+            _get_attr_or_key(result, "effective_visible_transmittance", 0.0)
+            for result in zone_window_results
+        ]
+
+        window_curtain_open_count = sum(
+            1
+            for result in zone_window_results
+            if bool(_get_attr_or_key(result, "curtain_open", True))
+        )
+
+        window_curtain_closed_count = window_count - window_curtain_open_count
+
+        solar_gain_w = float(
+            solar_gains_by_zone_w.get(zone_id, 0.0)
+        )
+
+        daylight_illuminance_lux = 0.0
+
+        if daylight_result is not None and hasattr(daylight_result, "get_zone_result"):
+            daylight_zone_result = daylight_result.get_zone_result(zone_id)
+            daylight_illuminance_lux = float(
+                _get_attr_or_key(
+                    daylight_zone_result,
+                    "daylight_illuminance_lux",
+                    0.0,
+                )
+            )
+
+        indoor_illuminance_lux = 0.0
+        artificial_lighting_illuminance_lux = 0.0
+        visual_comfort_status = ""
+
+        if (
+            light_state is not None
+            and hasattr(light_state, "has_zone")
+            and light_state.has_zone(zone_id)
+        ):
+            zone_light_state = light_state.get_zone_state(zone_id)
+
+            indoor_illuminance_lux = float(
+                _get_attr_or_key(
+                    zone_light_state,
+                    "indoor_illuminance_lux",
+                    0.0,
+                )
+            )
+
+            artificial_lighting_illuminance_lux = float(
+                _get_attr_or_key(
+                    zone_light_state,
+                    "artificial_lighting_illuminance_lux",
+                    0.0,
+                )
+            )
+
+            visual_comfort_status = str(
+                _get_attr_or_key(
+                    zone_light_state,
+                    "visual_comfort_status",
+                    "",
+                )
+            )
+
+        lighting_result_lights_on = False
+        lighting_result_power_w = 0.0
+        lighting_result_energy_wh = 0.0
+        lighting_result_requested_lux = 0.0
+        lighting_result_dimming_fraction = 0.0
+
+        if (
+            lighting_power_result is not None
+            and hasattr(lighting_power_result, "get_zone_result")
+        ):
+            lighting_zone_result = lighting_power_result.get_zone_result(zone_id)
+
+            lighting_result_lights_on = bool(
+                _get_attr_or_key(lighting_zone_result, "lights_on", False)
+            )
+
+            lighting_result_power_w = float(
+                _get_attr_or_key(lighting_zone_result, "lighting_power_w", 0.0)
+            )
+
+            lighting_result_energy_wh = float(
+                _get_attr_or_key(lighting_zone_result, "lighting_energy_wh", 0.0)
+            )
+
+            lighting_result_requested_lux = float(
+                _get_attr_or_key(
+                    lighting_zone_result,
+                    "requested_artificial_lighting_lux",
+                    0.0,
+                )
+            )
+
+            lighting_result_dimming_fraction = float(
+                _get_attr_or_key(
+                    lighting_zone_result,
+                    "dimming_fraction",
+                    0.0,
+                )
+            )        
         record = {
             "physics_path": "engine",
             "legacy_fallback_used": False,
@@ -1506,6 +1724,54 @@ def _make_engine_zone_records(
                 None,
             ),
             "new_indoor_daylight": _get_attr_or_key(zone_state, "indoor_daylight", None),
+            "proposed_indoor_daylight": _get_attr_or_key(
+                zone_state,
+                "indoor_daylight",
+                None,
+            ),
+
+            "window_count": window_count,
+            "window_orientation_deg_list": _semicolon_join(
+                window_orientation_values
+            ),
+            "window_curtain_open_count": window_curtain_open_count,
+            "window_curtain_closed_count": window_curtain_closed_count,
+            "window_solar_alignment_factor_max": _safe_max(
+                window_solar_alignment_values,
+                default=0.0,
+            ),
+            "window_daylight_alignment_factor_max": _safe_max(
+                window_daylight_alignment_values,
+                default=0.0,
+            ),
+            "window_effective_solar_factor_sum": _safe_sum(
+                window_effective_solar_factor_values
+            ),
+            "window_effective_solar_factor_max": _safe_max(
+                window_effective_solar_factor_values,
+                default=0.0,
+            ),
+            "window_effective_visible_transmittance_sum": _safe_sum(
+                window_effective_visible_transmittance_values
+            ),
+            "window_effective_visible_transmittance_max": _safe_max(
+                window_effective_visible_transmittance_values,
+                default=0.0,
+            ),
+
+            "solar_gain_w": solar_gain_w,
+            "solar_gain_wh": solar_gain_w * dt_hours,
+
+            "daylight_illuminance_lux": daylight_illuminance_lux,
+            "indoor_illuminance_lux": indoor_illuminance_lux,
+            "artificial_lighting_illuminance_lux": artificial_lighting_illuminance_lux,
+            "visual_comfort_status": visual_comfort_status,
+
+            "lighting_result_lights_on": lighting_result_lights_on,
+            "lighting_result_power_w": lighting_result_power_w,
+            "lighting_result_energy_wh": lighting_result_energy_wh,
+            "lighting_result_requested_lux": lighting_result_requested_lux,
+            "lighting_result_dimming_fraction": lighting_result_dimming_fraction,
             "command_heating_on": bool(_get_attr_or_key(command, "heating_on", False)),
             "command_heating_power_fraction": float(
                 _get_attr_or_key(command, "heating_power_fraction", 0.0)
@@ -1580,6 +1846,10 @@ def _make_engine_building_record(
     interzone_thermal_network: Any = None,
     interzone_thermal_flow_records: Optional[List[Any]] = None,
     command_constraint_records: Optional[List[Dict[str, Any]]] = None,
+    window_boundary_result: Any = None,
+    daylight_result: Any = None,
+    lighting_power_result: Any = None,
+    light_state: Any = None,
 ) -> Dict[str, Any]:
     if command_constraint_records is None:
         command_constraint_records = []
@@ -1633,7 +1903,68 @@ def _make_engine_building_record(
 
     if solar_gain_result is not None and hasattr(solar_gain_result, "total_solar_gain_w"):
         record["total_solar_gain_w"] = solar_gain_result.total_solar_gain_w()
+    daylight_values = [
+        float(row.get("daylight_illuminance_lux", 0.0))
+        for row in zone_records
+    ]
 
+    indoor_lux_values = [
+        float(row.get("indoor_illuminance_lux", 0.0))
+        for row in zone_records
+    ]
+
+    solar_gain_values = [
+        float(row.get("solar_gain_w", 0.0))
+        for row in zone_records
+    ]
+
+    lighting_power_values = [
+        float(row.get("lighting_result_power_w", 0.0))
+        for row in zone_records
+    ]
+
+    lighting_energy_values = [
+        float(row.get("lighting_result_energy_wh", 0.0))
+        for row in zone_records
+    ]
+
+    record["window_count"] = sum(
+        int(row.get("window_count", 0))
+        for row in zone_records
+    )
+
+    record["window_curtain_closed_count"] = sum(
+        int(row.get("window_curtain_closed_count", 0))
+        for row in zone_records
+    )
+
+    record["total_solar_gain_w_from_zone_records"] = sum(solar_gain_values)
+    record["max_zone_solar_gain_w"] = _safe_max(solar_gain_values, default=0.0)
+
+    record["average_zone_daylight_illuminance_lux"] = (
+        sum(daylight_values) / len(daylight_values)
+        if daylight_values
+        else 0.0
+    )
+
+    record["max_zone_daylight_illuminance_lux"] = _safe_max(
+        daylight_values,
+        default=0.0,
+    )
+
+    record["average_zone_indoor_illuminance_lux"] = (
+        sum(indoor_lux_values) / len(indoor_lux_values)
+        if indoor_lux_values
+        else 0.0
+    )
+
+    record["max_zone_indoor_illuminance_lux"] = _safe_max(
+        indoor_lux_values,
+        default=0.0,
+    )
+
+    record["total_lighting_power_result_w"] = sum(lighting_power_values)
+    record["total_lighting_result_energy_wh"] = sum(lighting_energy_values)
     return record
 
 
