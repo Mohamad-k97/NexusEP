@@ -76,6 +76,9 @@ DEFAULT_INTERZONE_BASE_AIRFLOW_M3_H = 0.0
 INTERZONE_AIRFLOW_SOURCE_BASE = "base_interzone_airflow"
 INTERZONE_AIRFLOW_SOURCE_DOOR_OPENING = "door_opening"
 INTERZONE_AIRFLOW_MIXING_MODE = "symmetric_interzone_mixing"
+INTERZONE_AIRFLOW_SOURCE_STATIC_GRAPH_DOOR_STATE = (
+    "static_graph_zone_connection_open_fraction"
+)
 
 AIRFLOW_NETWORK_MODE = "assembled_simplified_airflow_network"
 AIRFLOW_NETWORK_PRESSURE_SOLVE = "not_solved"
@@ -3336,6 +3339,57 @@ def make_interzone_airflow_record_from_link(
         source=INTERZONE_AIRFLOW_MIXING_MODE,
     )
 
+def make_static_door_opening_input_from_zone_connection(
+    zone_connection: Any,
+) -> DoorOpeningInput:
+    """
+    Build default door airflow input from static graph state.
+
+    Dynamic DoorOpeningInput still overrides this path.
+    This is the Phase 12.2 bridge:
+
+        ZoneConnection.open_fraction
+            -> DoorOpeningInput.opening_fraction
+
+    It keeps airflow.py agent-free and controller-free.
+    """
+
+    if zone_connection is None:
+        raise ValueError("zone_connection cannot be None.")
+
+    zone_connection_id = _required_attr(
+        zone_connection,
+        "connection_id",
+    )
+
+    zone_a_id = _zone_connection_zone_a_id(zone_connection)
+    zone_b_id = _zone_connection_zone_b_id(zone_connection)
+
+    is_openable = bool(
+        _get_attr_or_default(
+            zone_connection,
+            "is_openable",
+            False,
+        )
+    )
+
+    if not is_openable:
+        opening_fraction = 0.0
+    else:
+        opening_fraction = _get_attr_or_default(
+            zone_connection,
+            "open_fraction",
+            DEFAULT_DOOR_OPENING_FRACTION,
+        )
+
+    return DoorOpeningInput(
+        zone_connection_id=zone_connection_id,
+        zone_a_id=zone_a_id,
+        zone_b_id=zone_b_id,
+        opening_fraction=opening_fraction,
+        source=INTERZONE_AIRFLOW_SOURCE_STATIC_GRAPH_DOOR_STATE,
+    )
+
 
 def calculate_building_interzone_airflows(
     physics_graph: Any,
@@ -3365,11 +3419,16 @@ def calculate_building_interzone_airflows(
         zone_a_id = _zone_connection_zone_a_id(zone_connection)
         zone_b_id = _zone_connection_zone_b_id(zone_connection)
 
-        door_opening = airflow_control_inputs.get_door_opening(
-            zone_connection_id=connection_id,
-            zone_a_id=zone_a_id,
-            zone_b_id=zone_b_id,
-        )
+        if connection_id in airflow_control_inputs.door_openings:
+            door_opening = airflow_control_inputs.get_door_opening(
+                zone_connection_id=connection_id,
+                zone_a_id=zone_a_id,
+                zone_b_id=zone_b_id,
+            )
+        else:
+            door_opening = make_static_door_opening_input_from_zone_connection(
+                zone_connection=zone_connection,
+            )
 
         link = calculate_interzone_airflow_link(
             zone_connection=zone_connection,

@@ -767,6 +767,7 @@ def run_building_physics_step(
         building_model=building_model,
         thermal_step_result=thermal_step_result,
         co2_step_result=co2_step_result,
+        moisture_step_result=moisture_step_result,
         light_state=light_state,
     )
 
@@ -1046,6 +1047,7 @@ def _make_proposed_zone_states(
     building_model: Any,
     thermal_step_result: Any,
     co2_step_result: Any = None,
+    moisture_step_result: Any = None,
     light_state: Any = None,
 ) -> Dict[str, Any]:
     proposed = {}
@@ -1067,7 +1069,14 @@ def _make_proposed_zone_states(
             "updated_air_state",
             None,
         )
-
+    moisture_updated_state = None
+    
+    if moisture_step_result is not None:
+        moisture_updated_state = _get_attr_or_key(
+            moisture_step_result,
+            "updated_moisture_state",
+            None,
+        )
     for zone_id, old_zone_state in building_model.all_zone_states().items():
         new_temp_c = float(_get_attr_or_key(old_zone_state, "indoor_temp_c", 20.0))
 
@@ -1086,7 +1095,17 @@ def _make_proposed_zone_states(
         new_indoor_daylight = float(
             _get_attr_or_key(old_zone_state, "indoor_daylight", 0.5)
         )
-
+        new_indoor_relative_humidity_percent = _get_attr_or_key(
+            old_zone_state,
+            "indoor_relative_humidity_percent",
+            None,
+        )
+        
+        new_indoor_humidity_ratio_kg_kg = _get_attr_or_key(
+            old_zone_state,
+            "indoor_humidity_ratio_kg_kg",
+            None,
+        )
         if (
             thermal_updated_state is not None
             and hasattr(thermal_updated_state, "has_zone")
@@ -1110,7 +1129,30 @@ def _make_proposed_zone_states(
             new_co2_ppm = float(
                 co2_updated_state.get_zone_state(zone_id).co2_ppm
             )
-
+        if (
+            moisture_updated_state is not None
+            and hasattr(moisture_updated_state, "has_zone")
+            and moisture_updated_state.has_zone(zone_id)
+        ):
+            moisture_zone_state = moisture_updated_state.get_zone_state(zone_id)
+        
+            new_indoor_humidity_ratio_kg_kg = float(
+                _get_attr_or_key(
+                    moisture_zone_state,
+                    "humidity_ratio_kg_kg",
+                    new_indoor_humidity_ratio_kg_kg,
+                )
+            )
+        
+            new_indoor_relative_humidity_percent = float(
+                _get_attr_or_key(
+                    moisture_zone_state,
+                    "relative_humidity_percent",
+                    new_indoor_relative_humidity_percent
+                    if new_indoor_relative_humidity_percent is not None
+                    else 50.0,
+                )
+            )
         if (
             light_state is not None
             and hasattr(light_state, "has_zone")
@@ -1139,6 +1181,8 @@ def _make_proposed_zone_states(
             indoor_mass_temp_c=new_mass_temp_c,
             co2_ppm=new_co2_ppm,
             indoor_daylight=new_indoor_daylight,
+            indoor_relative_humidity_percent=new_indoor_relative_humidity_percent,
+            indoor_humidity_ratio_kg_kg=new_indoor_humidity_ratio_kg_kg,
         )
 
     return proposed
@@ -1295,7 +1339,96 @@ def _make_engine_zone_records(
         )
 
         interzone_heat_gain_w = max(interzone_net_heat_gain_w, 0.0)
-        interzone_heat_loss_w = max(-interzone_net_heat_gain_w, 0.0)            
+        interzone_heat_loss_w = max(-interzone_net_heat_gain_w, 0.0)       
+        
+        co2_generation_m3_h = float(
+            bridge_row.get("average_co2_generation_m3_h", 0.0)
+        )
+
+        moisture_generation_kg_h = float(
+            bridge_row.get("average_moisture_generation_kg_h", 0.0)
+        )
+
+        moisture_zone_result = None
+
+        if (
+            moisture_step_result is not None
+            and hasattr(moisture_step_result, "zone_results")
+        ):
+            moisture_zone_result = moisture_step_result.zone_results.get(zone_id)
+
+        old_humidity_ratio_kg_kg = _get_attr_or_key(
+            old_state,
+            "indoor_humidity_ratio_kg_kg",
+            None,
+        )
+
+        new_humidity_ratio_kg_kg = _get_attr_or_key(
+            zone_state,
+            "indoor_humidity_ratio_kg_kg",
+            None,
+        )
+
+        old_relative_humidity_percent = _get_attr_or_key(
+            old_state,
+            "indoor_relative_humidity_percent",
+            None,
+        )
+
+        new_relative_humidity_percent = _get_attr_or_key(
+            zone_state,
+            "indoor_relative_humidity_percent",
+            None,
+        )
+
+        moisture_transport_airflow_m3_h = 0.0
+
+        if moisture_zone_result is not None:
+            old_humidity_ratio_kg_kg = _get_attr_or_key(
+                moisture_zone_result,
+                "old_humidity_ratio_kg_kg",
+                old_humidity_ratio_kg_kg,
+            )
+
+            new_humidity_ratio_kg_kg = _get_attr_or_key(
+                moisture_zone_result,
+                "new_humidity_ratio_kg_kg",
+                new_humidity_ratio_kg_kg,
+            )
+
+            old_relative_humidity_percent = _get_attr_or_key(
+                moisture_zone_result,
+                "old_relative_humidity_percent",
+                old_relative_humidity_percent,
+            )
+
+            new_relative_humidity_percent = _get_attr_or_key(
+                moisture_zone_result,
+                "new_relative_humidity_percent",
+                new_relative_humidity_percent,
+            )
+
+            moisture_generation_kg_h = (
+                float(
+                    _get_attr_or_key(
+                        moisture_zone_result,
+                        "moisture_generation_kg_s",
+                        0.0,
+                    )
+                )
+                * 3600.0
+            )
+
+            moisture_transport_airflow_m3_h = sum(
+                float(_get_attr_or_key(target, "airflow_m3_s", 0.0))
+                * 3600.0
+                for target in _get_attr_or_key(
+                    moisture_zone_result,
+                    "targets",
+                    [],
+                )
+            )
+        
         record = {
             "physics_path": "engine",
             "legacy_fallback_used": False,
@@ -1344,6 +1477,34 @@ def _make_engine_zone_records(
             ),
             "old_co2_ppm": _get_attr_or_key(old_state, "co2_ppm", None),
             "new_co2_ppm": _get_attr_or_key(zone_state, "co2_ppm", None),
+            "co2_generation_m3_h": co2_generation_m3_h,
+
+            "old_humidity_ratio_kg_kg": old_humidity_ratio_kg_kg,
+            "new_humidity_ratio_kg_kg": new_humidity_ratio_kg_kg,
+            "old_relative_humidity_percent": old_relative_humidity_percent,
+            "new_relative_humidity_percent": new_relative_humidity_percent,
+            "moisture_generation_kg_h": moisture_generation_kg_h,
+            "moisture_transport_airflow_m3_h": moisture_transport_airflow_m3_h,
+            "old_indoor_relative_humidity_percent": _get_attr_or_key(
+                old_state,
+                "indoor_relative_humidity_percent",
+                None,
+            ),
+            "new_indoor_relative_humidity_percent": _get_attr_or_key(
+                zone_state,
+                "indoor_relative_humidity_percent",
+                None,
+            ),
+            "old_indoor_humidity_ratio_kg_kg": _get_attr_or_key(
+                old_state,
+                "indoor_humidity_ratio_kg_kg",
+                None,
+            ),
+            "new_indoor_humidity_ratio_kg_kg": _get_attr_or_key(
+                zone_state,
+                "indoor_humidity_ratio_kg_kg",
+                None,
+            ),
             "new_indoor_daylight": _get_attr_or_key(zone_state, "indoor_daylight", None),
             "command_heating_on": bool(_get_attr_or_key(command, "heating_on", False)),
             "command_heating_power_fraction": float(

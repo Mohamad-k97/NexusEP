@@ -41,6 +41,15 @@ def save_debug_building_outputs(
         interzone_thermal_df = sim.building_interzone_thermal_records_to_dataframe()
     else:
         interzone_thermal_df = pd.DataFrame()
+    if hasattr(sim, "building_interzone_airflow_records_to_dataframe"):
+        interzone_airflow_df = sim.building_interzone_airflow_records_to_dataframe()
+    else:
+        interzone_airflow_df = pd.DataFrame()
+
+    if hasattr(sim, "building_window_airflow_records_to_dataframe"):
+        window_airflow_df = sim.building_window_airflow_records_to_dataframe()
+    else:
+        window_airflow_df = pd.DataFrame()
     bridge_df = sim.building_control_bridge_records_to_dataframe()
     action_df = sim.building_action_event_records_to_dataframe()
     internal_source_df = sim.building_internal_source_records_to_dataframe()
@@ -69,7 +78,29 @@ def save_debug_building_outputs(
         )
 
         paths["interzone_thermal_timestep_csv"] = interzone_thermal_path
+    if not interzone_airflow_df.empty:
+        interzone_airflow_path = csv_folder / (
+            prefix + "_interzone_airflow_timestep.csv"
+        )
 
+        interzone_airflow_df.to_csv(
+            interzone_airflow_path,
+            index=False,
+        )
+
+        paths["interzone_airflow_timestep_csv"] = interzone_airflow_path
+
+    if not window_airflow_df.empty:
+        window_airflow_path = csv_folder / (
+            prefix + "_window_airflow_timestep.csv"
+        )
+
+        window_airflow_df.to_csv(
+            window_airflow_path,
+            index=False,
+        )
+
+        paths["window_airflow_timestep_csv"] = window_airflow_path
     if not bridge_df.empty:
         bridge_path = csv_folder / (prefix + "_control_bridge_timestep.csv")
         bridge_df.to_csv(bridge_path, index=False)
@@ -184,6 +215,15 @@ def save_yearly_building_outputs(
         interzone_thermal_df = sim.building_interzone_thermal_records_to_dataframe()
     else:
         interzone_thermal_df = pd.DataFrame()
+    if hasattr(sim, "building_interzone_airflow_records_to_dataframe"):
+        interzone_airflow_df = sim.building_interzone_airflow_records_to_dataframe()
+    else:
+        interzone_airflow_df = pd.DataFrame()
+
+    if hasattr(sim, "building_window_airflow_records_to_dataframe"):
+        window_airflow_df = sim.building_window_airflow_records_to_dataframe()
+    else:
+        window_airflow_df = pd.DataFrame()
     internal_source_zone_df = sim.building_internal_source_zone_records_to_dataframe()
     internal_source_building_df = sim.building_internal_source_building_records_to_dataframe()
     
@@ -259,7 +299,48 @@ def save_yearly_building_outputs(
             building_df=building_df,
             path=plot_folder / (prefix + "_energy_by_building.png"),
         )
+    if not interzone_airflow_df.empty:
+        _add_time_columns(interzone_airflow_df)
 
+        daily_interzone_airflow = make_daily_interzone_airflow_summary(
+            interzone_airflow_df
+        )
+
+        if not daily_interzone_airflow.empty:
+            interzone_airflow_summary_path = csv_folder / (
+                prefix + "_daily_interzone_airflow_summary.csv"
+            )
+
+            daily_interzone_airflow.to_csv(
+                interzone_airflow_summary_path,
+                index=False,
+            )
+
+            paths["daily_interzone_airflow_summary_csv"] = (
+                interzone_airflow_summary_path
+            )
+
+    if not window_airflow_df.empty:
+        _add_time_columns(window_airflow_df)
+
+        daily_window_airflow = make_daily_window_airflow_summary(
+            window_airflow_df
+        )
+
+        if not daily_window_airflow.empty:
+            window_airflow_summary_path = csv_folder / (
+                prefix + "_daily_window_airflow_summary.csv"
+            )
+
+            daily_window_airflow.to_csv(
+                window_airflow_summary_path,
+                index=False,
+            )
+
+            paths["daily_window_airflow_summary_csv"] = (
+                window_airflow_summary_path
+            )
+            
     if not internal_source_zone_df.empty:
         _add_time_columns(internal_source_zone_df)
 
@@ -498,6 +579,7 @@ def make_hourly_zone_summary(zone_df: pd.DataFrame) -> pd.DataFrame:
     agg_map.update(_energy_agg_map(df))
     agg_map.update(_fallback_agg_map(df))
     agg_map.update(_interzone_zone_agg_map(df))
+    agg_map.update(_phase12_air_quality_zone_agg_map(df))
     return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
@@ -526,6 +608,8 @@ def make_daily_zone_summary(zone_df: pd.DataFrame) -> pd.DataFrame:
     agg_map.update(_energy_agg_map(df))
     agg_map.update(_fallback_agg_map(df))
     agg_map.update(_interzone_zone_agg_map(df))
+    agg_map.update(_phase12_air_quality_zone_agg_map(df))
+
     return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 
@@ -584,6 +668,77 @@ def make_daily_building_summary(building_df: pd.DataFrame) -> pd.DataFrame:
     agg_map.update(_fallback_agg_map(df))
     return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
+def make_daily_interzone_airflow_summary(
+    interzone_df: pd.DataFrame,
+) -> pd.DataFrame:
+    df = interzone_df.copy()
+    _add_time_columns(df)
+
+    group_cols = [
+        col for col in [
+            "building_id",
+            "day",
+            "link_id",
+            "zone_connection_id",
+            "zone_a_id",
+            "zone_b_id",
+            "connection_type",
+        ]
+        if col in df.columns
+    ]
+
+    agg_map = {}
+
+    for col in [
+        "flow_a_to_b_m3_h",
+        "flow_b_to_a_m3_h",
+        "net_a_to_b_m3_h",
+        "opening_fraction",
+        "mixing_flow_m3_h",
+    ]:
+        if col in df.columns:
+            agg_map[col + "_mean"] = (col, "mean")
+            agg_map[col + "_max"] = (col, "max")
+
+    if not group_cols or not agg_map:
+        return pd.DataFrame()
+
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
+
+
+def make_daily_window_airflow_summary(
+    window_df: pd.DataFrame,
+) -> pd.DataFrame:
+    df = window_df.copy()
+    _add_time_columns(df)
+
+    group_cols = [
+        col for col in [
+            "building_id",
+            "day",
+            "boundary_connection_id",
+            "zone_id",
+            "orientation_deg",
+        ]
+        if col in df.columns
+    ]
+
+    agg_map = {}
+
+    for col in [
+        "opening_fraction",
+        "wind_speed_m_s",
+        "wind_alignment_factor",
+        "outdoor_airflow_m3_h",
+    ]:
+        if col in df.columns:
+            agg_map[col + "_mean"] = (col, "mean")
+            agg_map[col + "_max"] = (col, "max")
+
+    if not group_cols or not agg_map:
+        return pd.DataFrame()
+
+    return df.groupby(group_cols, as_index=False).agg(**agg_map)
 
 def make_energy_by_zone(zone_df: pd.DataFrame) -> pd.DataFrame:
     df = zone_df.copy()
@@ -895,7 +1050,44 @@ def _interzone_zone_agg_map(df: pd.DataFrame) -> Dict[str, tuple]:
         )
 
     return agg_map
+def _phase12_air_quality_zone_agg_map(df: pd.DataFrame) -> Dict[str, tuple]:
+    agg_map = {}
 
+    mean_cols = [
+        "airflow_infiltration_flow_m3_h",
+        "airflow_mechanical_ventilation_flow_m3_h",
+        "airflow_window_flow_m3_h",
+        "airflow_outdoor_exchange_m3_h",
+        "airflow_interzone_exchange_m3_h",
+        "airflow_total_exchange_m3_h",
+        "co2_generation_m3_h",
+        "moisture_generation_kg_h",
+        "moisture_transport_airflow_m3_h",
+        "old_humidity_ratio_kg_kg",
+        "new_humidity_ratio_kg_kg",
+        "old_relative_humidity_percent",
+        "new_relative_humidity_percent",
+    ]
+
+    for col in mean_cols:
+        if col in df.columns:
+            agg_map[col + "_mean"] = (col, "mean")
+
+    max_cols = [
+        "airflow_total_exchange_m3_h",
+        "airflow_window_flow_m3_h",
+        "airflow_mechanical_ventilation_flow_m3_h",
+        "co2_generation_m3_h",
+        "moisture_generation_kg_h",
+        "new_humidity_ratio_kg_kg",
+        "new_relative_humidity_percent",
+    ]
+
+    for col in max_cols:
+        if col in df.columns:
+            agg_map[col + "_max"] = (col, "max")
+
+    return agg_map
 # ============================================================
 # INTERNAL UTILS
 # ============================================================

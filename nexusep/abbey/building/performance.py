@@ -47,7 +47,25 @@ BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_EXPLICIT = "legacy_fallback_explicit"
 BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_AFTER_ENGINE_ERROR = (
     "legacy_fallback_after_engine_error"
 )
+PHASE_12_ENGINE_ZONE_DIAGNOSTIC_KEYS = [
+    "airflow_infiltration_flow_m3_h",
+    "airflow_mechanical_ventilation_flow_m3_h",
+    "airflow_window_flow_m3_h",
+    "airflow_outdoor_exchange_m3_h",
+    "airflow_interzone_exchange_m3_h",
+    "airflow_total_exchange_m3_h",
 
+    "old_co2_ppm",
+    "new_co2_ppm",
+    "co2_generation_m3_h",
+
+    "old_humidity_ratio_kg_kg",
+    "new_humidity_ratio_kg_kg",
+    "old_relative_humidity_percent",
+    "new_relative_humidity_percent",
+    "moisture_generation_kg_h",
+    "moisture_transport_airflow_m3_h",
+]
 @dataclass
 class BuildingPerformanceStepResult:
     observation: DwellingObservation
@@ -55,7 +73,9 @@ class BuildingPerformanceStepResult:
     zone_records: List[Dict[str, Any]] = field(default_factory=list)
     dwelling_records: List[Dict[str, Any]] = field(default_factory=list)
     building_record: Dict[str, Any] = field(default_factory=dict)
-
+    interzone_airflow_records: List[Dict[str, Any]] = field(default_factory=list)
+    window_airflow_records: List[Dict[str, Any]] = field(default_factory=list)
+    
     zone_energy_results: Dict[str, ZoneEnergyResult] = field(default_factory=dict)
     dwelling_energy_results: Dict[str, DwellingEnergyResult] = field(default_factory=dict)
     building_energy_result: Optional[BuildingEnergyResult] = None
@@ -72,6 +92,7 @@ class BuildingPerformanceStepResult:
     performance_path: str = BUILDING_PERFORMANCE_PATH_ENGINE
     legacy_fallback_used: bool = False
     legacy_fallback_reason: Optional[str] = None
+
 
 class SimpleBuildingPerformanceModel:
     """
@@ -215,6 +236,8 @@ class SimpleBuildingPerformanceModel:
         internal_source_result = None
         physics_inputs = {}
         interzone_thermal_flow_records = []
+        interzone_airflow_records = []
+        window_airflow_records = []
         
         if self.use_physics_engine:
             try:
@@ -265,6 +288,23 @@ class SimpleBuildingPerformanceModel:
             physics_inputs = physics_engine_result.physics_inputs or {}
             interzone_thermal_flow_records = (
                 self._make_interzone_thermal_flow_records(
+                    step=step,
+                    day=day,
+                    hour=hour,
+                    physics_engine_result=physics_engine_result,
+                )
+            )
+            interzone_airflow_records = (
+                self._make_interzone_airflow_records(
+                    step=step,
+                    day=day,
+                    hour=hour,
+                    physics_engine_result=physics_engine_result,
+                )
+            )
+
+            window_airflow_records = (
+                self._make_window_airflow_records(
                     step=step,
                     day=day,
                     hour=hour,
@@ -390,6 +430,9 @@ class SimpleBuildingPerformanceModel:
                     0.0,
                 )
                 zone_records.append(record)
+                for key in PHASE_12_ENGINE_ZONE_DIAGNOSTIC_KEYS:
+                    if key in engine_zone_record:
+                        record[key] = engine_zone_record.get(key)
 
         else:
         
@@ -567,7 +610,14 @@ class SimpleBuildingPerformanceModel:
         building_record["legacy_fallback_reason"] = legacy_fallback_reason
         building_record["interzone_thermal_flow_record_count"] = len(
             interzone_thermal_flow_records
-        )        
+        )      
+        building_record["interzone_airflow_record_count"] = len(
+            interzone_airflow_records
+        )
+
+        building_record["window_airflow_record_count"] = len(
+            window_airflow_records
+        )
         if physics_engine_result is not None:
             building_record["physics_engine_source"] = getattr(
                 physics_engine_result,
@@ -632,6 +682,8 @@ class SimpleBuildingPerformanceModel:
             physics_inputs=physics_inputs,
             physics_engine_result=physics_engine_result,
             interzone_thermal_flow_records=interzone_thermal_flow_records,
+            interzone_airflow_records=interzone_airflow_records,
+            window_airflow_records=window_airflow_records,
             physics_engine_active=physics_engine_active,
             physics_engine_error=physics_engine_error,
             performance_path=performance_path,
@@ -1006,6 +1058,157 @@ class SimpleBuildingPerformanceModel:
     # ============================================================
     # RECORDS
     # ============================================================
+    
+    def _make_interzone_airflow_records(
+        self,
+        step: Any,
+        day: Any,
+        hour: Any,
+        physics_engine_result: Any,
+    ) -> List[Dict[str, Any]]:
+        if physics_engine_result is None:
+            return []
+
+        airflow_network = getattr(
+            physics_engine_result,
+            "airflow_network",
+            None,
+        )
+
+        if airflow_network is None:
+            return []
+
+        raw_records = getattr(
+            airflow_network,
+            "interzone_airflow_records",
+            {},
+        )
+
+        raw_links = getattr(
+            airflow_network,
+            "interzone_airflow_links",
+            {},
+        )
+
+        rows = []
+
+        time_hour = None
+
+        if day is not None and hour is not None:
+            time_hour = float(day) * 24.0 + float(hour)
+
+        if isinstance(raw_records, dict):
+            records_iter = raw_records.values()
+        else:
+            records_iter = raw_records
+
+        for record in records_iter:
+            if hasattr(record, "to_dict"):
+                row = record.to_dict()
+            else:
+                row = dict(record)
+
+            link_id = row.get("link_id")
+            link = raw_links.get(link_id) if isinstance(raw_links, dict) else None
+
+            if link is not None:
+                row["opening_fraction"] = getattr(link, "opening_fraction", None)
+                row["mixing_flow_m3_h"] = getattr(link, "mixing_flow_m3_h", None)
+                row["connection_type"] = getattr(link, "connection_type", None)
+                row["base_airflow_m3_h"] = getattr(link, "base_airflow_m3_h", None)
+                row["max_flow_m3_h"] = getattr(link, "max_flow_m3_h", None)
+
+            row["step"] = step
+            row["day"] = day
+            row["hour"] = hour
+            row["time_hour"] = time_hour
+            row["building_id"] = self.building_model.building_id
+            row["source"] = "physics_engine_interzone_airflow"
+
+            rows.append(row)
+
+        return rows
+
+    def _make_window_airflow_records(
+        self,
+        step: Any,
+        day: Any,
+        hour: Any,
+        physics_engine_result: Any,
+    ) -> List[Dict[str, Any]]:
+        if physics_engine_result is None:
+            return []
+
+        window_boundary_result = getattr(
+            physics_engine_result,
+            "window_boundary_result",
+            None,
+        )
+
+        if window_boundary_result is None:
+            return []
+
+        raw_results = getattr(
+            window_boundary_result,
+            "window_results_by_id",
+            {},
+        )
+
+        step_input = getattr(
+            physics_engine_result,
+            "step_input",
+            None,
+        )
+
+        weather_state = getattr(
+            step_input,
+            "weather_state",
+            None,
+        )
+
+        wind_direction_deg = getattr(
+            weather_state,
+            "wind_direction_deg",
+            None,
+        )
+
+        wind_speed_m_s = getattr(
+            weather_state,
+            "wind_speed_m_s",
+            None,
+        )
+
+        rows = []
+
+        time_hour = None
+
+        if day is not None and hour is not None:
+            time_hour = float(day) * 24.0 + float(hour)
+
+        if isinstance(raw_results, dict):
+            results_iter = raw_results.values()
+        else:
+            results_iter = raw_results
+
+        for result in results_iter:
+            if hasattr(result, "to_dict"):
+                row = result.to_dict()
+            else:
+                row = dict(result)
+
+            row["step"] = step
+            row["day"] = day
+            row["hour"] = hour
+            row["time_hour"] = time_hour
+            row["building_id"] = self.building_model.building_id
+            row["wind_direction_deg"] = wind_direction_deg
+            row["wind_speed_m_s"] = wind_speed_m_s
+            row["source"] = "physics_engine_window_airflow"
+
+            rows.append(row)
+
+        return rows
+    
     def _make_interzone_thermal_flow_records(
         self,
         step: Any,

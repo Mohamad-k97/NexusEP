@@ -82,6 +82,8 @@ class AbbeySimulation:
     building_dwelling_records: Optional[List[Dict[str, Any]]] = None
     building_records: Optional[List[Dict[str, Any]]] = None
     building_interzone_thermal_records: Optional[List[Dict[str, Any]]] = None
+    building_interzone_airflow_records: Optional[List[Dict[str, Any]]] = None
+    building_window_airflow_records: Optional[List[Dict[str, Any]]] = None
     building_control_bridge_records: Optional[List[Dict[str, Any]]] = None
     building_action_event_records: Optional[List[Dict[str, Any]]] = None
     
@@ -120,7 +122,11 @@ class AbbeySimulation:
 
         if self.building_internal_source_building_records is None:
             self.building_internal_source_building_records = []
+        if self.building_interzone_airflow_records is None:
+            self.building_interzone_airflow_records = []
 
+        if self.building_window_airflow_records is None:
+            self.building_window_airflow_records = []
     # ============================================================
     # LEGACY SINGLE-OCCUPANT COMPATIBILITY
     # ============================================================
@@ -352,6 +358,8 @@ class AbbeySimulation:
             building_dwelling_records=[],
             building_records=[],
             building_interzone_thermal_records=[],
+            building_interzone_airflow_records=[],
+            building_window_airflow_records=[],
             building_control_bridge_records=[],
             building_action_event_records=[],
             building_internal_source_records=[],
@@ -684,6 +692,21 @@ class AbbeySimulation:
                 [],
             )
         )
+        self._store_building_interzone_airflow_records(
+            getattr(
+                result,
+                "interzone_airflow_records",
+                [],
+            )
+        )
+
+        self._store_building_window_airflow_records(
+            getattr(
+                result,
+                "window_airflow_records",
+                [],
+            )
+        )
         self.last_internal_source_result = getattr(
             result,
             "internal_source_result",
@@ -710,6 +733,36 @@ class AbbeySimulation:
                 row = dict(record)
 
             self.building_interzone_thermal_records.append(row)
+
+    def _store_building_interzone_airflow_records(
+        self,
+        records: Optional[List[Dict[str, Any]]],
+    ) -> None:
+        if records is None:
+            return
+
+        for record in records:
+            if hasattr(record, "to_dict"):
+                row = record.to_dict()
+            else:
+                row = dict(record)
+
+            self.building_interzone_airflow_records.append(row)
+
+    def _store_building_window_airflow_records(
+        self,
+        records: Optional[List[Dict[str, Any]]],
+    ) -> None:
+        if records is None:
+            return
+
+        for record in records:
+            if hasattr(record, "to_dict"):
+                row = record.to_dict()
+            else:
+                row = dict(record)
+
+            self.building_window_airflow_records.append(row)
             
     def _store_building_action_events(
         self,
@@ -1370,6 +1423,15 @@ class AbbeySimulation:
     def building_internal_source_building_records_to_dataframe(self):
         import pandas as pd
         return pd.DataFrame(self.building_internal_source_building_records)
+    
+    def building_interzone_airflow_records_to_dataframe(self):
+        import pandas as pd
+        return pd.DataFrame(self.building_interzone_airflow_records)
+
+    def building_window_airflow_records_to_dataframe(self):
+        import pandas as pd
+        return pd.DataFrame(self.building_window_airflow_records)
+    
     def save_building_debug_outputs(self, folder: Union[str, Path]):
         from nexusep.abbey.building import save_debug_building_outputs
     

@@ -26,6 +26,7 @@ from nexusep.abbey.building.systems import (
 from nexusep.abbey.building.physics.graph import (
     BuildingPhysicsGraph,
     ZoneConnection,
+    BoundaryConnection,
 )
 
 def make_default_family_building() -> BuildingModel:
@@ -418,7 +419,7 @@ def make_default_family_physics_graph(
     entrance = require_zone("entrance")
 
     zone_connections = {}
-
+    boundary_connections = {}
     def add_internal_wall(
         connection_id: str,
         from_zone_id: str,
@@ -461,7 +462,39 @@ def make_default_family_physics_graph(
             base_airflow_m3_h=base_airflow_m3_h,
             u_value_w_m2k=u_value_w_m2k,
         )
-
+    def add_window(
+        connection_id: str,
+        zone_id: str,
+        area_m2: float,
+        orientation_deg: float,
+        max_opening_area_m2: float,
+        window_u_value_w_m2k: float = 1.6,
+        glazing_transmittance: float = 0.60,
+        window_visible_transmittance: float = 0.60,
+        solar_heat_gain_coefficient: float = 0.50,
+        frame_fraction: float = 0.20,
+        shading_factor: float = 1.00,
+        discharge_coefficient: float = 0.60,
+    ) -> None:
+        boundary_connections[connection_id] = BoundaryConnection(
+            connection_id=connection_id,
+            zone_id=zone_id,
+            connection_type="window",
+            area_m2=area_m2,
+            orientation_deg=orientation_deg,
+            is_window=True,
+            is_openable=True,
+            open_fraction=0.0,
+            max_opening_area_m2=max_opening_area_m2,
+            discharge_coefficient=discharge_coefficient,
+            window_u_value_w_m2k=window_u_value_w_m2k,
+            glazing_transmittance=glazing_transmittance,
+            window_visible_transmittance=window_visible_transmittance,
+            solar_heat_gain_coefficient=solar_heat_gain_coefficient,
+            frame_fraction=frame_fraction,
+            shading_factor=shading_factor,
+            curtain_open=True,
+        )
     # ------------------------------------------------------------
     # Main circulation / access topology.
     # ------------------------------------------------------------
@@ -577,11 +610,73 @@ def make_default_family_physics_graph(
         area_m2=4.0,
         u_value_w_m2k=1.8,
     )
+    # ------------------------------------------------------------
+    # Outside/window boundary topology.
+    #
+    # Phase 12.1:
+    #     Static window geometry belongs to BoundaryConnection.
+    #     Dynamic opening state still belongs to window operation inputs.
+    #
+    # Orientation convention:
+    #     0   = north
+    #     90  = east
+    #     180 = south
+    #     270 = west
+    # ------------------------------------------------------------
+    add_window(
+        connection_id="window_living_room_south",
+        zone_id=living,
+        area_m2=4.0,
+        orientation_deg=180.0,
+        max_opening_area_m2=1.8,
+    )
 
+    add_window(
+        connection_id="window_bedroom_1_east",
+        zone_id=bedroom_1,
+        area_m2=2.2,
+        orientation_deg=90.0,
+        max_opening_area_m2=1.0,
+    )
+
+    add_window(
+        connection_id="window_bedroom_2_west",
+        zone_id=bedroom_2,
+        area_m2=1.8,
+        orientation_deg=270.0,
+        max_opening_area_m2=0.8,
+    )
+
+    add_window(
+        connection_id="window_kitchen_south_east",
+        zone_id=kitchen,
+        area_m2=1.6,
+        orientation_deg=135.0,
+        max_opening_area_m2=0.7,
+    )
+
+    add_window(
+        connection_id="window_bathroom_north",
+        zone_id=bathroom,
+        area_m2=0.6,
+        orientation_deg=0.0,
+        max_opening_area_m2=0.3,
+        glazing_transmittance=0.35,
+        window_visible_transmittance=0.35,
+        solar_heat_gain_coefficient=0.35,
+    )
+
+    add_window(
+        connection_id="window_office_west",
+        zone_id=office,
+        area_m2=1.5,
+        orientation_deg=270.0,
+        max_opening_area_m2=0.7,
+    )
     return BuildingPhysicsGraph(
         building_model=building_model,
         zone_connections=zone_connections,
-        boundary_connections={},
+        boundary_connections=boundary_connections,
         validate_on_init=True,
     )
 
