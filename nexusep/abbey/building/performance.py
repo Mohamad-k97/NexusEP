@@ -111,6 +111,29 @@ PHASE_13_ENGINE_BUILDING_DIAGNOSTIC_KEYS = [
     "total_lighting_result_energy_wh",
 ]
 
+PHASE_14_ENGINE_ZONE_DIAGNOSTIC_KEYS = [
+    "indoor_noise",
+    "indoor_noise_db",
+    "background_noise_db",
+    "outdoor_noise_db",
+    "local_noise_source_db",
+    "local_noise_source_count",
+    "outdoor_noise_contribution_db",
+    "interzone_noise_contribution_db",
+    "max_neighbor_noise_contribution_db",
+    "acoustic_discomfort_input",
+]
+
+
+PHASE_14_ENGINE_BUILDING_DIAGNOSTIC_KEYS = [
+    "has_acoustic_step_result",
+    "average_zone_indoor_noise",
+    "max_zone_indoor_noise",
+    "average_zone_indoor_noise_db",
+    "max_zone_indoor_noise_db",
+    "total_local_noise_source_count",
+]
+
 
 @dataclass
 class BuildingPerformanceStepResult:
@@ -482,6 +505,9 @@ class SimpleBuildingPerformanceModel:
                 for key in PHASE_13_ENGINE_ZONE_DIAGNOSTIC_KEYS:
                     if key in engine_zone_record:
                         record[key] = engine_zone_record.get(key)
+                for key in PHASE_14_ENGINE_ZONE_DIAGNOSTIC_KEYS:
+                    if key in engine_zone_record:
+                        record[key] = engine_zone_record.get(key)
         else:
         
             # --------------------------------------------------------
@@ -710,6 +736,10 @@ class SimpleBuildingPerformanceModel:
             building_record["physics_engine_has_moisture_step_result"] = (
                 physics_engine_result.moisture_step_result is not None
             )
+            building_record["physics_engine_has_acoustic_step_result"] = (
+                getattr(physics_engine_result, "acoustic_step_result", None)
+                is not None
+            )
             engine_building_record = getattr(
                 physics_engine_result,
                 "building_record",
@@ -719,7 +749,9 @@ class SimpleBuildingPerformanceModel:
             for key in PHASE_13_ENGINE_BUILDING_DIAGNOSTIC_KEYS:
                 if key in engine_building_record:
                     building_record[key] = engine_building_record.get(key)
-    
+            for key in PHASE_14_ENGINE_BUILDING_DIAGNOSTIC_KEYS:
+                if key in engine_building_record:
+                    building_record[key] = engine_building_record.get(key)    
         updated_observation = self._make_updated_observation(
             previous_observation=observation,
             outdoor_temp_c=outdoor_temp_c,

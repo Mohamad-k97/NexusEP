@@ -34,7 +34,7 @@ PHYSICS_STEP_CALCULATE_MOISTURE = "calculate_moisture"
 PHYSICS_STEP_CALCULATE_THERMAL = "calculate_thermal"
 PHYSICS_STEP_WRITE_ZONE_STATE = "write_updated_zone_state"
 PHYSICS_STEP_LOG_OUTPUTS = "log_physics_outputs"
-
+PHYSICS_STEP_CALCULATE_ACOUSTICS = "calculate_acoustics"
 
 PHYSICS_TIMESTEP_ORDER = [
     PHYSICS_STEP_READ_CURRENT_STATE,
@@ -46,6 +46,7 @@ PHYSICS_TIMESTEP_ORDER = [
     PHYSICS_STEP_BUILD_AIRFLOW,
     PHYSICS_STEP_CALCULATE_CO2,
     PHYSICS_STEP_CALCULATE_MOISTURE,
+    PHYSICS_STEP_CALCULATE_ACOUSTICS,
     PHYSICS_STEP_CALCULATE_THERMAL,
     PHYSICS_STEP_WRITE_ZONE_STATE,
     PHYSICS_STEP_LOG_OUTPUTS,
@@ -114,7 +115,7 @@ class BuildingPhysicsStepInput:
     previous_moisture_state: Any = None
     previous_thermal_state: Any = None
     previous_light_state: Any = None
-
+    previous_acoustic_state: Any = None
     source: str = PHYSICS_ENGINE_SOURCE
 
     def __post_init__(self) -> None:
@@ -170,6 +171,7 @@ class BuildingPhysicsStepInput:
             "has_airflow_network": self.airflow_network is not None,
             "has_co2_generation_result": self.co2_generation_result is not None,
             "has_moisture_source_inputs": self.moisture_source_inputs is not None,
+            "has_previous_acoustic_state": self.previous_acoustic_state is not None,
             "has_thermal_gains": self.thermal_gains is not None,
             "source": self.source,
         }
@@ -288,6 +290,9 @@ class BuildingPhysicsStepResult:
     moisture_transport_result: Any = None
     moisture_step_result: Any = None
 
+    acoustic_state: Any = None
+    acoustic_step_result: Any = None
+    
     thermal_state: Any = None
     thermal_parameters: Any = None
     thermal_ventilation_exchange: Any = None
@@ -337,6 +342,8 @@ class BuildingPhysicsStepResult:
             "has_moisture_state": self.moisture_state is not None,
             "has_moisture_transport_result": self.moisture_transport_result is not None,
             "has_moisture_step_result": self.moisture_step_result is not None,
+            "has_acoustic_state": self.acoustic_state is not None,
+            "has_acoustic_step_result": self.acoustic_step_result is not None,
             "has_thermal_state": self.thermal_state is not None,
             "has_thermal_parameters": self.thermal_parameters is not None,
             "has_thermal_ventilation_exchange": self.thermal_ventilation_exchange is not None,
@@ -686,10 +693,8 @@ def run_building_physics_step(
             outdoor_moisture_boundary=outdoor_moisture_boundary,
         )
 
-        pressure_pa = _get_attr_or_key(
-            weather_state,
-            "atmospheric_pressure_pa",
-            101325.0,
+        pressure_pa = _safe_atmospheric_pressure_pa(
+            weather_state=weather_state,
         )
 
         moisture_step_result = step_building_moisture_state(
@@ -701,6 +706,27 @@ def run_building_physics_step(
             atmospheric_pressure_pa=pressure_pa,
             dt_minutes=dt_minutes,
         )
+        
+    # ------------------------------------------------------------
+    # Acoustics.
+    # ------------------------------------------------------------
+    acoustic_step_result = None
+    acoustic_state = step_input.previous_acoustic_state
+
+    from nexusep.abbey.building.physics.acoustics import (
+        step_building_acoustic_state,
+    )
+
+    acoustic_step_result = step_building_acoustic_state(
+        building_model=building_model,
+        physics_graph=physics_graph,
+        weather_state=weather_state,
+        internal_source_result=internal_source_result,
+        previous_acoustic_state=acoustic_state,
+        dt_minutes=dt_minutes,
+    )
+
+    acoustic_state = acoustic_step_result.updated_state
 
     # ------------------------------------------------------------
     # Thermal.
@@ -769,6 +795,7 @@ def run_building_physics_step(
         co2_step_result=co2_step_result,
         moisture_step_result=moisture_step_result,
         light_state=light_state,
+        acoustic_step_result=acoustic_step_result,
     )
 
     if write_back_to_building_model:
@@ -790,6 +817,7 @@ def run_building_physics_step(
         zone_control_commands=zone_control_commands,
         zone_system_specs=zone_system_specs,
         window_boundary_result=window_boundary_result,
+        acoustic_step_result=acoustic_step_result,
         daylight_result=daylight_result,
         lighting_power_result=lighting_power_result,
         solar_gain_result=solar_gain_result,
@@ -806,6 +834,7 @@ def run_building_physics_step(
         interzone_thermal_flow_records=interzone_thermal_flow_records,
         command_constraint_records=command_constraint_records,
         window_boundary_result=window_boundary_result,
+        acoustic_step_result=acoustic_step_result,
         daylight_result=daylight_result,
         lighting_power_result=lighting_power_result,
         light_state=light_state,
@@ -838,6 +867,8 @@ def run_building_physics_step(
         interzone_thermal_flow_records=interzone_thermal_flow_records,
         interzone_heat_gains_by_zone_w=interzone_heat_gains_by_zone_w,
         thermal_step_result=thermal_step_result,
+        acoustic_state=acoustic_state,
+        acoustic_step_result=acoustic_step_result,
         proposed_zone_states=proposed_zone_states,
         zone_records=zone_records,
         building_record=building_record,
@@ -847,6 +878,30 @@ def run_building_physics_step(
 # ============================================================
 # PHASE 10.2 HELPERS
 # ============================================================
+
+def _safe_atmospheric_pressure_pa(
+    weather_state: Any,
+    default_pa: float = 101325.0,
+) -> float:
+    value = _get_attr_or_key(
+        weather_state,
+        "atmospheric_pressure_pa",
+        None,
+    )
+
+    if value is None:
+        return float(default_pa)
+
+    try:
+        value = float(value)
+    except Exception:
+        return float(default_pa)
+
+    if value <= 0.0:
+        return float(default_pa)
+
+    return value
+
 
 def _get_attr_or_key(obj: Any, key: str, default: Any = None) -> Any:
     if obj is None:
@@ -948,10 +1003,8 @@ def _make_current_moisture_state_from_building_model(
         make_initial_building_moisture_state,
     )
 
-    pressure_pa = _get_attr_or_key(
-        weather_state,
-        "atmospheric_pressure_pa",
-        101325.0,
+    pressure_pa = _safe_atmospheric_pressure_pa(
+        weather_state=weather_state,
     )
 
     return make_initial_building_moisture_state(
@@ -1057,6 +1110,7 @@ def _make_proposed_zone_states(
     co2_step_result: Any = None,
     moisture_step_result: Any = None,
     light_state: Any = None,
+    acoustic_step_result: Any = None,
 ) -> Dict[str, Any]:
     proposed = {}
 
@@ -1085,6 +1139,15 @@ def _make_proposed_zone_states(
             "updated_moisture_state",
             None,
         )
+        
+    acoustic_results = {}
+
+    if acoustic_step_result is not None and hasattr(
+        acoustic_step_result,
+        "zone_results",
+    ):
+        acoustic_results = acoustic_step_result.zone_results
+        
     for zone_id, old_zone_state in building_model.all_zone_states().items():
         new_temp_c = float(_get_attr_or_key(old_zone_state, "indoor_temp_c", 20.0))
 
@@ -1183,12 +1246,33 @@ def _make_proposed_zone_states(
                 0.0,
                 1.0,
             )
+        acoustic_zone_result = acoustic_results.get(zone_id)
 
+        if acoustic_zone_result is not None:
+            if hasattr(acoustic_zone_result, "to_zone_state_indoor_noise"):
+                new_indoor_noise = float(
+                    acoustic_zone_result.to_zone_state_indoor_noise()
+                )
+            else:
+                new_indoor_noise = float(
+                    _get_attr_or_key(
+                        acoustic_zone_result,
+                        "acoustic_discomfort_input",
+                        new_indoor_noise,
+                    )
+                )
+
+            new_indoor_noise = _clamp(
+                new_indoor_noise,
+                0.0,
+                1.0,
+            )
         proposed[zone_id] = old_zone_state.copy(
             indoor_temp_c=new_temp_c,
             indoor_mass_temp_c=new_mass_temp_c,
             co2_ppm=new_co2_ppm,
             indoor_daylight=new_indoor_daylight,
+            indoor_noise=new_indoor_noise,
             indoor_relative_humidity_percent=new_indoor_relative_humidity_percent,
             indoor_humidity_ratio_kg_kg=new_indoor_humidity_ratio_kg_kg,
         )
@@ -1280,6 +1364,7 @@ def _make_engine_zone_records(
     interzone_heat_gains_by_zone_w: Optional[Dict[str, float]] = None,
     zone_control_commands: Optional[Dict[str, Any]] = None,
     zone_system_specs: Optional[Dict[str, Any]] = None,
+    acoustic_step_result: Any = None,
     window_boundary_result: Any = None,
     daylight_result: Any = None,
     lighting_power_result: Any = None,
@@ -1307,7 +1392,13 @@ def _make_engine_zone_records(
         "physics_bridge_inputs_by_zone",
     ):
         internal_bridge_by_zone = internal_source_result.physics_bridge_inputs_by_zone()
+    acoustic_results_by_zone = {}
 
+    if acoustic_step_result is not None and hasattr(
+        acoustic_step_result,
+        "zone_results",
+    ):
+        acoustic_results_by_zone = acoustic_step_result.zone_results
     for zone_id, zone_state in proposed_zone_states.items():
         old_state = building_model.get_zone_state(zone_id)
         bridge_row = internal_bridge_by_zone.get(zone_id, {})
@@ -1646,7 +1737,86 @@ def _make_engine_zone_records(
                     "dimming_fraction",
                     0.0,
                 )
-            )        
+            )   
+            
+        acoustic_zone_result = acoustic_results_by_zone.get(zone_id)
+
+        indoor_noise_db = 0.0
+        background_noise_db = 0.0
+        outdoor_noise_db = 0.0
+        local_noise_source_db = 0.0
+        local_noise_source_count = 0
+        outdoor_noise_contribution_db = 0.0
+        interzone_noise_contribution_db = 0.0
+        max_neighbor_noise_contribution_db = 0.0
+        acoustic_discomfort_input = float(
+            _get_attr_or_key(zone_state, "indoor_noise", 0.0)
+        )
+
+        if acoustic_zone_result is not None:
+            indoor_noise_db = float(
+                _get_attr_or_key(acoustic_zone_result, "indoor_noise_db", 0.0)
+            )
+
+            background_noise_db = float(
+                _get_attr_or_key(acoustic_zone_result, "background_noise_db", 0.0)
+            )
+
+            local_noise_source_db = float(
+                _get_attr_or_key(acoustic_zone_result, "local_noise_source_db", 0.0)
+            )
+
+            local_noise_source_count = int(
+                _get_attr_or_key(acoustic_zone_result, "local_noise_source_count", 0)
+            )
+
+            outdoor_noise_contribution_db = float(
+                _get_attr_or_key(
+                    acoustic_zone_result,
+                    "outdoor_noise_contribution_db",
+                    0.0,
+                )
+            )
+
+            interzone_noise_contribution_db = float(
+                _get_attr_or_key(
+                    acoustic_zone_result,
+                    "interzone_noise_contribution_db",
+                    0.0,
+                )
+            )
+
+            max_neighbor_noise_contribution_db = float(
+                _get_attr_or_key(
+                    acoustic_zone_result,
+                    "max_neighbor_noise_contribution_db",
+                    0.0,
+                )
+            )
+
+            acoustic_discomfort_input = float(
+                _get_attr_or_key(
+                    acoustic_zone_result,
+                    "acoustic_discomfort_input",
+                    acoustic_discomfort_input,
+                )
+            )
+
+        if acoustic_step_result is not None:
+            outdoor_boundary = _get_attr_or_key(
+                acoustic_step_result,
+                "outdoor_boundary",
+                None,
+            )
+
+            outdoor_noise_db = float(
+                _get_attr_or_key(
+                    outdoor_boundary,
+                    "outdoor_noise_db",
+                    0.0,
+                )
+            )
+            
         record = {
             "physics_path": "engine",
             "legacy_fallback_used": False,
@@ -1758,7 +1928,16 @@ def _make_engine_zone_records(
                 window_effective_visible_transmittance_values,
                 default=0.0,
             ),
-
+            "indoor_noise": _get_attr_or_key(zone_state, "indoor_noise", None),
+            "indoor_noise_db": indoor_noise_db,
+            "background_noise_db": background_noise_db,
+            "outdoor_noise_db": outdoor_noise_db,
+            "local_noise_source_db": local_noise_source_db,
+            "local_noise_source_count": local_noise_source_count,
+            "outdoor_noise_contribution_db": outdoor_noise_contribution_db,
+            "interzone_noise_contribution_db": interzone_noise_contribution_db,
+            "max_neighbor_noise_contribution_db": max_neighbor_noise_contribution_db,
+            "acoustic_discomfort_input": acoustic_discomfort_input,
             "solar_gain_w": solar_gain_w,
             "solar_gain_wh": solar_gain_w * dt_hours,
 
@@ -1848,6 +2027,7 @@ def _make_engine_building_record(
     command_constraint_records: Optional[List[Dict[str, Any]]] = None,
     window_boundary_result: Any = None,
     daylight_result: Any = None,
+    acoustic_step_result: Any = None,
     lighting_power_result: Any = None,
     light_state: Any = None,
 ) -> Dict[str, Any]:
@@ -1866,6 +2046,7 @@ def _make_engine_building_record(
         "has_moisture_step_result": moisture_step_result is not None,
         "has_thermal_step_result": thermal_step_result is not None,
         "has_interzone_thermal_network": interzone_thermal_network is not None,
+        "has_acoustic_step_result": acoustic_step_result is not None,
         "interzone_thermal_link_count": (
             len(getattr(interzone_thermal_network, "links", {}))
             if interzone_thermal_network is not None
@@ -1965,6 +2146,48 @@ def _make_engine_building_record(
 
     record["total_lighting_power_result_w"] = sum(lighting_power_values)
     record["total_lighting_result_energy_wh"] = sum(lighting_energy_values)
+    
+    indoor_noise_values = [
+        float(row.get("indoor_noise", 0.0))
+        for row in zone_records
+        if row.get("indoor_noise", None) is not None
+    ]
+
+    indoor_noise_db_values = [
+        float(row.get("indoor_noise_db", 0.0))
+        for row in zone_records
+        if row.get("indoor_noise_db", None) is not None
+    ]
+
+    local_noise_source_counts = [
+        int(row.get("local_noise_source_count", 0))
+        for row in zone_records
+    ]
+
+    record["average_zone_indoor_noise"] = (
+        sum(indoor_noise_values) / len(indoor_noise_values)
+        if indoor_noise_values
+        else 0.0
+    )
+
+    record["max_zone_indoor_noise"] = _safe_max(
+        indoor_noise_values,
+        default=0.0,
+    )
+
+    record["average_zone_indoor_noise_db"] = (
+        sum(indoor_noise_db_values) / len(indoor_noise_db_values)
+        if indoor_noise_db_values
+        else 0.0
+    )
+
+    record["max_zone_indoor_noise_db"] = _safe_max(
+        indoor_noise_db_values,
+        default=0.0,
+    )
+
+    record["total_local_noise_source_count"] = sum(local_noise_source_counts)
+    
     return record
 
 
@@ -2114,7 +2337,23 @@ def run_building_physics_timestep_order(
             notes="For now moisture uses current/pre-update thermal temperature. No moisture-to-thermal feedback yet.",
         )
     )
-
+    step_records.append(
+        make_physics_timestep_step_record(
+            step_name=PHYSICS_STEP_CALCULATE_ACOUSTICS,
+            status="ready",
+            inputs=[
+                "BuildingModel",
+                "BuildingPhysicsGraph",
+                "WeatherState",
+                "BuildingInternalSourceResult",
+            ],
+            outputs=[
+                "BuildingAcousticState",
+                "BuildingAcousticStepResult",
+            ],
+            notes="Phase 14 placeholder acoustic step.",
+        ),
+    )
     step_records.append(
         make_physics_timestep_step_record(
             step_name=PHYSICS_STEP_CALCULATE_THERMAL,
@@ -2124,6 +2363,8 @@ def run_building_physics_timestep_order(
             notes="Thermal uses internal gains, solar/window effects, and airflow ventilation exchange.",
         )
     )
+    
+
 
     step_records.append(
         make_physics_timestep_step_record(
