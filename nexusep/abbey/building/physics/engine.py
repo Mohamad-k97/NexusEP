@@ -1166,6 +1166,9 @@ def _make_proposed_zone_states(
         new_indoor_daylight = float(
             _get_attr_or_key(old_zone_state, "indoor_daylight", 0.5)
         )
+        new_indoor_noise = float(
+            _get_attr_or_key(old_zone_state, "indoor_noise", 0.2)
+        )
         new_indoor_relative_humidity_percent = _get_attr_or_key(
             old_zone_state,
             "indoor_relative_humidity_percent",
@@ -1428,6 +1431,40 @@ def _make_engine_zone_records(
                 float(_get_attr_or_key(command, "cooling_power_fraction", 0.0))
                 * float(_get_attr_or_key(system_spec, "cooling_capacity_w", 0.0))
             )
+            
+        heating_power_fraction = float(
+            _get_attr_or_key(command, "heating_power_fraction", 0.0)
+        )
+
+        cooling_power_fraction = float(
+            _get_attr_or_key(command, "cooling_power_fraction", 0.0)
+        )
+
+        heating_capacity_w = float(
+            _get_attr_or_key(system_spec, "heating_capacity_w", 0.0)
+        )
+
+        cooling_capacity_w = float(
+            _get_attr_or_key(system_spec, "cooling_capacity_w", 0.0)
+        )
+
+        heating_efficiency_or_cop = float(
+            _get_attr_or_key(system_spec, "heating_efficiency_or_cop", 1.0)
+        )
+
+        cooling_efficiency_or_cop = float(
+            _get_attr_or_key(system_spec, "cooling_efficiency_or_cop", 1.0)
+        )
+
+        if heating_efficiency_or_cop <= 0.0:
+            heating_efficiency_or_cop = 1.0
+
+        if cooling_efficiency_or_cop <= 0.0:
+            cooling_efficiency_or_cop = 1.0
+
+        heating_input_power_w = heating_power_w / heating_efficiency_or_cop
+        cooling_input_power_w = cooling_power_w / cooling_efficiency_or_cop
+        
         outdoor_airflow_record = None
 
         if airflow_network is not None and hasattr(
@@ -1816,7 +1853,106 @@ def _make_engine_zone_records(
                     0.0,
                 )
             )
-            
+        old_indoor_daylight = _get_attr_or_key(
+            old_state,
+            "indoor_daylight",
+            None,
+        )
+
+        new_indoor_daylight = _get_attr_or_key(
+            zone_state,
+            "indoor_daylight",
+            None,
+        )
+
+        old_indoor_noise = _get_attr_or_key(
+            old_state,
+            "indoor_noise",
+            None,
+        )
+
+        new_indoor_noise = _get_attr_or_key(
+            zone_state,
+            "indoor_noise",
+            None,
+        )
+        internal_source_record_count = int(
+            bridge_row.get("record_count", 0)
+        )
+
+        internal_average_sensible_heat_w = float(
+            bridge_row.get("average_sensible_heat_w", 0.0)
+        )
+
+        internal_average_latent_heat_w = float(
+            bridge_row.get("average_latent_heat_w", 0.0)
+        )
+
+        internal_average_electricity_power_w = float(
+            bridge_row.get("average_electricity_power_w", 0.0)
+        )
+
+        internal_electricity_wh = float(
+            bridge_row.get("electricity_wh", 0.0)
+        )
+
+        total_internal_gain_w = (
+            internal_average_sensible_heat_w
+            + internal_average_latent_heat_w
+        )
+        internal_electricity_wh_by_source_kind = bridge_row.get(
+            "internal_electricity_wh_by_source_kind",
+            bridge_row.get("electricity_wh_by_source_kind", {}),
+        )
+
+        internal_average_latent_heat_w_by_source_kind = bridge_row.get(
+            "internal_average_latent_heat_w_by_source_kind",
+            bridge_row.get("average_latent_heat_w_by_source_kind", {}),
+        )
+
+        appliance_electricity_wh_from_sources = float(
+            bridge_row.get("appliance_electricity_wh", 0.0)
+        )
+
+        lighting_electricity_wh_from_sources = float(
+            bridge_row.get("lighting_electricity_wh", 0.0)
+        )
+
+        hvac_electricity_wh_from_sources = float(
+            bridge_row.get("hvac_electricity_wh", 0.0)
+        )
+
+        hvac_heating_gain_w = float(
+            bridge_row.get("hvac_heating_gain_w", 0.0)
+        )
+
+        hvac_cooling_gain_w = float(
+            bridge_row.get("hvac_cooling_gain_w", 0.0)
+        )
+
+        hvac_cooling_removal_w = float(
+            bridge_row.get("hvac_cooling_removal_w", 0.0)
+        )
+
+        hvac_sensible_gain_w = float(
+            bridge_row.get("hvac_sensible_gain_w", 0.0)
+        )
+
+        appliance_total_heat_w = float(
+            bridge_row.get("appliance_total_heat_w", 0.0)
+        )
+
+        appliance_total_heat_wh = float(
+            bridge_row.get("appliance_total_heat_wh", 0.0)
+        )
+
+        lighting_sensible_heat_w = float(
+            bridge_row.get("lighting_sensible_heat_w", 0.0)
+        )
+
+
+        total_internal_gain_wh = total_internal_gain_w * dt_hours
+
         record = {
             "physics_path": "engine",
             "legacy_fallback_used": False,
@@ -1893,7 +2029,11 @@ def _make_engine_zone_records(
                 "indoor_humidity_ratio_kg_kg",
                 None,
             ),
-            "new_indoor_daylight": _get_attr_or_key(zone_state, "indoor_daylight", None),
+            "old_indoor_daylight": old_indoor_daylight,
+            "new_indoor_daylight": new_indoor_daylight,
+            "old_indoor_noise": old_indoor_noise,
+            "new_indoor_noise": new_indoor_noise,
+            "proposed_indoor_noise": new_indoor_noise,
             "proposed_indoor_daylight": _get_attr_or_key(
                 zone_state,
                 "indoor_daylight",
@@ -1952,16 +2092,12 @@ def _make_engine_zone_records(
             "lighting_result_requested_lux": lighting_result_requested_lux,
             "lighting_result_dimming_fraction": lighting_result_dimming_fraction,
             "command_heating_on": bool(_get_attr_or_key(command, "heating_on", False)),
-            "command_heating_power_fraction": float(
-                _get_attr_or_key(command, "heating_power_fraction", 0.0)
-            ),
+            "command_heating_power_fraction": heating_power_fraction,
             "command_heating_power_w": heating_power_w,
             "command_heating_delivered_power_w": heating_power_w,
             
             "command_cooling_on": bool(_get_attr_or_key(command, "cooling_on", False)),
-            "command_cooling_power_fraction": float(
-                _get_attr_or_key(command, "cooling_power_fraction", 0.0)
-            ),
+            "command_cooling_power_fraction": cooling_power_fraction,
             "command_cooling_power_w": cooling_power_w,
             "command_cooling_delivered_power_w": cooling_power_w,
             "command_hvac_thermal_gain_w": heating_power_w - cooling_power_w,
@@ -1970,6 +2106,14 @@ def _make_engine_zone_records(
             "command_ventilation_flow_m3_h": float(
                 _get_attr_or_key(command, "ventilation_flow_m3_h", 0.0)
             ),
+            "heating_power_fraction": heating_power_fraction,
+            "cooling_power_fraction": cooling_power_fraction,
+            "heating_capacity_w": heating_capacity_w,
+            "cooling_capacity_w": cooling_capacity_w,
+            "heating_efficiency_or_cop": heating_efficiency_or_cop,
+            "cooling_efficiency_or_cop": cooling_efficiency_or_cop,
+            "heating_input_power_w": heating_input_power_w,
+            "cooling_input_power_w": cooling_input_power_w,
             "airflow_infiltration_flow_m3_h": infiltration_flow_m3_h,
             "airflow_mechanical_ventilation_flow_m3_h": mechanical_ventilation_flow_m3_h,
             "airflow_window_flow_m3_h": window_airflow_m3_h,
@@ -1991,22 +2135,61 @@ def _make_engine_zone_records(
                 _get_attr_or_key(command, "window_opening_fraction", 0.0)
             ),
             "command_curtain_open": bool(_get_attr_or_key(command, "curtain_open", True)),
-            "internal_average_sensible_heat_w": bridge_row.get(
-                "average_sensible_heat_w",
-                0.0,
-            ),
+            "internal_source_record_count": internal_source_record_count,
+            "internal_average_sensible_heat_w": internal_average_sensible_heat_w,
+            "internal_average_latent_heat_w": internal_average_latent_heat_w,
+            "internal_average_electricity_power_w": internal_average_electricity_power_w,
+            "internal_electricity_wh": internal_electricity_wh,
             "internal_average_co2_generation_m3_h": bridge_row.get(
                 "average_co2_generation_m3_h",
                 0.0,
             ),
+                        # ------------------------------------------------------------
+            # Phase 15.6 internal-source / energy audit fields.
+            # ------------------------------------------------------------
+            "internal_electricity_wh_by_source_kind": internal_electricity_wh_by_source_kind,
+            "internal_average_latent_heat_w_by_source_kind": internal_average_latent_heat_w_by_source_kind,
+            
+            "appliance_electricity_wh_from_internal_sources": appliance_electricity_wh_from_sources,
+            "lighting_electricity_wh_from_internal_sources": lighting_electricity_wh_from_sources,
+            "hvac_electricity_wh_from_internal_sources": hvac_electricity_wh_from_sources,
+            
+            "appliance_total_heat_w": appliance_total_heat_w,
+            "appliance_total_heat_wh": appliance_total_heat_wh,
+            "lighting_sensible_heat_w": lighting_sensible_heat_w,
+            
+            "hvac_sensible_gain_w": hvac_sensible_gain_w,
+            "hvac_heating_gain_w": hvac_heating_gain_w,
+            "hvac_cooling_gain_w": hvac_cooling_gain_w,
+            "hvac_cooling_removal_w": hvac_cooling_removal_w,
+            
+
             "internal_average_moisture_generation_kg_h": bridge_row.get(
                 "average_moisture_generation_kg_h",
                 0.0,
             ),
-            "internal_electricity_wh": bridge_row.get(
-                "electricity_wh",
-                0.0,
+            "internal_average_sensible_heat_w_by_source_kind": bridge_row.get(
+                "average_sensible_heat_w_by_source_kind",
+                {},
             ),
+            "internal_average_electricity_power_w_by_source_kind": bridge_row.get(
+                "average_electricity_power_w_by_source_kind",
+                {},
+            ),
+            "internal_average_co2_generation_m3_h_by_source_kind": bridge_row.get(
+                "average_co2_generation_m3_h_by_source_kind",
+                {},
+            ),
+            "internal_average_moisture_generation_kg_h_by_source_kind": bridge_row.get(
+                "average_moisture_generation_kg_h_by_source_kind",
+                {},
+            ),
+            "internal_record_count_by_source_kind": bridge_row.get(
+                "record_count_by_source_kind",
+                {},
+            ),
+            "total_internal_gain_w": total_internal_gain_w,
+            "total_internal_gain_wh": total_internal_gain_wh,
         }
 
         records.append(record)

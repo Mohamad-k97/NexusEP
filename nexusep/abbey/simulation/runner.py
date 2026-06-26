@@ -732,7 +732,9 @@ class AbbeySimulation:
             else:
                 row = dict(record)
 
-            self.building_interzone_thermal_records.append(row)
+            self.building_interzone_thermal_records.append(
+                self._standardize_interzone_thermal_row(row)
+            )
 
     def _store_building_interzone_airflow_records(
         self,
@@ -747,7 +749,9 @@ class AbbeySimulation:
             else:
                 row = dict(record)
 
-            self.building_interzone_airflow_records.append(row)
+            self.building_interzone_airflow_records.append(
+                self._standardize_interzone_airflow_row(row)
+            )
 
     def _store_building_window_airflow_records(
         self,
@@ -762,7 +766,9 @@ class AbbeySimulation:
             else:
                 row = dict(record)
 
-            self.building_window_airflow_records.append(row)
+            self.building_window_airflow_records.append(
+                self._csv_safe_internal_source_row(row)
+            )
             
     def _store_building_action_events(
         self,
@@ -827,20 +833,74 @@ class AbbeySimulation:
 
     @staticmethod
     def _csv_safe_internal_source_row(row: Dict[str, Any]) -> Dict[str, Any]:
-        clean = {}
+        return AbbeySimulation._csv_safe_row(row)
 
-        for key, value in row.items():
-            if isinstance(value, (dict, list, tuple)):
-                clean[key] = json.dumps(
-                    value,
-                    ensure_ascii=False,
-                    default=str,
+    @staticmethod
+    def _standardize_interzone_thermal_row(row: Dict[str, Any]) -> Dict[str, Any]:
+        row = dict(row)
+
+        if "connection_id" not in row and "zone_connection_id" in row:
+            row["connection_id"] = row.get("zone_connection_id")
+
+        if "zone_connection_id" not in row and "connection_id" in row:
+            row["zone_connection_id"] = row.get("connection_id")
+
+        if "open_fraction" not in row and "opening_fraction" in row:
+            row["open_fraction"] = row.get("opening_fraction")
+
+        if "opening_fraction" not in row and "open_fraction" in row:
+            row["opening_fraction"] = row.get("open_fraction")
+
+        return row
+
+    @staticmethod
+    def _standardize_interzone_airflow_row(row: Dict[str, Any]) -> Dict[str, Any]:
+        row = dict(row)
+
+        if "connection_id" not in row and "zone_connection_id" in row:
+            row["connection_id"] = row.get("zone_connection_id")
+
+        if "zone_connection_id" not in row and "connection_id" in row:
+            row["zone_connection_id"] = row.get("connection_id")
+
+        if "airflow_a_to_b_m3_h" not in row and "flow_a_to_b_m3_h" in row:
+            row["airflow_a_to_b_m3_h"] = row.get("flow_a_to_b_m3_h")
+
+        if "airflow_b_to_a_m3_h" not in row and "flow_b_to_a_m3_h" in row:
+            row["airflow_b_to_a_m3_h"] = row.get("flow_b_to_a_m3_h")
+
+        if "flow_a_to_b_m3_h" not in row and "airflow_a_to_b_m3_h" in row:
+            row["flow_a_to_b_m3_h"] = row.get("airflow_a_to_b_m3_h")
+
+        if "flow_b_to_a_m3_h" not in row and "airflow_b_to_a_m3_h" in row:
+            row["flow_b_to_a_m3_h"] = row.get("airflow_b_to_a_m3_h")
+
+        if "airflow_a_to_b_m3_s" not in row and "flow_a_to_b_m3_s" in row:
+            row["airflow_a_to_b_m3_s"] = row.get("flow_a_to_b_m3_s")
+
+        if "airflow_b_to_a_m3_s" not in row and "flow_b_to_a_m3_s" in row:
+            row["airflow_b_to_a_m3_s"] = row.get("flow_b_to_a_m3_s")
+
+        if "mixing_exchange_m3_h" not in row:
+            if "mixing_flow_m3_h" in row:
+                row["mixing_exchange_m3_h"] = row.get("mixing_flow_m3_h")
+            elif "airflow_a_to_b_m3_h" in row and "airflow_b_to_a_m3_h" in row:
+                row["mixing_exchange_m3_h"] = max(
+                    float(row.get("airflow_a_to_b_m3_h") or 0.0),
+                    float(row.get("airflow_b_to_a_m3_h") or 0.0),
                 )
-            else:
-                clean[key] = value
 
-        return clean
+        if "mixing_flow_m3_h" not in row and "mixing_exchange_m3_h" in row:
+            row["mixing_flow_m3_h"] = row.get("mixing_exchange_m3_h")
 
+        if "open_fraction" not in row and "opening_fraction" in row:
+            row["open_fraction"] = row.get("opening_fraction")
+
+        if "opening_fraction" not in row and "open_fraction" in row:
+            row["opening_fraction"] = row.get("open_fraction")
+
+        return row
+    
     @staticmethod
     def _call_float_method(obj: Any, method_name: str, default: float = 0.0) -> float:
         if obj is None:
@@ -855,7 +915,21 @@ class AbbeySimulation:
             return float(method())
         except Exception:
             return default
+    @staticmethod
+    def _csv_safe_row(row: Dict[str, Any]) -> Dict[str, Any]:
+        clean = {}
 
+        for key, value in dict(row).items():
+            if isinstance(value, (dict, list, tuple)):
+                clean[key] = json.dumps(
+                    value,
+                    ensure_ascii=False,
+                    default=str,
+                )
+            else:
+                clean[key] = value
+
+        return clean
     def _sync_systems_from_observation(self) -> None:
         """
         Keep agent-facing SystemState consistent with the final

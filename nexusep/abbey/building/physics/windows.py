@@ -2292,6 +2292,9 @@ class WindowBoundaryResult:
     def to_dict(self) -> Dict[str, Any]:
         return {
             "boundary_connection_id": self.boundary_connection_id,
+
+            "window_id": self.boundary_connection_id,
+
             "zone_id": self.zone_id,
             "orientation_deg": self.orientation_deg,
             "orientation_label": self.orientation_label,

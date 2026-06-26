@@ -47,29 +47,86 @@ BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_EXPLICIT = "legacy_fallback_explicit"
 BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_AFTER_ENGINE_ERROR = (
     "legacy_fallback_after_engine_error"
 )
-PHASE_12_ENGINE_ZONE_DIAGNOSTIC_KEYS = [
+# ============================================================
+# ENGINE DIAGNOSTIC COPY GROUPS
+# ============================================================
+#
+# These lists describe physical meaning, not implementation phase.
+#
+# engine.py is the canonical producer of these diagnostics.
+# performance.py only copies selected engine diagnostics into the
+# public zone/building timestep records.
+#
+# Keep PHASE_* aliases below for old tests/imports, but do not use
+# them in the copy logic.
+
+
+def _unique_record_keys(keys):
+    out = []
+
+    for key in keys:
+        if key not in out:
+            out.append(key)
+
+    return out
+
+
+ENGINE_THERMAL_ZONE_KEYS = [
+    "old_indoor_temp_c",
+    "new_indoor_temp_c",
+    "old_indoor_mass_temp_c",
+    "new_indoor_mass_temp_c",
+    "thermal_old_air_temperature_c",
+    "thermal_new_air_temperature_c",
+    "thermal_old_mass_temperature_c",
+    "thermal_new_mass_temperature_c",
+    "thermal_convective_gain_w",
+    "thermal_radiative_gain_w",
+    "thermal_ventilation_h_w_k",
+]
+
+
+ENGINE_AIRFLOW_ZONE_KEYS = [
     "airflow_infiltration_flow_m3_h",
     "airflow_mechanical_ventilation_flow_m3_h",
     "airflow_window_flow_m3_h",
     "airflow_outdoor_exchange_m3_h",
     "airflow_interzone_exchange_m3_h",
     "airflow_total_exchange_m3_h",
+]
 
+
+ENGINE_AIR_QUALITY_ZONE_KEYS = [
     "old_co2_ppm",
     "new_co2_ppm",
     "co2_generation_m3_h",
+]
 
+
+ENGINE_MOISTURE_ZONE_KEYS = [
     "old_humidity_ratio_kg_kg",
     "new_humidity_ratio_kg_kg",
     "old_relative_humidity_percent",
     "new_relative_humidity_percent",
     "moisture_generation_kg_h",
     "moisture_transport_airflow_m3_h",
+    "old_indoor_relative_humidity_percent",
+    "new_indoor_relative_humidity_percent",
+    "old_indoor_humidity_ratio_kg_kg",
+    "new_indoor_humidity_ratio_kg_kg",
 ]
 
-PHASE_13_ENGINE_ZONE_DIAGNOSTIC_KEYS = [
-    "proposed_indoor_daylight",
 
+ENGINE_INTERZONE_THERMAL_ZONE_KEYS = [
+    "interzone_thermal_link_count",
+    "interzone_thermal_total_h_w_k",
+    "interzone_heat_gain_w",
+    "interzone_heat_loss_w",
+    "interzone_net_heat_gain_w",
+]
+
+
+ENGINE_WINDOW_ZONE_KEYS = [
     "window_count",
     "window_orientation_deg_list",
     "window_curtain_open_count",
@@ -80,15 +137,23 @@ PHASE_13_ENGINE_ZONE_DIAGNOSTIC_KEYS = [
     "window_effective_solar_factor_max",
     "window_effective_visible_transmittance_sum",
     "window_effective_visible_transmittance_max",
+]
 
+
+ENGINE_SOLAR_ZONE_KEYS = [
     "solar_gain_w",
     "solar_gain_wh",
+]
 
+
+ENGINE_DAYLIGHT_LIGHTING_ZONE_KEYS = [
+    "old_indoor_daylight",
+    "new_indoor_daylight",
+    "proposed_indoor_daylight",
     "daylight_illuminance_lux",
     "indoor_illuminance_lux",
     "artificial_lighting_illuminance_lux",
     "visual_comfort_status",
-
     "lighting_result_lights_on",
     "lighting_result_power_w",
     "lighting_result_energy_wh",
@@ -97,21 +162,77 @@ PHASE_13_ENGINE_ZONE_DIAGNOSTIC_KEYS = [
 ]
 
 
-PHASE_13_ENGINE_BUILDING_DIAGNOSTIC_KEYS = [
-    "window_count",
-    "window_curtain_closed_count",
-    "total_solar_gain_w",
-    "total_solar_gain_w_from_zone_records",
-    "max_zone_solar_gain_w",
-    "average_zone_daylight_illuminance_lux",
-    "max_zone_daylight_illuminance_lux",
-    "average_zone_indoor_illuminance_lux",
-    "max_zone_indoor_illuminance_lux",
-    "total_lighting_power_result_w",
-    "total_lighting_result_energy_wh",
+ENGINE_HVAC_CONTROL_ZONE_KEYS = [
+    "heating_power_fraction",
+    "cooling_power_fraction",
+    "heating_capacity_w",
+    "cooling_capacity_w",
+    "heating_efficiency_or_cop",
+    "cooling_efficiency_or_cop",
+    "heating_input_power_w",
+    "cooling_input_power_w",
+
+    "command_heating_on",
+    "command_heating_power_fraction",
+    "command_heating_power_w",
+    "command_heating_delivered_power_w",
+    "command_cooling_on",
+    "command_cooling_power_fraction",
+    "command_cooling_power_w",
+    "command_cooling_delivered_power_w",
+    "command_hvac_thermal_gain_w",
+    "command_heating_delivered_energy_wh",
+    "command_cooling_delivered_energy_wh",
+    "command_ventilation_flow_m3_h",
+
+    "command_lights_on",
+    "command_lighting_power_w",
+    "command_window_open",
+    "command_window_opening_fraction",
+    "command_curtain_open",
 ]
 
-PHASE_14_ENGINE_ZONE_DIAGNOSTIC_KEYS = [
+
+ENGINE_INTERNAL_SOURCE_ZONE_KEYS = [
+    "internal_source_record_count",
+    "internal_average_sensible_heat_w",
+    "internal_average_latent_heat_w",
+    "internal_average_electricity_power_w",
+    "internal_electricity_wh",
+    "internal_average_co2_generation_m3_h",
+    "internal_average_moisture_generation_kg_h",
+    "internal_average_sensible_heat_w_by_source_kind",
+    "internal_average_electricity_power_w_by_source_kind",
+    "internal_average_co2_generation_m3_h_by_source_kind",
+    "internal_average_moisture_generation_kg_h_by_source_kind",
+    "internal_record_count_by_source_kind",
+    "total_internal_gain_w",
+    "total_internal_gain_wh",
+    "internal_electricity_wh_by_source_kind",
+"internal_average_latent_heat_w_by_source_kind",
+
+"appliance_electricity_wh_from_internal_sources",
+"lighting_electricity_wh_from_internal_sources",
+"hvac_electricity_wh_from_internal_sources",
+
+"appliance_total_heat_w",
+"appliance_total_heat_wh",
+"lighting_sensible_heat_w",
+
+"hvac_sensible_gain_w",
+"hvac_heating_gain_w",
+"hvac_cooling_gain_w",
+"hvac_cooling_removal_w",
+
+"zone_energy_balance_residual_wh",
+"zone_energy_balance_ok",
+]
+
+
+ENGINE_ACOUSTIC_ZONE_KEYS = [
+    "old_indoor_noise",
+    "new_indoor_noise",
+    "proposed_indoor_noise",
     "indoor_noise",
     "indoor_noise_db",
     "background_noise_db",
@@ -125,7 +246,50 @@ PHASE_14_ENGINE_ZONE_DIAGNOSTIC_KEYS = [
 ]
 
 
-PHASE_14_ENGINE_BUILDING_DIAGNOSTIC_KEYS = [
+ENGINE_AIRFLOW_AIR_QUALITY_ZONE_KEYS = _unique_record_keys(
+    ENGINE_AIRFLOW_ZONE_KEYS
+    + ENGINE_AIR_QUALITY_ZONE_KEYS
+)
+
+
+ENGINE_SOLAR_DAYLIGHT_LIGHTING_ZONE_KEYS = _unique_record_keys(
+    ENGINE_WINDOW_ZONE_KEYS
+    + ENGINE_SOLAR_ZONE_KEYS
+    + ENGINE_DAYLIGHT_LIGHTING_ZONE_KEYS
+)
+
+
+ENGINE_ZONE_DIAGNOSTIC_KEYS = _unique_record_keys(
+    ENGINE_THERMAL_ZONE_KEYS
+    + ENGINE_AIRFLOW_ZONE_KEYS
+    + ENGINE_AIR_QUALITY_ZONE_KEYS
+    + ENGINE_MOISTURE_ZONE_KEYS
+    + ENGINE_INTERZONE_THERMAL_ZONE_KEYS
+    + ENGINE_WINDOW_ZONE_KEYS
+    + ENGINE_SOLAR_ZONE_KEYS
+    + ENGINE_DAYLIGHT_LIGHTING_ZONE_KEYS
+    + ENGINE_HVAC_CONTROL_ZONE_KEYS
+    + ENGINE_INTERNAL_SOURCE_ZONE_KEYS
+    + ENGINE_ACOUSTIC_ZONE_KEYS
+)
+
+
+ENGINE_SOLAR_DAYLIGHT_LIGHTING_BUILDING_KEYS = [
+    "window_count",
+    "window_curtain_closed_count",
+    "total_solar_gain_w",
+    "total_solar_gain_w_from_zone_records",
+    "max_zone_solar_gain_w",
+    "average_zone_daylight_illuminance_lux",
+    "max_zone_daylight_illuminance_lux",
+    "average_zone_indoor_illuminance_lux",
+    "max_zone_indoor_illuminance_lux",
+    "total_lighting_power_result_w",
+    "total_lighting_result_energy_wh",
+]
+
+
+ENGINE_ACOUSTIC_BUILDING_KEYS = [
     "has_acoustic_step_result",
     "average_zone_indoor_noise",
     "max_zone_indoor_noise",
@@ -135,6 +299,47 @@ PHASE_14_ENGINE_BUILDING_DIAGNOSTIC_KEYS = [
 ]
 
 
+ENGINE_BUILDING_DIAGNOSTIC_KEYS = _unique_record_keys(
+    ENGINE_SOLAR_DAYLIGHT_LIGHTING_BUILDING_KEYS
+    + ENGINE_ACOUSTIC_BUILDING_KEYS
+)
+
+
+# ------------------------------------------------------------
+# Backward-compatible aliases.
+# Do not use these in new copy logic.
+# ------------------------------------------------------------
+
+PHASE_12_ENGINE_ZONE_DIAGNOSTIC_KEYS = _unique_record_keys(
+    ENGINE_AIRFLOW_ZONE_KEYS
+    + ENGINE_AIR_QUALITY_ZONE_KEYS
+    + ENGINE_MOISTURE_ZONE_KEYS
+)
+
+PHASE_13_ENGINE_ZONE_DIAGNOSTIC_KEYS = _unique_record_keys(
+    ENGINE_WINDOW_ZONE_KEYS
+    + ENGINE_SOLAR_ZONE_KEYS
+    + ENGINE_DAYLIGHT_LIGHTING_ZONE_KEYS
+)
+
+PHASE_13_ENGINE_BUILDING_DIAGNOSTIC_KEYS = list(
+    ENGINE_SOLAR_DAYLIGHT_LIGHTING_BUILDING_KEYS
+)
+
+PHASE_14_ENGINE_ZONE_DIAGNOSTIC_KEYS = list(
+    ENGINE_ACOUSTIC_ZONE_KEYS
+)
+
+PHASE_14_ENGINE_BUILDING_DIAGNOSTIC_KEYS = list(
+    ENGINE_ACOUSTIC_BUILDING_KEYS
+)
+
+PHASE_15_ENGINE_ZONE_DIAGNOSTIC_KEYS = _unique_record_keys(
+    ENGINE_THERMAL_ZONE_KEYS
+    + ENGINE_INTERZONE_THERMAL_ZONE_KEYS
+    + ENGINE_HVAC_CONTROL_ZONE_KEYS
+    + ENGINE_INTERNAL_SOURCE_ZONE_KEYS
+)
 @dataclass
 class BuildingPerformanceStepResult:
     observation: DwellingObservation
@@ -441,6 +646,7 @@ class SimpleBuildingPerformanceModel:
                     command=command,
                     energy_result=energy_result,
                     internal_source_row=bridge_row,
+                    dt_hours=dt_hours,
                 )
 
                 record["physics_engine_active"] = True
@@ -499,13 +705,7 @@ class SimpleBuildingPerformanceModel:
                     0.0,
                 )
                 zone_records.append(record)
-                for key in PHASE_12_ENGINE_ZONE_DIAGNOSTIC_KEYS:
-                    if key in engine_zone_record:
-                        record[key] = engine_zone_record.get(key)
-                for key in PHASE_13_ENGINE_ZONE_DIAGNOSTIC_KEYS:
-                    if key in engine_zone_record:
-                        record[key] = engine_zone_record.get(key)
-                for key in PHASE_14_ENGINE_ZONE_DIAGNOSTIC_KEYS:
+                for key in ENGINE_ZONE_DIAGNOSTIC_KEYS:
                     if key in engine_zone_record:
                         record[key] = engine_zone_record.get(key)
         else:
@@ -634,6 +834,7 @@ class SimpleBuildingPerformanceModel:
                     command=command,
                     energy_result=energy_result,
                     internal_source_row=bridge_row,
+                    dt_hours=dt_hours,
                 )
 
                 record["physics_engine_active"] = False
@@ -651,6 +852,8 @@ class SimpleBuildingPerformanceModel:
             day=day,
             hour=hour,
             dwelling_energy_results=dwelling_energy_results,
+            zone_records=zone_records,
+            dt_hours=dt_hours,
         )
     
         building_record = self._make_building_record(
@@ -746,12 +949,10 @@ class SimpleBuildingPerformanceModel:
                 {},
             ) or {}
 
-            for key in PHASE_13_ENGINE_BUILDING_DIAGNOSTIC_KEYS:
+            for key in ENGINE_BUILDING_DIAGNOSTIC_KEYS:
                 if key in engine_building_record:
-                    building_record[key] = engine_building_record.get(key)
-            for key in PHASE_14_ENGINE_BUILDING_DIAGNOSTIC_KEYS:
-                if key in engine_building_record:
-                    building_record[key] = engine_building_record.get(key)    
+                    building_record[key] = engine_building_record.get(key)   
+                    
         updated_observation = self._make_updated_observation(
             previous_observation=observation,
             outdoor_temp_c=outdoor_temp_c,
@@ -1348,7 +1549,67 @@ class SimpleBuildingPerformanceModel:
         command: ZoneControlCommand,
         energy_result: ZoneEnergyResult,
         internal_source_row: Optional[Dict[str, Any]] = None,
+        dt_hours: float = 0.0,
     ) -> Dict[str, Any]:
+        system_spec = self._get_or_create_zone_system_spec(zone_model)
+
+        heating_delivered_power_w = heating_power_w_from_zone_control_command(
+            command=command,
+            system_spec=system_spec,
+        )
+
+        cooling_delivered_power_w = cooling_power_w_from_zone_control_command(
+            command=command,
+            system_spec=system_spec,
+        )
+
+        heating_capacity_w = float(
+            _get_attr_or_key(system_spec, "heating_capacity_w", 0.0)
+        )
+
+        cooling_capacity_w = float(
+            _get_attr_or_key(system_spec, "cooling_capacity_w", 0.0)
+        )
+
+        heating_efficiency_or_cop = float(
+            _get_attr_or_key(system_spec, "heating_efficiency_or_cop", 1.0)
+        )
+
+        cooling_efficiency_or_cop = float(
+            _get_attr_or_key(system_spec, "cooling_efficiency_or_cop", 1.0)
+        )
+
+        heating_power_fraction = float(
+            _get_attr_or_key(command, "heating_power_fraction", 0.0)
+        )
+
+        cooling_power_fraction = float(
+            _get_attr_or_key(command, "cooling_power_fraction", 0.0)
+        )
+
+        if heating_efficiency_or_cop <= 0.0:
+            heating_efficiency_or_cop = 1.0
+
+        if cooling_efficiency_or_cop <= 0.0:
+            cooling_efficiency_or_cop = 1.0
+
+        heating_input_power_w = heating_delivered_power_w / heating_efficiency_or_cop
+        cooling_input_power_w = cooling_delivered_power_w / cooling_efficiency_or_cop
+
+        internal_source_row = internal_source_row or {}
+
+        internal_average_sensible_heat_w = float(
+            internal_source_row.get("average_sensible_heat_w", 0.0)
+        )
+
+        internal_average_latent_heat_w = float(
+            internal_source_row.get("average_latent_heat_w", 0.0)
+        )
+
+        total_internal_gain_w = (
+            internal_average_sensible_heat_w
+            + internal_average_latent_heat_w
+        )
         record = {
             "step": step,
             "day": day,
@@ -1374,21 +1635,15 @@ class SimpleBuildingPerformanceModel:
             "lights_on": command.lights_on,
             "window_open": command.window_open,
             "curtain_open": command.curtain_open,
-            "heating_delivered_power_w": heating_power_w_from_zone_control_command(
-                command=command,
-                system_spec=self._get_or_create_zone_system_spec(zone_model),
-            ),
-            "cooling_delivered_power_w": cooling_power_w_from_zone_control_command(
-                command=command,
-                system_spec=self._get_or_create_zone_system_spec(zone_model),
-            ),
+            "heating_delivered_power_w": heating_delivered_power_w,
+            "cooling_delivered_power_w": cooling_delivered_power_w,
             "lighting_power_w": command.lighting_power_w,
             "ventilation_flow_m3_h": command.ventilation_flow_m3_h,
             "ventilation_fan_power_w": (
-                        self._get_or_create_zone_system_spec(zone_model).ventilation_fan_power_w
-                        if command.ventilation_flow_m3_h > 0.0
-                        else 0.0
-                    ),
+                system_spec.ventilation_fan_power_w
+                if command.ventilation_flow_m3_h > 0.0
+                else 0.0
+            ),
             "heating_delivered_energy_wh": energy_result.heating_delivered_energy_wh,
             "cooling_delivered_energy_wh": energy_result.cooling_delivered_energy_wh,
             "heating_energy_wh": energy_result.heating_energy_wh,
@@ -1399,97 +1654,432 @@ class SimpleBuildingPerformanceModel:
             "hvac_delivered_energy_wh": energy_result.hvac_delivered_energy_wh,
             "hvac_input_energy_wh": energy_result.hvac_input_energy_wh,
             "total_energy_wh": energy_result.total_energy_wh,
+            "heating_power_fraction": heating_power_fraction,
+            "cooling_power_fraction": cooling_power_fraction,
+            "heating_capacity_w": heating_capacity_w,
+            "cooling_capacity_w": cooling_capacity_w,
+            "heating_efficiency_or_cop": heating_efficiency_or_cop,
+            "cooling_efficiency_or_cop": cooling_efficiency_or_cop,
+            "heating_input_power_w": heating_input_power_w,
+            "cooling_input_power_w": cooling_input_power_w,
         }
 
         if internal_source_row is not None:
+            zone_energy_balance_residual_wh = (
+                float(energy_result.total_energy_wh)
+                - (
+                    float(energy_result.appliance_energy_wh)
+                    + float(energy_result.lighting_energy_wh)
+                    + float(energy_result.hvac_input_energy_wh)
+                )
+            )
+    
             record["internal_source_record_count"] = internal_source_row.get(
                 "record_count",
                 0,
             )
+    
             record["internal_average_sensible_heat_w"] = internal_source_row.get(
                 "average_sensible_heat_w",
                 0.0,
             )
+    
             record["internal_average_latent_heat_w"] = internal_source_row.get(
                 "average_latent_heat_w",
                 0.0,
             )
+    
             record["internal_average_electricity_power_w"] = internal_source_row.get(
                 "average_electricity_power_w",
                 0.0,
             )
+    
             record["internal_electricity_wh"] = internal_source_row.get(
                 "electricity_wh",
                 0.0,
             )
+    
             record["internal_average_co2_generation_m3_h"] = internal_source_row.get(
                 "average_co2_generation_m3_h",
                 0.0,
             )
+    
             record["internal_average_moisture_generation_kg_h"] = internal_source_row.get(
                 "average_moisture_generation_kg_h",
                 0.0,
             )
+    
             record["internal_average_sensible_heat_w_by_source_kind"] = internal_source_row.get(
-                "average_sensible_heat_w_by_source_kind",
-                {},
+                "internal_average_sensible_heat_w_by_source_kind",
+                internal_source_row.get("average_sensible_heat_w_by_source_kind", {}),
             )
+    
+            record["internal_average_latent_heat_w_by_source_kind"] = internal_source_row.get(
+                "internal_average_latent_heat_w_by_source_kind",
+                internal_source_row.get("average_latent_heat_w_by_source_kind", {}),
+            )
+    
             record["internal_average_electricity_power_w_by_source_kind"] = internal_source_row.get(
-                "average_electricity_power_w_by_source_kind",
-                {},
+                "internal_average_electricity_power_w_by_source_kind",
+                internal_source_row.get("average_electricity_power_w_by_source_kind", {}),
             )
+    
             record["internal_average_co2_generation_m3_h_by_source_kind"] = internal_source_row.get(
-                "average_co2_generation_m3_h_by_source_kind",
-                {},
+                "internal_average_co2_generation_m3_h_by_source_kind",
+                internal_source_row.get("average_co2_generation_m3_h_by_source_kind", {}),
             )
+    
             record["internal_average_moisture_generation_kg_h_by_source_kind"] = internal_source_row.get(
-                "average_moisture_generation_kg_h_by_source_kind",
-                {},
+                "internal_average_moisture_generation_kg_h_by_source_kind",
+                internal_source_row.get("average_moisture_generation_kg_h_by_source_kind", {}),
             )
+    
             record["internal_record_count_by_source_kind"] = internal_source_row.get(
                 "record_count_by_source_kind",
                 {},
             )
+    
+            record["internal_electricity_wh_by_source_kind"] = internal_source_row.get(
+                "internal_electricity_wh_by_source_kind",
+                internal_source_row.get("electricity_wh_by_source_kind", {}),
+            )
+    
+            record["appliance_electricity_wh_from_internal_sources"] = float(
+                internal_source_row.get("appliance_electricity_wh", 0.0)
+            )
+    
+            record["lighting_electricity_wh_from_internal_sources"] = float(
+                internal_source_row.get("lighting_electricity_wh", 0.0)
+            )
+    
+            record["hvac_electricity_wh_from_internal_sources"] = float(
+                internal_source_row.get("hvac_electricity_wh", 0.0)
+            )
+    
+            record["appliance_total_heat_w"] = float(
+                internal_source_row.get("appliance_total_heat_w", 0.0)
+            )
+    
+            record["appliance_total_heat_wh"] = float(
+                internal_source_row.get("appliance_total_heat_wh", 0.0)
+            )
+    
+            record["lighting_sensible_heat_w"] = float(
+                internal_source_row.get("lighting_sensible_heat_w", 0.0)
+            )
+    
+            record["hvac_sensible_gain_w"] = float(
+                internal_source_row.get("hvac_sensible_gain_w", 0.0)
+            )
+    
+            record["hvac_heating_gain_w"] = float(
+                internal_source_row.get("hvac_heating_gain_w", 0.0)
+            )
+    
+            record["hvac_cooling_gain_w"] = float(
+                internal_source_row.get("hvac_cooling_gain_w", 0.0)
+            )
+    
+            record["hvac_cooling_removal_w"] = float(
+                internal_source_row.get("hvac_cooling_removal_w", 0.0)
+            )
+    
+            record["total_internal_gain_w"] = total_internal_gain_w
+            record["total_internal_gain_wh"] = total_internal_gain_w * float(dt_hours)
+    
+            record["zone_energy_balance_residual_wh"] = zone_energy_balance_residual_wh
+            record["zone_energy_balance_ok"] = abs(zone_energy_balance_residual_wh) <= 1e-6
 
         return record
 
+    @staticmethod
+    def _summary_float(value: Any, default: float = 0.0) -> float:
+        if value is None:
+            return float(default)
+
+        try:
+            return float(value)
+        except Exception:
+            return float(default)
+
+    @classmethod
+    def _summary_values(
+        cls,
+        records: List[Dict[str, Any]],
+        key: str,
+    ) -> List[float]:
+        values = []
+
+        for record in records:
+            if key not in record:
+                continue
+
+            value = record.get(key)
+
+            if value is None:
+                continue
+
+            try:
+                values.append(float(value))
+            except Exception:
+                continue
+
+        return values
+
+    @classmethod
+    def _summary_sum(
+        cls,
+        records: List[Dict[str, Any]],
+        key: str,
+    ) -> float:
+        return sum(cls._summary_values(records, key))
+
+    @classmethod
+    def _summary_mean(
+        cls,
+        records: List[Dict[str, Any]],
+        key: str,
+        default: float = 0.0,
+    ) -> float:
+        values = cls._summary_values(records, key)
+
+        if not values:
+            return float(default)
+
+        return sum(values) / float(len(values))
+
+    @classmethod
+    def _summary_min(
+        cls,
+        records: List[Dict[str, Any]],
+        key: str,
+        default: float = 0.0,
+    ) -> float:
+        values = cls._summary_values(records, key)
+
+        if not values:
+            return float(default)
+
+        return min(values)
+
+    @classmethod
+    def _summary_max(
+        cls,
+        records: List[Dict[str, Any]],
+        key: str,
+        default: float = 0.0,
+    ) -> float:
+        values = cls._summary_values(records, key)
+
+        if not values:
+            return float(default)
+
+        return max(values)
+
+    @staticmethod
+    def _summary_zone_records_for_dwelling(
+        zone_records: List[Dict[str, Any]],
+        dwelling: Any,
+        dwelling_id: str,
+    ) -> List[Dict[str, Any]]:
+        private_zone_ids = set(
+            getattr(
+                dwelling,
+                "private_zone_ids",
+                list(getattr(dwelling, "zone_models", {}).keys()),
+            )
+        )
+
+        out = []
+
+        for record in zone_records:
+            zone_id = record.get("zone_id")
+            record_dwelling_id = record.get("dwelling_id")
+            zone_scope = record.get("zone_scope")
+
+            if zone_id not in private_zone_ids:
+                continue
+
+            if record_dwelling_id not in (None, dwelling_id):
+                continue
+
+            if zone_scope not in (None, "private"):
+                continue
+
+            out.append(record)
+
+        return out
+
+    @classmethod
+    def _add_zone_physics_summary_to_record(
+        cls,
+        target: Dict[str, Any],
+        records: List[Dict[str, Any]],
+        dt_hours: float,
+        prefix: str = "",
+    ) -> None:
+        target[prefix + "zone_count"] = len(records)
+
+        target[prefix + "mean_indoor_temp_c"] = cls._summary_mean(
+            records,
+            "indoor_temp_c",
+        )
+        target[prefix + "min_indoor_temp_c"] = cls._summary_min(
+            records,
+            "indoor_temp_c",
+        )
+        target[prefix + "max_indoor_temp_c"] = cls._summary_max(
+            records,
+            "indoor_temp_c",
+        )
+
+        target[prefix + "mean_indoor_mass_temp_c"] = cls._summary_mean(
+            records,
+            "indoor_mass_temp_c",
+        )
+        target[prefix + "mean_co2_ppm"] = cls._summary_mean(
+            records,
+            "co2_ppm",
+        )
+        target[prefix + "max_co2_ppm"] = cls._summary_max(
+            records,
+            "co2_ppm",
+        )
+
+        target[prefix + "mean_indoor_daylight"] = cls._summary_mean(
+            records,
+            "indoor_daylight",
+        )
+        target[prefix + "mean_indoor_noise"] = cls._summary_mean(
+            records,
+            "indoor_noise",
+        )
+
+        target[prefix + "total_solar_gain_wh"] = cls._summary_sum(
+            records,
+            "solar_gain_wh",
+        )
+
+        target[prefix + "total_internal_electricity_wh"] = cls._summary_sum(
+            records,
+            "internal_electricity_wh",
+        )
+
+        target[prefix + "total_internal_average_sensible_heat_w"] = cls._summary_sum(
+            records,
+            "internal_average_sensible_heat_w",
+        )
+
+        target[prefix + "mean_internal_average_sensible_heat_w"] = cls._summary_mean(
+            records,
+            "internal_average_sensible_heat_w",
+        )
+
+        target[prefix + "total_internal_sensible_heat_wh"] = (
+            cls._summary_sum(records, "internal_average_sensible_heat_w")
+            * float(dt_hours)
+        )
+
+        target[prefix + "total_internal_gain_wh"] = cls._summary_sum(
+            records,
+            "total_internal_gain_wh",
+        )
+
+        target[prefix + "total_ventilation_flow_m3_h"] = cls._summary_sum(
+            records,
+            "ventilation_flow_m3_h",
+        )
+
+        target[prefix + "average_ventilation_flow_m3_h"] = cls._summary_mean(
+            records,
+            "ventilation_flow_m3_h",
+        )
+
+        target[prefix + "total_airflow_outdoor_exchange_m3_h"] = cls._summary_sum(
+            records,
+            "airflow_outdoor_exchange_m3_h",
+        )
+
+        target[prefix + "total_airflow_interzone_exchange_m3_h"] = cls._summary_sum(
+            records,
+            "airflow_interzone_exchange_m3_h",
+        )
+
+        target[prefix + "total_local_noise_source_count"] = int(
+            cls._summary_sum(records, "local_noise_source_count")
+        )
+        
     def _make_dwelling_records(
         self,
         step: Any,
         day: Any,
         hour: Any,
         dwelling_energy_results: Dict[str, DwellingEnergyResult],
+        zone_records: Optional[List[Dict[str, Any]]] = None,
+        dt_hours: float = 0.0,
     ) -> List[Dict[str, Any]]:
         records = []
+        zone_records = zone_records or []
 
         for dwelling_id, result in dwelling_energy_results.items():
             dwelling = self.building_model.dwellings[dwelling_id]
 
-            total_occupancy = 0
-
-            for zone_id in dwelling.zone_states:
-                total_occupancy += dwelling.zone_states[zone_id].number_of_people
-
-            records.append(
-                {
-                    "step": step,
-                    "day": day,
-                    "hour": hour,
-                    "building_id": result.building_id,
-                    "dwelling_id": result.dwelling_id,
-                    "total_occupancy": total_occupancy,
-                    "heating_energy_wh": result.heating_energy_wh,
-                    "cooling_energy_wh": result.cooling_energy_wh,
-                    "lighting_energy_wh": result.lighting_energy_wh,
-                    "appliance_energy_wh": result.appliance_energy_wh,
-                    "total_energy_wh": result.total_energy_wh,
-                    "heating_delivered_energy_wh": result.heating_delivered_energy_wh,
-                    "cooling_delivered_energy_wh": result.cooling_delivered_energy_wh,
-                    "ventilation_fan_energy_wh": result.ventilation_fan_energy_wh,
-                    "hvac_delivered_energy_wh": result.hvac_delivered_energy_wh,
-                    "hvac_input_energy_wh": result.hvac_input_energy_wh,
-                }
+            dwelling_zone_records = self._summary_zone_records_for_dwelling(
+                zone_records=zone_records,
+                dwelling=dwelling,
+                dwelling_id=dwelling_id,
             )
+
+            total_occupancy = sum(
+                int(record.get("number_of_people", 0))
+                for record in dwelling_zone_records
+            )
+
+            zone_total_energy_wh = self._summary_sum(
+                dwelling_zone_records,
+                "total_energy_wh",
+            )
+
+            energy_residual_wh = (
+                float(result.total_energy_wh)
+                - zone_total_energy_wh
+            )
+
+            record = {
+                "step": step,
+                "day": day,
+                "hour": hour,
+                "building_id": result.building_id,
+                "dwelling_id": result.dwelling_id,
+
+                "total_occupancy": total_occupancy,
+                "private_zone_count": len(dwelling_zone_records),
+
+                "heating_energy_wh": result.heating_energy_wh,
+                "cooling_energy_wh": result.cooling_energy_wh,
+                "lighting_energy_wh": result.lighting_energy_wh,
+                "appliance_energy_wh": result.appliance_energy_wh,
+                "total_energy_wh": result.total_energy_wh,
+
+                "heating_delivered_energy_wh": result.heating_delivered_energy_wh,
+                "cooling_delivered_energy_wh": result.cooling_delivered_energy_wh,
+                "ventilation_fan_energy_wh": result.ventilation_fan_energy_wh,
+                "hvac_delivered_energy_wh": result.hvac_delivered_energy_wh,
+                "hvac_input_energy_wh": result.hvac_input_energy_wh,
+
+                "zone_total_energy_wh": zone_total_energy_wh,
+                "energy_balance_residual_wh": energy_residual_wh,
+                "energy_balance_ok": abs(energy_residual_wh) <= 1e-6,
+            }
+
+            self._add_zone_physics_summary_to_record(
+                target=record,
+                records=dwelling_zone_records,
+                dt_hours=dt_hours,
+                prefix="",
+            )
+
+            records.append(record)
 
         return records
 
@@ -1501,44 +2091,153 @@ class SimpleBuildingPerformanceModel:
         building_energy_result: BuildingEnergyResult,
         zone_records: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        total_occupancy = sum(
-            int(record["number_of_people"])
-            for record in zone_records
-        )
+        zone_records = zone_records or []
 
-        private_zone_energy_wh = sum(
-            float(record.get("total_energy_wh", 0.0))
+        private_zone_records = [
+            record
             for record in zone_records
             if record.get("zone_scope") == "private"
-        )
+        ]
 
-        shared_zone_energy_wh = sum(
-            float(record.get("total_energy_wh", 0.0))
+        shared_zone_records = [
+            record
             for record in zone_records
             if record.get("zone_scope") == "shared"
+        ]
+
+        total_occupancy = sum(
+            int(record.get("number_of_people", 0))
+            for record in zone_records
         )
 
-        return {
+        private_zone_energy_wh = self._summary_sum(
+            private_zone_records,
+            "total_energy_wh",
+        )
+
+        shared_zone_energy_wh = self._summary_sum(
+            shared_zone_records,
+            "total_energy_wh",
+        )
+
+        zone_total_energy_wh = self._summary_sum(
+            zone_records,
+            "total_energy_wh",
+        )
+
+        heating_energy_wh = self._summary_sum(
+            zone_records,
+            "heating_energy_wh",
+        )
+
+        cooling_energy_wh = self._summary_sum(
+            zone_records,
+            "cooling_energy_wh",
+        )
+
+        lighting_energy_wh = self._summary_sum(
+            zone_records,
+            "lighting_energy_wh",
+        )
+
+        appliance_energy_wh = self._summary_sum(
+            zone_records,
+            "appliance_energy_wh",
+        )
+
+        ventilation_fan_energy_wh = self._summary_sum(
+            zone_records,
+            "ventilation_fan_energy_wh",
+        )
+
+        hvac_delivered_energy_wh = self._summary_sum(
+            zone_records,
+            "hvac_delivered_energy_wh",
+        )
+
+        hvac_input_energy_wh = self._summary_sum(
+            zone_records,
+            "hvac_input_energy_wh",
+        )
+
+        heating_delivered_energy_wh = self._summary_sum(
+            zone_records,
+            "heating_delivered_energy_wh",
+        )
+
+        cooling_delivered_energy_wh = self._summary_sum(
+            zone_records,
+            "cooling_delivered_energy_wh",
+        )
+
+        building_energy_result_total_energy_wh = float(
+            building_energy_result.total_energy_wh
+        )
+
+        zone_energy_balance_residual_wh = (
+            building_energy_result_total_energy_wh
+            - zone_total_energy_wh
+        )
+
+        record = {
             "step": step,
             "day": day,
             "hour": hour,
             "building_id": building_energy_result.building_id,
+
             "number_of_dwellings": len(self.building_model.dwellings),
+            "number_of_zones": len(zone_records),
+            "private_zone_count": len(private_zone_records),
+            "shared_zone_count": len(shared_zone_records),
             "total_occupancy": total_occupancy,
+
             "private_zone_energy_wh": private_zone_energy_wh,
             "shared_zone_energy_wh": shared_zone_energy_wh,
-            "heating_energy_wh": building_energy_result.heating_energy_wh,
-            "cooling_energy_wh": building_energy_result.cooling_energy_wh,
-            "lighting_energy_wh": building_energy_result.lighting_energy_wh,
-            "appliance_energy_wh": building_energy_result.appliance_energy_wh,
+            "zone_total_energy_wh": zone_total_energy_wh,
+
+            # Building-row total is the actual sum of zone records.
+            # The original BuildingEnergyResult total is preserved below.
+            "heating_energy_wh": heating_energy_wh,
+            "cooling_energy_wh": cooling_energy_wh,
+            "lighting_energy_wh": lighting_energy_wh,
+            "appliance_energy_wh": appliance_energy_wh,
             "shared_system_energy_wh": building_energy_result.shared_system_energy_wh,
-            "total_energy_wh": building_energy_result.total_energy_wh,
-            "heating_delivered_energy_wh": building_energy_result.heating_delivered_energy_wh,
-            "cooling_delivered_energy_wh": building_energy_result.cooling_delivered_energy_wh,
-            "ventilation_fan_energy_wh": building_energy_result.ventilation_fan_energy_wh,
-            "hvac_delivered_energy_wh": building_energy_result.hvac_delivered_energy_wh,
-            "hvac_input_energy_wh": building_energy_result.hvac_input_energy_wh,
+            "total_energy_wh": zone_total_energy_wh,
+
+            "heating_delivered_energy_wh": heating_delivered_energy_wh,
+            "cooling_delivered_energy_wh": cooling_delivered_energy_wh,
+            "ventilation_fan_energy_wh": ventilation_fan_energy_wh,
+            "hvac_delivered_energy_wh": hvac_delivered_energy_wh,
+            "hvac_input_energy_wh": hvac_input_energy_wh,
+
+            "building_energy_result_total_energy_wh": building_energy_result_total_energy_wh,
+            "building_zone_energy_balance_residual_wh": zone_energy_balance_residual_wh,
+            "building_zone_energy_balance_ok": abs(zone_energy_balance_residual_wh) <= 1e-6,
+
+            "record_level": "building_timestep",
+            "diagnostic_output_mode": "standard",
         }
+
+        self._add_zone_physics_summary_to_record(
+            target=record,
+            records=zone_records,
+            dt_hours=0.0,
+            prefix="",
+        )
+
+        record["private_mean_indoor_temp_c"] = self._summary_mean(
+            private_zone_records,
+            "indoor_temp_c",
+        )
+        record["shared_mean_indoor_temp_c"] = self._summary_mean(
+            shared_zone_records,
+            "indoor_temp_c",
+        )
+
+        record["private_total_energy_wh"] = private_zone_energy_wh
+        record["shared_total_energy_wh"] = shared_zone_energy_wh
+
+        return record
     # ============================================================
     # OBSERVATION OUTPUT
     # ============================================================

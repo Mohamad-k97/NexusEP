@@ -1575,6 +1575,7 @@ class InterzoneThermalFlowRecord:
             "connection_type": self.connection_type,
             "is_openable": self.is_openable,
             "open_fraction": self.open_fraction,
+            "opening_fraction": self.open_fraction,
         }
 
 

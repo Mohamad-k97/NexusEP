@@ -1610,15 +1610,40 @@ class InterzoneAirflowRecord:
         return abs(self.net_a_to_b_m3_h) <= float(tolerance_m3_h)
 
     def to_dict(self) -> Dict[str, Any]:
+        mixing_exchange_m3_h = max(
+            self.flow_a_to_b_m3_h,
+            self.flow_b_to_a_m3_h,
+        )
+
         return {
             "link_id": self.link_id,
+
+            # Original internal name.
             "zone_connection_id": self.zone_connection_id,
+
+            # Stable output alias.
+            "connection_id": self.zone_connection_id,
+
             "zone_a_id": self.zone_a_id,
             "zone_b_id": self.zone_b_id,
+
+            # Original internal names.
             "flow_a_to_b_m3_h": self.flow_a_to_b_m3_h,
             "flow_b_to_a_m3_h": self.flow_b_to_a_m3_h,
             "flow_a_to_b_m3_s": self.flow_a_to_b_m3_s(),
             "flow_b_to_a_m3_s": self.flow_b_to_a_m3_s(),
+
+            # Stable output aliases.
+            "airflow_a_to_b_m3_h": self.flow_a_to_b_m3_h,
+            "airflow_b_to_a_m3_h": self.flow_b_to_a_m3_h,
+            "airflow_a_to_b_m3_s": self.flow_a_to_b_m3_s(),
+            "airflow_b_to_a_m3_s": self.flow_b_to_a_m3_s(),
+
+            # Symmetric mixing output.
+            "mixing_exchange_m3_h": mixing_exchange_m3_h,
+            "mixing_exchange_m3_s": mixing_exchange_m3_h / 3600.0,
+
+            # Original net-flow diagnostic.
             "net_a_to_b_m3_h": self.net_a_to_b_m3_h,
             "is_symmetric": self.is_symmetric(),
             "source": self.source,

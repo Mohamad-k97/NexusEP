@@ -1171,7 +1171,19 @@ class ZoneInternalSourceSummary:
             "zone_id": self.zone_id,
             "record_count": len(self.records),
             "record_count_by_source_kind": self.record_count_by_source_kind(),
+            # ------------------------------------------------------------
+            # Source-kind count / energy / heat audit.
+            # ------------------------------------------------------------
+            "electricity_wh_by_source_kind": self.electricity_wh_by_source_kind(),
+            "sensible_heat_wh_by_source_kind": self.sensible_heat_wh_by_source_kind(),
+            "latent_heat_wh_by_source_kind": self.latent_heat_wh_by_source_kind(),
+            "co2_generation_m3_by_source_kind": self.co2_generation_m3_by_source_kind(),
+            "moisture_generation_kg_by_source_kind": self.moisture_generation_kg_by_source_kind(),
 
+            # Stable Phase 15 aliases.
+            "internal_electricity_wh_by_source_kind": self.electricity_wh_by_source_kind(),
+            "internal_sensible_heat_wh_by_source_kind": self.sensible_heat_wh_by_source_kind(),
+            "internal_latent_heat_wh_by_source_kind": self.latent_heat_wh_by_source_kind(),
             "electricity_wh": self.electricity_wh(),
             "average_electricity_power_w": self.average_electricity_power_w(
                 dt_minutes=dt_minutes,
@@ -1196,12 +1208,34 @@ class ZoneInternalSourceSummary:
             "average_moisture_generation_kg_h": self.average_moisture_generation_kg_h(
                 dt_minutes=dt_minutes,
             ),
+            # ------------------------------------------------------------
+            # Appliance / lighting / HVAC explainers.
+            # These are diagnostic/source-audit fields.
+            # They should not replace ZoneEnergyResult accounting.
+            # ------------------------------------------------------------
+            "appliance_electricity_wh": self.appliance_electricity_wh(),
+            "lighting_electricity_wh": self.lighting_electricity_wh(),
+            "hvac_electricity_wh": self.hvac_electricity_wh(),
 
-            "electricity_wh_by_source_kind": self.electricity_wh_by_source_kind(),
-            "sensible_heat_wh_by_source_kind": self.sensible_heat_wh_by_source_kind(),
-            "latent_heat_wh_by_source_kind": self.latent_heat_wh_by_source_kind(),
-            "co2_generation_m3_by_source_kind": self.co2_generation_m3_by_source_kind(),
-            "moisture_generation_kg_by_source_kind": self.moisture_generation_kg_by_source_kind(),
+            "appliance_power_w": self.appliance_power_w(),
+            "appliance_total_heat_w": self.appliance_total_heat_w(),
+            "appliance_total_heat_wh": self.appliance_total_heat_wh(),
+            "appliance_latent_heat_w": self.appliance_latent_heat_w(),
+            "appliance_latent_heat_wh": self.appliance_latent_heat_wh(),
+
+            "lighting_sensible_heat_w": self.lighting_sensible_heat_w(),
+
+            "hvac_sensible_gain_w": self.hvac_sensible_gain_w(),
+            "hvac_heating_gain_w": self.hvac_heating_gain_w(),
+            "hvac_cooling_gain_w": self.hvac_cooling_gain_w(),
+            "hvac_cooling_removal_w": self.hvac_cooling_removal_w(),
+
+            "appliance_electricity_by_source_type_wh": self.appliance_electricity_by_source_type_wh(),
+            "appliance_sensible_heat_by_source_type_w": self.appliance_sensible_heat_by_source_type_w(),
+            "moisture_generation_by_source_type_kg": self.moisture_generation_by_source_type_kg(),
+            "moisture_generation_by_source_type_kg_h_raw": self.moisture_generation_by_source_type_kg_h_raw(),
+            
+
 
             "average_electricity_power_w_by_source_kind": self.average_electricity_power_w_by_source_kind(
                 dt_minutes=dt_minutes,
@@ -1220,6 +1254,22 @@ class ZoneInternalSourceSummary:
             ),
 
             "noise_sources_db": self.noise_sources_db(),
+            "internal_average_electricity_power_w_by_source_kind": self.average_electricity_power_w_by_source_kind(
+                dt_minutes=dt_minutes,
+            ),
+            "internal_average_sensible_heat_w_by_source_kind": self.average_sensible_heat_w_by_source_kind(
+                dt_minutes=dt_minutes,
+            ),
+            "internal_average_latent_heat_w_by_source_kind": self.average_latent_heat_w_by_source_kind(
+                dt_minutes=dt_minutes,
+            ),
+            "internal_average_co2_generation_m3_h_by_source_kind": self.average_co2_generation_m3_h_by_source_kind(
+                dt_minutes=dt_minutes,
+            ),
+            "internal_average_moisture_generation_kg_h_by_source_kind": self.average_moisture_generation_kg_h_by_source_kind(
+                dt_minutes=dt_minutes,
+            ),
+            "internal_noise_sources_db": self.noise_sources_db(),
         }
 
     def copy(self, **updates: Any) -> "ZoneInternalSourceSummary":
@@ -1896,10 +1946,24 @@ class BuildingInternalSourceResult:
                     dt_minutes=self.dt_minutes,
                 ),
 
+                # ------------------------------------------------------------
+                # Source-kind breakdowns.
+                # ------------------------------------------------------------
+                "record_count_by_source_kind": summary.record_count_by_source_kind(),
+
+                "electricity_wh_by_source_kind": summary.electricity_wh_by_source_kind(),
+                "sensible_heat_wh_by_source_kind": summary.sensible_heat_wh_by_source_kind(),
+                "latent_heat_wh_by_source_kind": summary.latent_heat_wh_by_source_kind(),
+                "co2_generation_m3_by_source_kind": summary.co2_generation_m3_by_source_kind(),
+                "moisture_generation_kg_by_source_kind": summary.moisture_generation_kg_by_source_kind(),
+
+                "average_electricity_power_w_by_source_kind": summary.average_electricity_power_w_by_source_kind(
+                    dt_minutes=self.dt_minutes,
+                ),
                 "average_sensible_heat_w_by_source_kind": summary.average_sensible_heat_w_by_source_kind(
                     dt_minutes=self.dt_minutes,
                 ),
-                "average_electricity_power_w_by_source_kind": summary.average_electricity_power_w_by_source_kind(
+                "average_latent_heat_w_by_source_kind": summary.average_latent_heat_w_by_source_kind(
                     dt_minutes=self.dt_minutes,
                 ),
                 "average_co2_generation_m3_h_by_source_kind": summary.average_co2_generation_m3_h_by_source_kind(
@@ -1909,8 +1973,43 @@ class BuildingInternalSourceResult:
                     dt_minutes=self.dt_minutes,
                 ),
 
-                "record_count": len(summary.records),
-                "record_count_by_source_kind": summary.record_count_by_source_kind(),
+                # Stable Phase 15 aliases.
+                "internal_electricity_wh_by_source_kind": summary.electricity_wh_by_source_kind(),
+                "internal_average_electricity_power_w_by_source_kind": summary.average_electricity_power_w_by_source_kind(
+                    dt_minutes=self.dt_minutes,
+                ),
+                "internal_average_sensible_heat_w_by_source_kind": summary.average_sensible_heat_w_by_source_kind(
+                    dt_minutes=self.dt_minutes,
+                ),
+                "internal_average_latent_heat_w_by_source_kind": summary.average_latent_heat_w_by_source_kind(
+                    dt_minutes=self.dt_minutes,
+                ),
+                "internal_average_co2_generation_m3_h_by_source_kind": summary.average_co2_generation_m3_h_by_source_kind(
+                    dt_minutes=self.dt_minutes,
+                ),
+                "internal_average_moisture_generation_kg_h_by_source_kind": summary.average_moisture_generation_kg_h_by_source_kind(
+                    dt_minutes=self.dt_minutes,
+                ),
+
+                # ------------------------------------------------------------
+                # Appliance / lighting / HVAC explainers.
+                # ------------------------------------------------------------
+                "appliance_electricity_wh": summary.appliance_electricity_wh(),
+                "lighting_electricity_wh": summary.lighting_electricity_wh(),
+                "hvac_electricity_wh": summary.hvac_electricity_wh(),
+
+                "appliance_power_w": summary.appliance_power_w(),
+                "appliance_total_heat_w": summary.appliance_total_heat_w(),
+                "appliance_total_heat_wh": summary.appliance_total_heat_wh(),
+                "lighting_sensible_heat_w": summary.lighting_sensible_heat_w(),
+
+                "hvac_sensible_gain_w": summary.hvac_sensible_gain_w(),
+                "hvac_heating_gain_w": summary.hvac_heating_gain_w(),
+                "hvac_cooling_gain_w": summary.hvac_cooling_gain_w(),
+                "hvac_cooling_removal_w": summary.hvac_cooling_removal_w(),
+
+                "noise_sources_db": summary.noise_sources_db(),
+                "internal_noise_sources_db": summary.noise_sources_db(),
             }
 
         return out
