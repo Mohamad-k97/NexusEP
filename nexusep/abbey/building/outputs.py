@@ -847,7 +847,11 @@ def missing_output_columns(
 # ============================================================
 
 VALIDATION_DEFAULT_TOLERANCE_WH = 1e-6
-
+VALID_PHYSICS_PATH_VALUES = [
+    "engine",
+    "legacy_fallback_explicit",
+    "legacy_fallback_after_engine_error",
+]
 
 ZONE_REQUIRED_NUMERIC_COLUMNS = [
     "day",
@@ -858,6 +862,8 @@ ZONE_REQUIRED_NUMERIC_COLUMNS = [
     "co2_ppm",
     "indoor_daylight",
     "indoor_noise",
+    "indoor_relative_humidity_percent",
+    "indoor_humidity_ratio_kg_kg",
     "heating_delivered_power_w",
     "cooling_delivered_power_w",
     "lighting_power_w",
@@ -1250,6 +1256,58 @@ def _validate_normalized_columns(
                 + " values outside [0, 1].",
             )
 
+def _validate_allowed_values(
+    result: Dict[str, Any],
+    df: pd.DataFrame,
+    column: str,
+    allowed_values: List[str],
+) -> None:
+    if column not in df.columns:
+        return
+
+    allowed = set(
+        str(value)
+        for value in allowed_values
+    )
+
+    bad_count = 0
+    bad_values = []
+
+    for value in df[column].tolist():
+        if pd.isna(value):
+            bad_count += 1
+
+            if "None" not in bad_values:
+                bad_values.append("None")
+
+            continue
+
+        text = str(value)
+
+        if text not in allowed:
+            bad_count += 1
+
+            if text not in bad_values:
+                bad_values.append(text)
+
+    if bad_count > 0:
+        result["out_of_range_columns"][column] = {
+            "bad_count": bad_count,
+            "allowed_values": list(allowed_values),
+            "bad_values": bad_values,
+        }
+
+        _validation_error(
+            result,
+            "Column "
+            + column
+            + " has "
+            + str(bad_count)
+            + " invalid values. Allowed values: "
+            + str(allowed_values)
+            + ". Bad values: "
+            + str(bad_values),
+        )
 
 def validate_zone_timestep_record_schema(
     df: pd.DataFrame,
@@ -1289,7 +1347,19 @@ def validate_zone_timestep_record_schema(
         df=df,
         columns=ZONE_NORMALIZED_COLUMNS,
     )
-
+    _validate_allowed_values(
+        result=result,
+        df=df,
+        column="physics_path",
+        allowed_values=VALID_PHYSICS_PATH_VALUES,
+    )
+    
+    _validate_allowed_values(
+        result=result,
+        df=df,
+        column="performance_path",
+        allowed_values=VALID_PHYSICS_PATH_VALUES,
+    )
     return result
 
 

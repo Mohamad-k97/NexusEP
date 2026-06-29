@@ -912,6 +912,42 @@ def _get_attr_or_key(obj: Any, key: str, default: Any = None) -> Any:
 
     return getattr(obj, key, default)
 
+def _internal_source_record_count_from_bridge_row(
+    bridge_row: Dict[str, Any],
+) -> int:
+    if bridge_row is None:
+        return 0
+
+    value = bridge_row.get(
+        "record_count",
+        bridge_row.get("internal_source_record_count", 0),
+    )
+
+    try:
+        value = int(value)
+    except Exception:
+        value = 0
+
+    if value > 0:
+        return value
+
+    by_kind = bridge_row.get(
+        "internal_record_count_by_source_kind",
+        bridge_row.get("record_count_by_source_kind", {}),
+    )
+
+    if isinstance(by_kind, dict):
+        total = 0
+
+        for item in by_kind.values():
+            try:
+                total += int(item)
+            except Exception:
+                pass
+
+        return total
+
+    return 0
 
 def _clamp(value: float, lower: float, upper: float) -> float:
     value = float(value)
@@ -2135,15 +2171,22 @@ def _make_engine_zone_records(
                 _get_attr_or_key(command, "window_opening_fraction", 0.0)
             ),
             "command_curtain_open": bool(_get_attr_or_key(command, "curtain_open", True)),
-            "internal_source_record_count": internal_source_record_count,
-            "internal_average_sensible_heat_w": internal_average_sensible_heat_w,
-            "internal_average_latent_heat_w": internal_average_latent_heat_w,
-            "internal_average_electricity_power_w": internal_average_electricity_power_w,
-            "internal_electricity_wh": internal_electricity_wh,
-            "internal_average_co2_generation_m3_h": bridge_row.get(
-                "average_co2_generation_m3_h",
-                0.0,
+
+            # ------------------------------------------------------------
+            # Internal-source diagnostics from BuildingInternalSourceResult.
+            # These are output/audit fields. They do not create physics;
+            # the actual thermal/CO2/moisture coupling already happened
+            # through physics_inputs.
+            # ------------------------------------------------------------
+            "internal_source_record_count": _internal_source_record_count_from_bridge_row(
+                bridge_row
             ),
+
+            "internal_average_sensible_heat_w": bridge_row.get(
+                "average_sensible_heat_w",
+                bridge_row.get("internal_average_sensible_heat_w", 0.0),
+            ),
+
                         # ------------------------------------------------------------
             # Phase 15.6 internal-source / energy audit fields.
             # ------------------------------------------------------------

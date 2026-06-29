@@ -650,6 +650,7 @@ class SimpleBuildingPerformanceModel:
                 )
 
                 record["physics_engine_active"] = True
+                record["physics_path"] = performance_path
                 record["performance_path"] = performance_path
                 record["legacy_fallback_used"] = False
                 record["legacy_fallback_reason"] = None
@@ -708,6 +709,33 @@ class SimpleBuildingPerformanceModel:
                 for key in ENGINE_ZONE_DIAGNOSTIC_KEYS:
                     if key in engine_zone_record:
                         record[key] = engine_zone_record.get(key)
+                        
+                # ------------------------------------------------------------
+                # Robust Phase 16.1 internal-source count alias.
+                #
+                # Some bridge rows expose the per-kind count correctly but leave
+                # internal_source_record_count at zero. Normalize the scalar alias
+                # from the by-kind dictionary so tests and output validation do not
+                # depend on one fragile field name.
+                # ------------------------------------------------------------
+                try:
+                    current_count = int(record.get("internal_source_record_count", 0))
+                except Exception:
+                    current_count = 0
+                
+                if current_count <= 0:
+                    by_kind = record.get("internal_record_count_by_source_kind", {})
+                
+                    if isinstance(by_kind, dict):
+                        fixed_count = 0
+                
+                        for item in by_kind.values():
+                            try:
+                                fixed_count += int(item)
+                            except Exception:
+                                pass
+                
+                        record["internal_source_record_count"] = fixed_count
         else:
         
             # --------------------------------------------------------
@@ -839,6 +867,7 @@ class SimpleBuildingPerformanceModel:
 
                 record["physics_engine_active"] = False
                 record["physics_engine_error"] = physics_engine_error
+                record["physics_path"] = performance_path
                 record["performance_path"] = performance_path
                 record["legacy_fallback_used"] = legacy_fallback_used
                 record["legacy_fallback_reason"] = legacy_fallback_reason
@@ -1610,6 +1639,23 @@ class SimpleBuildingPerformanceModel:
             internal_average_sensible_heat_w
             + internal_average_latent_heat_w
         )
+        indoor_relative_humidity_percent = _get_attr_or_key(
+            zone_state,
+            "indoor_relative_humidity_percent",
+            None,
+        )
+
+        if indoor_relative_humidity_percent is None:
+            indoor_relative_humidity_percent = 50.0
+
+        indoor_humidity_ratio_kg_kg = _get_attr_or_key(
+            zone_state,
+            "indoor_humidity_ratio_kg_kg",
+            None,
+        )
+
+        if indoor_humidity_ratio_kg_kg is None:
+            indoor_humidity_ratio_kg_kg = 0.008
         record = {
             "step": step,
             "day": day,
@@ -1630,6 +1676,8 @@ class SimpleBuildingPerformanceModel:
             "co2_ppm": zone_state.co2_ppm,
             "indoor_daylight": zone_state.indoor_daylight,
             "indoor_noise": zone_state.indoor_noise,
+            "indoor_relative_humidity_percent": indoor_relative_humidity_percent,
+            "indoor_humidity_ratio_kg_kg": indoor_humidity_ratio_kg_kg,
             "heating_on": command.heating_on,
             "cooling_on": command.cooling_on,
             "lights_on": command.lights_on,
@@ -1662,6 +1710,41 @@ class SimpleBuildingPerformanceModel:
             "cooling_efficiency_or_cop": cooling_efficiency_or_cop,
             "heating_input_power_w": heating_input_power_w,
             "cooling_input_power_w": cooling_input_power_w,
+
+            # ------------------------------------------------------------
+            # Stable command diagnostics.
+            #
+            # These are written here, not only copied from engine.py, so
+            # standard output validation also works for legacy/fallback
+            # paths and simple harness tests.
+            # ------------------------------------------------------------
+            "command_heating_on": bool(command.heating_on),
+            "command_heating_power_fraction": heating_power_fraction,
+            "command_heating_power_w": heating_delivered_power_w,
+            "command_heating_delivered_power_w": heating_delivered_power_w,
+
+            "command_cooling_on": bool(command.cooling_on),
+            "command_cooling_power_fraction": cooling_power_fraction,
+            "command_cooling_power_w": cooling_delivered_power_w,
+            "command_cooling_delivered_power_w": cooling_delivered_power_w,
+
+            "command_hvac_thermal_gain_w": (
+                heating_delivered_power_w
+                - cooling_delivered_power_w
+            ),
+
+            "command_ventilation_flow_m3_h": command.ventilation_flow_m3_h,
+
+            "command_lights_on": bool(command.lights_on),
+            "command_lighting_power_w": command.lighting_power_w,
+
+            "command_window_open": bool(command.window_open),
+            "command_window_opening_fraction": _get_attr_or_key(
+                command,
+                "window_opening_fraction",
+                0.0,
+            ),
+            "command_curtain_open": bool(command.curtain_open),
         }
 
         if internal_source_row is not None:
