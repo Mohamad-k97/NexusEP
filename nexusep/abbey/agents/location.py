@@ -24,6 +24,7 @@ SPACE_ROLE_ALIASES = {
     "bathroom": "bathroom",
     "laundry": "laundry",
     "entrance": "entrance",
+    "main_room": "living_room",
     "door": "entrance",
     "office": "office",
     "work": "office",

@@ -58,6 +58,9 @@ DEFAULT_WINDOW_OPENING_FRACTION = 0.0
 DEFAULT_DOOR_OPENING_FRACTION = 0.0
 DEFAULT_NUMBER_OF_PEOPLE = 0.0
 
+DEFAULT_MAX_WINDOW_AIRFLOW_ACH = 4.0
+DEFAULT_MIN_ZONE_WINDOW_AIRFLOW_CAP_M3_H = 75.0
+
 DEFAULT_WINDOW_DISCHARGE_COEFFICIENT = 0.60
 DEFAULT_WINDOW_MAX_OPENING_AREA_M2 = 0.0
 DEFAULT_WINDOW_WIND_ALIGNMENT_FACTOR_IF_UNKNOWN = 0.50
@@ -3470,6 +3473,42 @@ def calculate_building_interzone_airflows(
         records=records,
     )
 
+
+def _cap_zone_window_airflow_m3_h(
+    zone_parameters: ZoneAirflowParameters,
+    window_airflow_m3_h: float,
+) -> float:
+    """
+    Defensive zone-level cap for window outdoor exchange.
+
+    The window model provides opening potential. The airflow network decides
+    what exchange is allowed to affect zone CO2/thermal/moisture.
+
+    This avoids one bad opening calculation turning into a huge ventilation
+    conductance in thermal.py.
+    """
+
+    window_airflow_m3_h = _non_negative_float(
+        window_airflow_m3_h,
+        "window_airflow_m3_h",
+        zone_parameters.zone_id,
+    )
+
+    volume_based_cap_m3_h = (
+        float(zone_parameters.air_volume_m3)
+        * DEFAULT_MAX_WINDOW_AIRFLOW_ACH
+    )
+
+    cap_m3_h = max(
+        DEFAULT_MIN_ZONE_WINDOW_AIRFLOW_CAP_M3_H,
+        volume_based_cap_m3_h,
+    )
+
+    return min(
+        window_airflow_m3_h,
+        cap_m3_h,
+    )
+
 def make_zone_outdoor_airflow_record(
     zone_parameters: ZoneAirflowParameters,
     window_airflow_m3_h: float = 0.0,
@@ -3487,10 +3526,9 @@ def make_zone_outdoor_airflow_record(
     if not isinstance(zone_parameters, ZoneAirflowParameters):
         raise TypeError("zone_parameters must be ZoneAirflowParameters.")
 
-    window_airflow_m3_h = _non_negative_float(
-        window_airflow_m3_h,
-        "window_airflow_m3_h",
-        zone_parameters.zone_id,
+    window_airflow_m3_h = _cap_zone_window_airflow_m3_h(
+        zone_parameters=zone_parameters,
+        window_airflow_m3_h=window_airflow_m3_h,
     )
     if mechanical_ventilation_flow_m3_h is None:
         mechanical_ventilation_flow_m3_h = (

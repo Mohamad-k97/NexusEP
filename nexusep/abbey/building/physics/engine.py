@@ -15,7 +15,19 @@ Important:
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional
 import copy
+from contextlib import contextmanager
 
+@contextmanager
+def _measure_if_available(timer, name):
+    if timer is None:
+        yield
+        return
+    if not hasattr(timer, "measure"):
+        yield
+        return
+    with timer.measure(name):
+        yield
+        
 
 PHYSICS_ENGINE_MODEL_FAMILY = "abbey_unified_building_physics_engine"
 PHYSICS_ENGINE_PHASE = "10.1"
@@ -371,508 +383,548 @@ def run_building_physics_step(
     """
     Run the Phase 10.2 unified physics orchestration.
 
-    This is the new central function.
-
-    It does not yet remove SimpleBuildingPerformanceModel.
-    That happens in Phase 10.3.
-
-    Current behavior:
-    - reads BuildingModel / ZoneState
-    - reads WeatherState
-    - reads ZoneControlCommand / ZoneSystemSpec
-    - resolves shared window boundary result if graph exists
-    - calculates daylight and lighting if graph exists
-    - builds internal sources
-    - builds airflow network if graph exists
-    - updates CO2 if airflow exists
-    - updates moisture if airflow exists
-    - updates thermal state
-    - proposes updated ZoneState objects
-    - optionally writes proposed ZoneState objects back to BuildingModel
+    Timed v0.5 version:
+    - preserves existing physics logic
+    - adds coarse timers around major engine phases
+    - does not change module behavior
     """
 
-    if not isinstance(step_input, BuildingPhysicsStepInput):
-        raise TypeError("step_input must be BuildingPhysicsStepInput.")
+    timer = getattr(step_input, "timer", None)
 
-    if step_input.weather_state is None:
-        raise ValueError(
-            "BuildingPhysicsStepInput.weather_state is required in Phase 10.2."
-        )
+    with _measure_if_available(timer, "engine.step_total"):
 
-    if require_physics_graph and step_input.physics_graph is None:
-        raise ValueError(
-            "physics_graph is required because require_physics_graph=True."
-        )
+        with _measure_if_available(timer, "engine.validate_inputs"):
+            if not isinstance(step_input, BuildingPhysicsStepInput):
+                raise TypeError("step_input must be BuildingPhysicsStepInput.")
 
-    order_result = run_building_physics_timestep_order(step_input)
+            if step_input.weather_state is None:
+                raise ValueError(
+                    "BuildingPhysicsStepInput.weather_state is required in Phase 10.2."
+                )
 
-    building_model = step_input.building_model
-    weather_state = step_input.weather_state
-    physics_graph = step_input.physics_graph
-    dt_minutes = step_input.dt_minutes
+            if require_physics_graph and step_input.physics_graph is None:
+                raise ValueError(
+                    "physics_graph is required because require_physics_graph=True."
+                )
 
-    zone_ids = step_input.zone_ids()
-    
+            order_result = run_building_physics_timestep_order(step_input)
 
-    from nexusep.abbey.building.systems import (
-        constrain_zone_control_command_to_system_spec,
-        make_default_zone_system_spec_from_zone_model,
-    )
+            building_model = step_input.building_model
+            weather_state = step_input.weather_state
+            physics_graph = step_input.physics_graph
+            dt_minutes = step_input.dt_minutes
 
-    zone_control_commands = dict(step_input.zone_control_commands or {})
-    zone_system_specs = dict(step_input.zone_system_specs or {})
+            zone_ids = step_input.zone_ids()
 
-    command_constraint_records = []
-
-    for zone_id in zone_ids:
-        if zone_id not in zone_system_specs:
-            zone_model = building_model.get_zone_model(zone_id)
-
-            zone_system_specs[zone_id] = make_default_zone_system_spec_from_zone_model(
-                zone_model
+        with _measure_if_available(timer, "engine.command_constraints"):
+            from nexusep.abbey.building.systems import (
+                constrain_zone_control_command_to_system_spec,
+                make_default_zone_system_spec_from_zone_model,
             )
 
-            command_constraint_records.append(
-                {
-                    "building_id": getattr(zone_model, "building_id", None),
-                    "dwelling_id": getattr(zone_model, "dwelling_id", None),
-                    "zone_id": zone_id,
-                    "field": "zone_system_spec",
-                    "old_value": None,
-                    "new_value": "default_created",
-                    "reason": "missing_zone_system_spec_default_created",
-                }
+            zone_control_commands = dict(step_input.zone_control_commands or {})
+            zone_system_specs = dict(step_input.zone_system_specs or {})
+
+            command_constraint_records = []
+
+            for zone_id in zone_ids:
+                if zone_id not in zone_system_specs:
+                    zone_model = building_model.get_zone_model(zone_id)
+
+                    zone_system_specs[zone_id] = (
+                        make_default_zone_system_spec_from_zone_model(
+                            zone_model
+                        )
+                    )
+
+                    command_constraint_records.append(
+                        {
+                            "building_id": getattr(zone_model, "building_id", None),
+                            "dwelling_id": getattr(zone_model, "dwelling_id", None),
+                            "zone_id": zone_id,
+                            "field": "zone_system_spec",
+                            "old_value": None,
+                            "new_value": "default_created",
+                            "reason": "missing_zone_system_spec_default_created",
+                        }
+                    )
+
+                command = zone_control_commands.get(zone_id)
+
+                if command is None:
+                    continue
+
+                constraint_result = constrain_zone_control_command_to_system_spec(
+                    command=command,
+                    system_spec=zone_system_specs[zone_id],
+                )
+
+                zone_control_commands[zone_id] = constraint_result.command
+                command_constraint_records.extend(constraint_result.records)
+
+        # ------------------------------------------------------------
+        # Current dynamic states from BuildingModel / ZoneState.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.make_current_states"):
+            thermal_state = (
+                step_input.previous_thermal_state
+                or _make_current_thermal_state_from_building_model(building_model)
             )
 
-        command = zone_control_commands.get(zone_id)
-
-        if command is None:
-            continue
-
-        constraint_result = constrain_zone_control_command_to_system_spec(
-            command=command,
-            system_spec=zone_system_specs[zone_id],
-        )
-
-        zone_control_commands[zone_id] = constraint_result.command
-        command_constraint_records.extend(constraint_result.records)
-
-    # ------------------------------------------------------------
-    # Current dynamic states from BuildingModel / ZoneState.
-    # ------------------------------------------------------------
-    thermal_state = (
-        step_input.previous_thermal_state
-        or _make_current_thermal_state_from_building_model(building_model)
-    )
-
-    air_state = (
-        step_input.previous_air_state
-        or _make_current_air_state_from_building_model(building_model)
-    )
-
-    # ------------------------------------------------------------
-    # Windows.
-    # ------------------------------------------------------------
-    window_operation_inputs = None
-    window_boundary_result = step_input.window_boundary_result
-
-    if physics_graph is not None:
-        window_operation_inputs = _make_window_operation_inputs_from_zone_commands(
-            physics_graph=physics_graph,
-            zone_control_commands=zone_control_commands,
-        )
-
-        if window_boundary_result is None:
-            from nexusep.abbey.building.physics.windows import (
-                calculate_building_window_boundary_result,
+            air_state = (
+                step_input.previous_air_state
+                or _make_current_air_state_from_building_model(building_model)
             )
 
-            window_boundary_result = calculate_building_window_boundary_result(
-                physics_graph=physics_graph,
-                building_model=building_model,
-                building_window_operation_inputs=window_operation_inputs,
-                weather_state=weather_state,
+        # ------------------------------------------------------------
+        # Windows.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.windows"):
+            window_operation_inputs = None
+            window_boundary_result = step_input.window_boundary_result
+
+            if physics_graph is not None:
+                window_operation_inputs = (
+                    _make_window_operation_inputs_from_zone_commands(
+                        physics_graph=physics_graph,
+                        zone_control_commands=zone_control_commands,
+                    )
+                )
+
+                if window_boundary_result is None:
+                    from nexusep.abbey.building.physics.windows import (
+                        calculate_building_window_boundary_result,
+                    )
+
+                    window_boundary_result = calculate_building_window_boundary_result(
+                        physics_graph=physics_graph,
+                        building_model=building_model,
+                        building_window_operation_inputs=window_operation_inputs,
+                        weather_state=weather_state,
+                    )
+
+        # ------------------------------------------------------------
+        # Daylight + lighting.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.daylight_lighting"):
+            daylight_result = None
+
+            lighting_control_inputs = (
+                _make_lighting_control_inputs_from_zone_commands(
+                    building_model=building_model,
+                    zone_control_commands=zone_control_commands,
+                )
             )
 
-    # ------------------------------------------------------------
-    # Daylight + lighting.
-    # ------------------------------------------------------------
-    daylight_result = None
-    lighting_control_inputs = _make_lighting_control_inputs_from_zone_commands(
-        building_model=building_model,
-        zone_control_commands=zone_control_commands,
-    )
+            lighting_power_result = step_input.lighting_power_result
 
-    lighting_power_result = step_input.lighting_power_result
+            if physics_graph is not None:
+                from nexusep.abbey.building.physics.daylight import (
+                    estimate_building_indoor_daylight,
+                    calculate_building_lighting_from_controls,
+                    make_building_light_state_from_daylight_and_lighting,
+                )
 
-    if physics_graph is not None:
-        from nexusep.abbey.building.physics.daylight import (
-            estimate_building_indoor_daylight,
-            calculate_building_lighting_from_controls,
-            make_building_light_state_from_daylight_and_lighting,
-        )
+                daylight_result = estimate_building_indoor_daylight(
+                    building_model=building_model,
+                    physics_graph=physics_graph,
+                    weather_state=weather_state,
+                    window_boundary_result=window_boundary_result,
+                )
 
-        daylight_result = estimate_building_indoor_daylight(
-            building_model=building_model,
-            physics_graph=physics_graph,
-            weather_state=weather_state,
-            window_boundary_result=window_boundary_result,
-        )
+                if lighting_power_result is None:
+                    lighting_power_result = calculate_building_lighting_from_controls(
+                        building_model=building_model,
+                        lighting_control_inputs=lighting_control_inputs,
+                        zone_system_specs=zone_system_specs,
+                        dt_minutes=dt_minutes,
+                    )
 
-        if lighting_power_result is None:
-            lighting_power_result = calculate_building_lighting_from_controls(
-                building_model=building_model,
-                lighting_control_inputs=lighting_control_inputs,
+                light_state = make_building_light_state_from_daylight_and_lighting(
+                    building_model=building_model,
+                    daylight_result=daylight_result,
+                    lighting_power_result=lighting_power_result,
+                )
+
+            else:
+                light_state = step_input.previous_light_state
+
+        # ------------------------------------------------------------
+        # Solar gains.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.solar_gains"):
+            solar_gain_result = None
+            solar_gains_by_zone_w = {}
+
+            if physics_graph is not None:
+                from nexusep.abbey.building.physics.thermal import (
+                    calculate_solar_gains_for_thermal,
+                )
+
+                solar_gain_result = calculate_solar_gains_for_thermal(
+                    physics_graph=physics_graph,
+                    weather_state=weather_state,
+                    window_boundary_result=window_boundary_result,
+                )
+
+                solar_gains_by_zone_w = solar_gain_result.solar_gains_by_zone_w()
+
+        # ------------------------------------------------------------
+        # Internal source bridge.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.internal_sources"):
+            internal_source_result = step_input.internal_source_result
+
+            if internal_source_result is None:
+                from nexusep.abbey.building.physics.internal_sources import (
+                    make_building_internal_source_result,
+                )
+
+                internal_source_result = make_building_internal_source_result(
+                    chunk_records=step_input.chunk_records,
+                    people=step_input.people,
+                    locations=step_input.locations,
+                    role_to_zone_id=step_input.role_to_zone_id,
+                    building_model=building_model,
+                    dt_minutes=dt_minutes,
+                    include_people=True,
+                    include_lighting=True,
+                    lighting_power_result=lighting_power_result,
+                    include_hvac=False,
+                    zone_control_commands=zone_control_commands,
+                    zone_system_specs=zone_system_specs,
+                )
+
+        with _measure_if_available(timer, "engine.physics_inputs"):
+            from nexusep.abbey.building.physics.internal_sources import (
+                make_physics_inputs_from_internal_sources,
+            )
+
+            physics_inputs = make_physics_inputs_from_internal_sources(
+                internal_source_result=internal_source_result,
+                zone_ids=zone_ids,
+                solar_gains_by_zone_w=solar_gains_by_zone_w,
+            )
+
+            airflow_control_inputs = physics_inputs.get(
+                "airflow_control_inputs",
+                None,
+            )
+
+            co2_generation_result = physics_inputs.get(
+                "co2_generation_result",
+                None,
+            )
+
+            moisture_source_inputs = physics_inputs.get(
+                "moisture_source_inputs",
+                None,
+            )
+
+            thermal_gains = physics_inputs.get(
+                "thermal_gains",
+                None,
+            )
+
+            airflow_control_inputs = (
+                _add_ventilation_commands_to_airflow_control_inputs(
+                    airflow_control_inputs=airflow_control_inputs,
+                    zone_ids=zone_ids,
+                    zone_control_commands=zone_control_commands,
+                )
+            )
+
+            physics_inputs["airflow_control_inputs"] = airflow_control_inputs
+
+            thermal_gains = _add_hvac_command_gains_to_thermal_gains(
+                zone_ids=zone_ids,
+                base_thermal_gains=thermal_gains,
+                zone_control_commands=zone_control_commands,
                 zone_system_specs=zone_system_specs,
+            )
+
+            physics_inputs["thermal_gains"] = thermal_gains
+
+        # ------------------------------------------------------------
+        # Airflow.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.airflow"):
+            airflow_network = step_input.airflow_network
+
+            if airflow_network is None:
+                if physics_graph is not None:
+                    from nexusep.abbey.building.physics.airflow import (
+                        calculate_building_airflow_network,
+                    )
+
+                    airflow_network = calculate_building_airflow_network(
+                        building_model=building_model,
+                        physics_graph=physics_graph,
+                        weather_state=weather_state,
+                        airflow_control_inputs=airflow_control_inputs,
+                        window_boundary_result=window_boundary_result,
+                    )
+
+                else:
+                    from nexusep.abbey.building.physics.airflow import (
+                        calculate_building_mechanical_only_airflow_network,
+                    )
+
+                    airflow_network = calculate_building_mechanical_only_airflow_network(
+                        building_model=building_model,
+                        airflow_control_inputs=airflow_control_inputs,
+                    )
+
+        # ------------------------------------------------------------
+        # CO2.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.co2"):
+            co2_step_result = None
+
+            if airflow_network is not None and co2_generation_result is not None:
+                from nexusep.abbey.building.physics.airflow import (
+                    step_building_co2_state,
+                )
+
+                co2_step_result = step_building_co2_state(
+                    air_state=air_state,
+                    airflow_network=airflow_network,
+                    co2_generation_result=co2_generation_result,
+                    weather_state=weather_state,
+                    dt_minutes=dt_minutes,
+                )
+
+        # ------------------------------------------------------------
+        # Moisture.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.moisture"):
+            moisture_state = (
+                step_input.previous_moisture_state
+                or _make_current_moisture_state_from_building_model(
+                    building_model=building_model,
+                    thermal_state=thermal_state,
+                    weather_state=weather_state,
+                )
+            )
+
+            moisture_transport_result = None
+            moisture_step_result = None
+
+            if airflow_network is not None and moisture_source_inputs is not None:
+                from nexusep.abbey.building.physics.moisture import (
+                    make_building_moisture_parameters,
+                    make_outdoor_moisture_boundary_from_weather_state,
+                    make_building_moisture_transport_result,
+                    step_building_moisture_state,
+                )
+
+                building_moisture_parameters = make_building_moisture_parameters(
+                    building_model=building_model,
+                )
+
+                outdoor_moisture_boundary = (
+                    make_outdoor_moisture_boundary_from_weather_state(
+                        weather_state=weather_state,
+                    )
+                )
+
+                moisture_transport_result = make_building_moisture_transport_result(
+                    moisture_state=moisture_state,
+                    airflow_network=airflow_network,
+                    outdoor_moisture_boundary=outdoor_moisture_boundary,
+                )
+
+                pressure_pa = _safe_atmospheric_pressure_pa(
+                    weather_state=weather_state,
+                )
+
+                moisture_step_result = step_building_moisture_state(
+                    moisture_state=moisture_state,
+                    building_moisture_parameters=building_moisture_parameters,
+                    moisture_transport_result=moisture_transport_result,
+                    moisture_source_inputs=moisture_source_inputs,
+                    thermal_state=thermal_state,
+                    atmospheric_pressure_pa=pressure_pa,
+                    dt_minutes=dt_minutes,
+                )
+
+        # ------------------------------------------------------------
+        # Acoustics.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.acoustic"):
+            acoustic_step_result = None
+            acoustic_state = step_input.previous_acoustic_state
+
+            from nexusep.abbey.building.physics.acoustics import (
+                step_building_acoustic_state,
+            )
+
+            acoustic_step_result = step_building_acoustic_state(
+                building_model=building_model,
+                physics_graph=physics_graph,
+                weather_state=weather_state,
+                internal_source_result=internal_source_result,
+                previous_acoustic_state=acoustic_state,
                 dt_minutes=dt_minutes,
             )
 
-        light_state = make_building_light_state_from_daylight_and_lighting(
-            building_model=building_model,
-            daylight_result=daylight_result,
-            lighting_power_result=lighting_power_result,
-        )
+            acoustic_state = acoustic_step_result.updated_state
 
-    else:
-        light_state = step_input.previous_light_state
-
-    # ------------------------------------------------------------
-    # Solar gains.
-    # ------------------------------------------------------------
-    solar_gain_result = None
-    solar_gains_by_zone_w = {}
-
-    if physics_graph is not None:
-        from nexusep.abbey.building.physics.thermal import (
-            calculate_solar_gains_for_thermal,
-        )
-
-        solar_gain_result = calculate_solar_gains_for_thermal(
-            physics_graph=physics_graph,
-            weather_state=weather_state,
-            window_boundary_result=window_boundary_result,
-        )
-
-        solar_gains_by_zone_w = solar_gain_result.solar_gains_by_zone_w()
-
-    # ------------------------------------------------------------
-    # Internal source bridge.
-    # ------------------------------------------------------------
-    internal_source_result = step_input.internal_source_result
-
-    if internal_source_result is None:
-        from nexusep.abbey.building.physics.internal_sources import (
-            make_building_internal_source_result,
-        )
-
-        internal_source_result = make_building_internal_source_result(
-            chunk_records=step_input.chunk_records,
-            people=step_input.people,
-            locations=step_input.locations,
-            role_to_zone_id=step_input.role_to_zone_id,
-            building_model=building_model,
-            dt_minutes=dt_minutes,
-            include_people=True,
-            include_lighting=True,
-            lighting_power_result=lighting_power_result,
-            include_hvac=False,
-            zone_control_commands=zone_control_commands,
-            zone_system_specs=zone_system_specs,
-        )
-
-    from nexusep.abbey.building.physics.internal_sources import (
-        make_physics_inputs_from_internal_sources,
-    )
-
-    physics_inputs = make_physics_inputs_from_internal_sources(
-        internal_source_result=internal_source_result,
-        zone_ids=zone_ids,
-        solar_gains_by_zone_w=solar_gains_by_zone_w,
-    )
-
-    airflow_control_inputs = physics_inputs.get("airflow_control_inputs", None)
-    co2_generation_result = physics_inputs.get("co2_generation_result", None)
-    moisture_source_inputs = physics_inputs.get("moisture_source_inputs", None)
-    thermal_gains = physics_inputs.get("thermal_gains", None)
-    airflow_control_inputs = _add_ventilation_commands_to_airflow_control_inputs(
-        airflow_control_inputs=airflow_control_inputs,
-        zone_ids=zone_ids,
-        zone_control_commands=zone_control_commands,
-    )
-
-    physics_inputs["airflow_control_inputs"] = airflow_control_inputs
-    thermal_gains = _add_hvac_command_gains_to_thermal_gains(
-        zone_ids=zone_ids,
-        base_thermal_gains=thermal_gains,
-        zone_control_commands=zone_control_commands,
-        zone_system_specs=zone_system_specs,
-    )
-
-    physics_inputs["thermal_gains"] = thermal_gains
-    # ------------------------------------------------------------
-    # Airflow.
-    # ------------------------------------------------------------
-    airflow_network = step_input.airflow_network
-
-    if airflow_network is None:
-        if physics_graph is not None:
-            from nexusep.abbey.building.physics.airflow import (
-                calculate_building_airflow_network,
+        # ------------------------------------------------------------
+        # Thermal.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.thermal"):
+            from nexusep.abbey.building.physics.thermal import (
+                make_building_thermal_parameters,
+                make_ventilation_heat_exchange_for_thermal,
+                make_interzone_thermal_network_from_physics_graph,
+                calculate_interzone_heat_flow_records,
+                aggregate_interzone_heat_gains_by_zone_w,
+                step_building_thermal_state_semi_implicit,
             )
 
-            airflow_network = calculate_building_airflow_network(
+            thermal_parameters = make_building_thermal_parameters(
                 building_model=building_model,
-                physics_graph=physics_graph,
+            )
+
+            thermal_ventilation_exchange = make_ventilation_heat_exchange_for_thermal(
+                building_model=building_model,
+                airflow_network=airflow_network,
+            )
+
+            interzone_thermal_network = None
+            interzone_thermal_flow_records = []
+            interzone_heat_gains_by_zone_w = {}
+
+            if physics_graph is not None:
+                interzone_thermal_network = (
+                    make_interzone_thermal_network_from_physics_graph(
+                        physics_graph=physics_graph,
+                    )
+                )
+
+                interzone_thermal_flow_records = calculate_interzone_heat_flow_records(
+                    interzone_network=interzone_thermal_network,
+                    thermal_state=thermal_state,
+                )
+
+                interzone_heat_gains_by_zone_w = (
+                    aggregate_interzone_heat_gains_by_zone_w(
+                        interzone_thermal_flow_records
+                    )
+                )
+
+            additional_outside_conductance_by_zone_w_k = {}
+
+            if window_boundary_result is not None and hasattr(
+                window_boundary_result,
+                "closed_window_conductance_by_zone_w_k",
+            ):
+                additional_outside_conductance_by_zone_w_k = (
+                    window_boundary_result.closed_window_conductance_by_zone_w_k()
+                )
+
+            thermal_step_result = step_building_thermal_state_semi_implicit(
+                thermal_state=thermal_state,
+                building_parameters=thermal_parameters,
                 weather_state=weather_state,
-                airflow_control_inputs=airflow_control_inputs,
-                window_boundary_result=window_boundary_result,
+                building_gains=thermal_gains,
+                interzone_network=interzone_thermal_network,
+                ventilation_exchange=thermal_ventilation_exchange,
+                additional_outside_conductance_by_zone_w_k=additional_outside_conductance_by_zone_w_k,
+                dt_minutes=dt_minutes,
             )
 
-        else:
-            from nexusep.abbey.building.physics.airflow import (
-                calculate_building_mechanical_only_airflow_network,
-            )
-
-            airflow_network = calculate_building_mechanical_only_airflow_network(
+        # ------------------------------------------------------------
+        # Proposed ZoneState write-back + records.
+        # ------------------------------------------------------------
+        with _measure_if_available(timer, "engine.write_state_records"):
+            proposed_zone_states = _make_proposed_zone_states(
                 building_model=building_model,
-                airflow_control_inputs=airflow_control_inputs,
+                thermal_step_result=thermal_step_result,
+                co2_step_result=co2_step_result,
+                moisture_step_result=moisture_step_result,
+                light_state=light_state,
+                acoustic_step_result=acoustic_step_result,
             )
 
-    # ------------------------------------------------------------
-    # CO2.
-    # ------------------------------------------------------------
-    co2_step_result = None
+            if write_back_to_building_model:
+                for zone_id, zone_state in proposed_zone_states.items():
+                    building_model.set_zone_state(zone_id, zone_state)
 
-    if airflow_network is not None and co2_generation_result is not None:
-        from nexusep.abbey.building.physics.airflow import (
-            step_building_co2_state,
-        )
+            zone_records = _make_engine_zone_records(
+                building_model=building_model,
+                proposed_zone_states=proposed_zone_states,
+                internal_source_result=internal_source_result,
+                thermal_step_result=thermal_step_result,
+                co2_step_result=co2_step_result,
+                moisture_step_result=moisture_step_result,
+                light_state=light_state,
+                airflow_network=airflow_network,
+                thermal_ventilation_exchange=thermal_ventilation_exchange,
+                interzone_thermal_network=interzone_thermal_network,
+                interzone_heat_gains_by_zone_w=interzone_heat_gains_by_zone_w,
+                zone_control_commands=zone_control_commands,
+                zone_system_specs=zone_system_specs,
+                window_boundary_result=window_boundary_result,
+                acoustic_step_result=acoustic_step_result,
+                daylight_result=daylight_result,
+                lighting_power_result=lighting_power_result,
+                solar_gain_result=solar_gain_result,
+            )
 
-        co2_step_result = step_building_co2_state(
-            air_state=air_state,
-            airflow_network=airflow_network,
-            co2_generation_result=co2_generation_result,
-            weather_state=weather_state,
-            dt_minutes=dt_minutes,
-        )
+            building_record = _make_engine_building_record(
+                zone_records=zone_records,
+                internal_source_result=internal_source_result,
+                solar_gain_result=solar_gain_result,
+                airflow_network=airflow_network,
+                co2_step_result=co2_step_result,
+                moisture_step_result=moisture_step_result,
+                thermal_step_result=thermal_step_result,
+                interzone_thermal_network=interzone_thermal_network,
+                interzone_thermal_flow_records=interzone_thermal_flow_records,
+                command_constraint_records=command_constraint_records,
+                window_boundary_result=window_boundary_result,
+                acoustic_step_result=acoustic_step_result,
+                daylight_result=daylight_result,
+                lighting_power_result=lighting_power_result,
+                light_state=light_state,
+            )
 
-    # ------------------------------------------------------------
-    # Moisture.
-    # ------------------------------------------------------------
-    moisture_state = (
-        step_input.previous_moisture_state
-        or _make_current_moisture_state_from_building_model(
-            building_model=building_model,
-            thermal_state=thermal_state,
-            weather_state=weather_state,
-        )
-    )
-
-    moisture_transport_result = None
-    moisture_step_result = None
-
-    if airflow_network is not None and moisture_source_inputs is not None:
-        from nexusep.abbey.building.physics.moisture import (
-            make_building_moisture_parameters,
-            make_outdoor_moisture_boundary_from_weather_state,
-            make_building_moisture_transport_result,
-            step_building_moisture_state,
-        )
-
-        building_moisture_parameters = make_building_moisture_parameters(
-            building_model=building_model,
-        )
-
-        outdoor_moisture_boundary = make_outdoor_moisture_boundary_from_weather_state(
-            weather_state=weather_state,
-        )
-
-        moisture_transport_result = make_building_moisture_transport_result(
-            moisture_state=moisture_state,
-            airflow_network=airflow_network,
-            outdoor_moisture_boundary=outdoor_moisture_boundary,
-        )
-
-        pressure_pa = _safe_atmospheric_pressure_pa(
-            weather_state=weather_state,
-        )
-
-        moisture_step_result = step_building_moisture_state(
-            moisture_state=moisture_state,
-            building_moisture_parameters=building_moisture_parameters,
-            moisture_transport_result=moisture_transport_result,
-            moisture_source_inputs=moisture_source_inputs,
-            thermal_state=thermal_state,
-            atmospheric_pressure_pa=pressure_pa,
-            dt_minutes=dt_minutes,
-        )
-        
-    # ------------------------------------------------------------
-    # Acoustics.
-    # ------------------------------------------------------------
-    acoustic_step_result = None
-    acoustic_state = step_input.previous_acoustic_state
-
-    from nexusep.abbey.building.physics.acoustics import (
-        step_building_acoustic_state,
-    )
-
-    acoustic_step_result = step_building_acoustic_state(
-        building_model=building_model,
-        physics_graph=physics_graph,
-        weather_state=weather_state,
-        internal_source_result=internal_source_result,
-        previous_acoustic_state=acoustic_state,
-        dt_minutes=dt_minutes,
-    )
-
-    acoustic_state = acoustic_step_result.updated_state
-
-    # ------------------------------------------------------------
-    # Thermal.
-    # ------------------------------------------------------------
-    from nexusep.abbey.building.physics.thermal import (
-        make_building_thermal_parameters,
-        make_ventilation_heat_exchange_for_thermal,
-        make_interzone_thermal_network_from_physics_graph,
-        calculate_interzone_heat_flow_records,
-        aggregate_interzone_heat_gains_by_zone_w,
-        step_building_thermal_state_semi_implicit,
-    )
-
-    thermal_parameters = make_building_thermal_parameters(
-        building_model=building_model,
-    )
-
-    thermal_ventilation_exchange = make_ventilation_heat_exchange_for_thermal(
-        building_model=building_model,
-        airflow_network=airflow_network,
-    )
-    interzone_thermal_network = None
-    interzone_thermal_flow_records = []
-    interzone_heat_gains_by_zone_w = {}
-
-    if physics_graph is not None:
-        interzone_thermal_network = make_interzone_thermal_network_from_physics_graph(
-            physics_graph=physics_graph,
-        )
-
-        interzone_thermal_flow_records = calculate_interzone_heat_flow_records(
-            interzone_network=interzone_thermal_network,
-            thermal_state=thermal_state,
-        )
-
-        interzone_heat_gains_by_zone_w = aggregate_interzone_heat_gains_by_zone_w(
-            interzone_thermal_flow_records
-        )
-    additional_outside_conductance_by_zone_w_k = {}
-
-    if window_boundary_result is not None and hasattr(
-        window_boundary_result,
-        "closed_window_conductance_by_zone_w_k",
-    ):
-        additional_outside_conductance_by_zone_w_k = (
-            window_boundary_result.closed_window_conductance_by_zone_w_k()
-        )
-
-    thermal_step_result = step_building_thermal_state_semi_implicit(
-        thermal_state=thermal_state,
-        building_parameters=thermal_parameters,
-        weather_state=weather_state,
-        building_gains=thermal_gains,
-        interzone_network=interzone_thermal_network,
-        ventilation_exchange=thermal_ventilation_exchange,
-        additional_outside_conductance_by_zone_w_k=additional_outside_conductance_by_zone_w_k,
-        dt_minutes=dt_minutes,
-    )
-
-    # ------------------------------------------------------------
-    # Proposed ZoneState write-back.
-    # ------------------------------------------------------------
-    proposed_zone_states = _make_proposed_zone_states(
-        building_model=building_model,
-        thermal_step_result=thermal_step_result,
-        co2_step_result=co2_step_result,
-        moisture_step_result=moisture_step_result,
-        light_state=light_state,
-        acoustic_step_result=acoustic_step_result,
-    )
-
-    if write_back_to_building_model:
-        for zone_id, zone_state in proposed_zone_states.items():
-            building_model.set_zone_state(zone_id, zone_state)
-
-    zone_records = _make_engine_zone_records(
-        building_model=building_model,
-        proposed_zone_states=proposed_zone_states,
-        internal_source_result=internal_source_result,
-        thermal_step_result=thermal_step_result,
-        co2_step_result=co2_step_result,
-        moisture_step_result=moisture_step_result,
-        light_state=light_state,
-        airflow_network=airflow_network,
-        thermal_ventilation_exchange=thermal_ventilation_exchange,
-        interzone_thermal_network=interzone_thermal_network,
-        interzone_heat_gains_by_zone_w=interzone_heat_gains_by_zone_w,
-        zone_control_commands=zone_control_commands,
-        zone_system_specs=zone_system_specs,
-        window_boundary_result=window_boundary_result,
-        acoustic_step_result=acoustic_step_result,
-        daylight_result=daylight_result,
-        lighting_power_result=lighting_power_result,
-        solar_gain_result=solar_gain_result,
-    )
-    building_record = _make_engine_building_record(
-        zone_records=zone_records,
-        internal_source_result=internal_source_result,
-        solar_gain_result=solar_gain_result,
-        airflow_network=airflow_network,
-        co2_step_result=co2_step_result,
-        moisture_step_result=moisture_step_result,
-        thermal_step_result=thermal_step_result,
-        interzone_thermal_network=interzone_thermal_network,
-        interzone_thermal_flow_records=interzone_thermal_flow_records,
-        command_constraint_records=command_constraint_records,
-        window_boundary_result=window_boundary_result,
-        acoustic_step_result=acoustic_step_result,
-        daylight_result=daylight_result,
-        lighting_power_result=lighting_power_result,
-        light_state=light_state,
-    )
-
-    return BuildingPhysicsStepResult(
-        step_input=step_input,
-        order_result=order_result,
-        command_constraint_records=command_constraint_records,
-        window_operation_inputs=window_operation_inputs,
-        window_boundary_result=window_boundary_result,
-        daylight_result=daylight_result,
-        lighting_control_inputs=lighting_control_inputs,
-        lighting_power_result=lighting_power_result,
-        light_state=light_state,
-        solar_gain_result=solar_gain_result,
-        internal_source_result=internal_source_result,
-        physics_inputs=physics_inputs,
-        airflow_control_inputs=airflow_control_inputs,
-        airflow_network=airflow_network,
-        air_state=air_state,
-        co2_step_result=co2_step_result,
-        moisture_state=moisture_state,
-        moisture_transport_result=moisture_transport_result,
-        moisture_step_result=moisture_step_result,
-        thermal_state=thermal_state,
-        thermal_parameters=thermal_parameters,
-        thermal_ventilation_exchange=thermal_ventilation_exchange,
-        interzone_thermal_network=interzone_thermal_network,
-        interzone_thermal_flow_records=interzone_thermal_flow_records,
-        interzone_heat_gains_by_zone_w=interzone_heat_gains_by_zone_w,
-        thermal_step_result=thermal_step_result,
-        acoustic_state=acoustic_state,
-        acoustic_step_result=acoustic_step_result,
-        proposed_zone_states=proposed_zone_states,
-        zone_records=zone_records,
-        building_record=building_record,
-    )
+        with _measure_if_available(timer, "engine.make_result"):
+            return BuildingPhysicsStepResult(
+                step_input=step_input,
+                order_result=order_result,
+                command_constraint_records=command_constraint_records,
+                window_operation_inputs=window_operation_inputs,
+                window_boundary_result=window_boundary_result,
+                daylight_result=daylight_result,
+                lighting_control_inputs=lighting_control_inputs,
+                lighting_power_result=lighting_power_result,
+                light_state=light_state,
+                solar_gain_result=solar_gain_result,
+                internal_source_result=internal_source_result,
+                physics_inputs=physics_inputs,
+                airflow_control_inputs=airflow_control_inputs,
+                airflow_network=airflow_network,
+                air_state=air_state,
+                co2_step_result=co2_step_result,
+                moisture_state=moisture_state,
+                moisture_transport_result=moisture_transport_result,
+                moisture_step_result=moisture_step_result,
+                thermal_state=thermal_state,
+                thermal_parameters=thermal_parameters,
+                thermal_ventilation_exchange=thermal_ventilation_exchange,
+                interzone_thermal_network=interzone_thermal_network,
+                interzone_thermal_flow_records=interzone_thermal_flow_records,
+                interzone_heat_gains_by_zone_w=interzone_heat_gains_by_zone_w,
+                thermal_step_result=thermal_step_result,
+                acoustic_state=acoustic_state,
+                acoustic_step_result=acoustic_step_result,
+                proposed_zone_states=proposed_zone_states,
+                zone_records=zone_records,
+                building_record=building_record,
+            )
 
 
 # ============================================================

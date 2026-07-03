@@ -14,12 +14,10 @@ It:
 
 It is not a real RC network yet.
 """
-
+from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 from typing import Any, Dict, List, Optional, Tuple
-from types import SimpleNamespace
-import copy
-
+from contextlib import contextmanager
 from nexusep.abbey.agents.states import DwellingObservation, ZoneObservation
 from nexusep.abbey.building.model import BuildingModel, ZoneState, ZoneModel
 from nexusep.abbey.building.systems import (
@@ -41,12 +39,17 @@ from nexusep.abbey.building.physics.engine import (
     BuildingPhysicsStepInput,
     run_building_physics_step,
 )
+from nexusep.abbey.building.physics.weather import WeatherState
 
 BUILDING_PERFORMANCE_PATH_ENGINE = "engine"
 BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_EXPLICIT = "legacy_fallback_explicit"
 BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_AFTER_ENGINE_ERROR = (
     "legacy_fallback_after_engine_error"
 )
+
+WEATHER_SOURCE_EXPLICIT = "weather_state_explicit"
+WEATHER_SOURCE_FROM_OBSERVATION = "weather_from_observation"
+WEATHER_SOURCE_DEFAULT_SYNTHETIC = "weather_default_synthetic"
 # ============================================================
 # ENGINE DIAGNOSTIC COPY GROUPS
 # ============================================================
@@ -60,7 +63,19 @@ BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_AFTER_ENGINE_ERROR = (
 # Keep PHASE_* aliases below for old tests/imports, but do not use
 # them in the copy logic.
 
+@contextmanager
+def _measure_if_available(timer, name):
+    if timer is None:
+        yield
+        return
 
+    if not hasattr(timer, "measure"):
+        yield
+        return
+
+    with timer.measure(name):
+        yield
+        
 def _unique_record_keys(keys):
     out = []
 
@@ -362,25 +377,31 @@ class BuildingPerformanceStepResult:
     interzone_thermal_flow_records: List[Dict[str, Any]] = field(default_factory=list)
     physics_engine_active: bool = False
     physics_engine_error: Optional[str] = None
+   
+    weather_state: Any = None
+    weather_source: str = WEATHER_SOURCE_DEFAULT_SYNTHETIC
     
     performance_path: str = BUILDING_PERFORMANCE_PATH_ENGINE
     legacy_fallback_used: bool = False
     legacy_fallback_reason: Optional[str] = None
 
 
-class SimpleBuildingPerformanceModel:
+class BuildingPhysicsPerformanceModel:
     """
-    Dummy-simple building performance model.
+    Engine-backed ABBEY building performance model.
 
-    MVP scope:
-        one building
-        one dwelling
-        one household
+    Public v0.4 building-performance adapter.
 
-    Future-ready:
-        multiple dwellings
-        shared zones
-        building-level systems
+    It keeps the external performance-model interface stable while routing
+    the normal path through the unified building physics engine:
+
+        controller/control bridge
+            -> BuildingPhysicsStepInput
+            -> run_building_physics_step(...)
+            -> BuildingPerformanceStepResult
+
+    The old toy/simple calculation remains available only through the
+    explicit legacy fallback branch.
     """
 
     def __init__(
@@ -417,85 +438,127 @@ class SimpleBuildingPerformanceModel:
         self.last_physics_engine_result = None
         self.last_physics_engine_error = None
 
+        
     def step(
         self,
-        performance_input: Any,
-        dt_minutes: float,
+        performance_input,
+        dt_minutes,
     ) -> BuildingPerformanceStepResult:
-        dt_minutes = float(dt_minutes)
-        dt_hours = dt_minutes / 60.0
-        dt_seconds = dt_minutes * 60.0
-    
-        if dt_minutes <= 0:
-            raise ValueError("dt_minutes must be positive.")
-    
-        observation = _get_attr_or_key(performance_input, "observation", None)
-        locations = _get_attr_or_key(performance_input, "locations", {})
-        people = _get_attr_or_key(performance_input, "people", {})
-        chunk_records = _get_attr_or_key(performance_input, "chunk_records", [])
-        role_to_zone_id = _get_attr_or_key(performance_input, "role_to_zone_id", {})
-    
-        day = _get_attr_or_key(performance_input, "day", None)
-        hour = _get_attr_or_key(performance_input, "hour", None)
-        step = _get_attr_or_key(performance_input, "step", None)
-    
-        outdoor_temp_c = self._get_outdoor_temp_c(
-            performance_input=performance_input,
-            observation=observation,
+        timer = _get_attr_or_key(
+            performance_input,
+            "timer",
+            None,
         )
-    
-        occupancy_by_zone = self._map_occupancy_by_zone(locations=locations)
-    
-        zone_records = []
-        zone_energy_results = {}
-        zone_control_commands = {}
-        zone_system_specs = {}
-        zone_occupied_states = {}
-    
-        all_zone_models = self.building_model.all_zone_models()
-    
+
+        with _measure_if_available(
+            timer,
+            "building_performance.step_total",
+        ):
+            return self._step_inner(
+                performance_input=performance_input,
+                dt_minutes=dt_minutes,
+                timer=timer,
+            )
+
+    def _step_inner(
+        self,
+        performance_input,
+        dt_minutes,
+        timer=None,
+    ) -> BuildingPerformanceStepResult:
+        with _measure_if_available(
+            timer,
+            "building_performance.read_inputs",
+        ):
+            dt_minutes = float(dt_minutes)
+            dt_hours = dt_minutes / 60.0
+            dt_seconds = dt_minutes * 60.0
+
+            if dt_minutes <= 0:
+                raise ValueError("dt_minutes must be positive.")
+
+            observation = _get_attr_or_key(performance_input, "observation", None)
+            locations = _get_attr_or_key(performance_input, "locations", {})
+            people = _get_attr_or_key(performance_input, "people", {})
+            chunk_records = _get_attr_or_key(
+                performance_input,
+                "chunk_records",
+                [],
+            )
+            role_to_zone_id = _get_attr_or_key(
+                performance_input,
+                "role_to_zone_id",
+                {},
+            )
+
+            day = _get_attr_or_key(performance_input, "day", None)
+            hour = _get_attr_or_key(performance_input, "hour", None)
+            step = _get_attr_or_key(performance_input, "step", None)
+
+            outdoor_temp_c = self._get_outdoor_temp_c(
+                performance_input=performance_input,
+                observation=observation,
+            )
+
+            occupancy_by_zone = self._map_occupancy_by_zone(
+                locations=locations,
+            )
+
+            zone_records = []
+            zone_energy_results = {}
+            zone_control_commands = {}
+            zone_system_specs = {}
+            zone_occupied_states = {}
+
+            all_zone_models = self.building_model.all_zone_models()
+
         # ------------------------------------------------------------
         # PASS 1:
         # Create occupied states, system specs, and physical commands.
         # ------------------------------------------------------------
-        for zone_id, zone_model in all_zone_models.items():
-            old_state = self.building_model.get_zone_state(zone_id)
-    
-            occupied_person_ids = occupancy_by_zone.get(zone_id, [])
-            occupied_state = old_state.with_occupants(occupied_person_ids)
-    
-            system_spec = self._get_or_create_zone_system_spec(zone_model)
-            control_state = self._get_or_create_zone_control_state(zone_model)
-    
-            previous_command = self.previous_commands.get(zone_id)
-    
-            controller = controller_for_control_state(
-                control_state=control_state,
-                deadband_c=self.thermostat_deadband_c,
-            )
-    
-            command = controller.step(
-                zone_state=occupied_state,
-                control_state=control_state,
-                system_spec=system_spec,
-                previous_command=previous_command,
-                context={
-                    "outdoor_temp_c": outdoor_temp_c,
-                    "outdoor_co2_ppm": self.outdoor_co2_ppm,
-                    "dt_minutes": dt_minutes,
-                    "people": people,
-                },
-            )
-    
-            self.previous_commands[zone_id] = command
-            zone_control_commands[zone_id] = command
-            zone_system_specs[zone_id] = system_spec
-            zone_occupied_states[zone_id] = occupied_state
-        # Make occupancy visible to the physics engine.
-        # The engine reads current ZoneState from BuildingModel.
-        for zone_id, occupied_state in zone_occupied_states.items():
-            self.building_model.set_zone_state(zone_id, occupied_state)
-            
+        with _measure_if_available(
+            timer,
+            "building_performance.prepare_zone_commands",
+        ):
+            for zone_id, zone_model in all_zone_models.items():
+                old_state = self.building_model.get_zone_state(zone_id)
+
+                occupied_person_ids = occupancy_by_zone.get(zone_id, [])
+                occupied_state = old_state.with_occupants(occupied_person_ids)
+
+                system_spec = self._get_or_create_zone_system_spec(zone_model)
+                control_state = self._get_or_create_zone_control_state(zone_model)
+
+                previous_command = self.previous_commands.get(zone_id)
+
+                controller = controller_for_control_state(
+                    control_state=control_state,
+                    deadband_c=self.thermostat_deadband_c,
+                )
+
+                command = controller.step(
+                    zone_state=occupied_state,
+                    control_state=control_state,
+                    system_spec=system_spec,
+                    previous_command=previous_command,
+                    context={
+                        "outdoor_temp_c": outdoor_temp_c,
+                        "outdoor_co2_ppm": self.outdoor_co2_ppm,
+                        "dt_minutes": dt_minutes,
+                        "people": people,
+                    },
+                )
+
+                self.previous_commands[zone_id] = command
+                zone_control_commands[zone_id] = command
+                zone_system_specs[zone_id] = system_spec
+                zone_occupied_states[zone_id] = occupied_state
+
+            # Make occupancy visible to the physics engine.
+            # The engine reads current ZoneState from BuildingModel.
+            for zone_id, occupied_state in zone_occupied_states.items():
+                self.building_model.set_zone_state(zone_id, occupied_state)
+
         # ------------------------------------------------------------
         # PASS 2:
         # Preferred path: execute physical effects through physics engine.
@@ -512,39 +575,42 @@ class SimpleBuildingPerformanceModel:
         interzone_thermal_flow_records = []
         interzone_airflow_records = []
         window_airflow_records = []
-        
+
+        with _measure_if_available(
+            timer,
+            "building_performance.resolve_weather",
+        ):
+            weather_state, weather_source = self._resolve_weather_for_step(
+                performance_input=performance_input,
+                observation=observation,
+                outdoor_temp_c=outdoor_temp_c,
+            )
+
         if self.use_physics_engine:
             try:
-                weather_state = self._make_weather_state_for_engine(
-                    performance_input=performance_input,
-                    observation=observation,
-                    outdoor_temp_c=outdoor_temp_c,
-                )
+                with _measure_if_available(
+                    timer,
+                    "building_performance.build_engine_input",
+                ):
+                    step_input = self._build_physics_step_input(
+                        performance_input=performance_input,
+                        dt_minutes=dt_minutes,
+                        weather_state=weather_state,
+                        zone_control_commands=zone_control_commands,
+                        zone_system_specs=zone_system_specs,
+                        people=people,
+                        locations=locations,
+                        role_to_zone_id=role_to_zone_id,
+                        chunk_records=chunk_records,
+                    )
 
-                physics_graph = _get_attr_or_key(
-                    performance_input,
-                    "physics_graph",
-                    self.physics_graph,
-                )
-
-                step_input = BuildingPhysicsStepInput(
-                    building_model=self.building_model,
-                    dt_minutes=dt_minutes,
-                    physics_graph=physics_graph,
-                    weather_state=weather_state,
-                    zone_control_commands=zone_control_commands,
-                    zone_system_specs=zone_system_specs,
-                    people=people,
-                    locations=locations,
-                    role_to_zone_id=role_to_zone_id,
-                    chunk_records=chunk_records,
-                )
-
-                physics_engine_result = run_building_physics_step(
-                    step_input=step_input,
-                    require_physics_graph=False,
-                    write_back_to_building_model=True,
-                )
+                with _measure_if_available(
+                    timer,
+                    "building_performance.engine_total",
+                ):
+                    physics_engine_result = self._run_physics_engine(
+                        step_input=step_input,
+                    )
 
                 physics_engine_active = True
                 self.last_physics_engine_result = physics_engine_result
@@ -558,457 +624,285 @@ class SimpleBuildingPerformanceModel:
                     raise
 
         if physics_engine_active:
-            internal_source_result = physics_engine_result.internal_source_result
-            physics_inputs = physics_engine_result.physics_inputs or {}
-            interzone_thermal_flow_records = (
-                self._make_interzone_thermal_flow_records(
-                    step=step,
-                    day=day,
-                    hour=hour,
-                    physics_engine_result=physics_engine_result,
-                )
-            )
-            interzone_airflow_records = (
-                self._make_interzone_airflow_records(
-                    step=step,
-                    day=day,
-                    hour=hour,
-                    physics_engine_result=physics_engine_result,
-                )
-            )
-
-            window_airflow_records = (
-                self._make_window_airflow_records(
-                    step=step,
-                    day=day,
-                    hour=hour,
-                    physics_engine_result=physics_engine_result,
-                )
-            )
-            bridge_inputs_by_zone = {}
-
-            if internal_source_result is not None and hasattr(
-                internal_source_result,
-                "physics_bridge_inputs_by_zone",
+            with _measure_if_available(
+                timer,
+                "building_performance.adapter_payload",
             ):
+                adapter_payload = self._make_engine_adapter_payload(
+                    step=step,
+                    day=day,
+                    hour=hour,
+                    dt_hours=dt_hours,
+                    all_zone_models=all_zone_models,
+                    zone_control_commands=zone_control_commands,
+                    zone_system_specs=zone_system_specs,
+                    physics_engine_result=physics_engine_result,
+                    performance_path=performance_path,
+                )
+
+                internal_source_result = adapter_payload["internal_source_result"]
+                physics_inputs = adapter_payload["physics_inputs"]
+                interzone_thermal_flow_records = adapter_payload[
+                    "interzone_thermal_flow_records"
+                ]
+                interzone_airflow_records = adapter_payload[
+                    "interzone_airflow_records"
+                ]
+                window_airflow_records = adapter_payload[
+                    "window_airflow_records"
+                ]
+                zone_records = adapter_payload["zone_records"]
+                zone_energy_results = adapter_payload["zone_energy_results"]
+
+        else:
+            with _measure_if_available(
+                timer,
+                "building_performance.legacy_fallback",
+            ):
+                # --------------------------------------------------------
+                # LEGACY FALLBACK PATH.
+                #
+                # Quarantined in Phase 10.13.
+                # This branch is not the normal ABBEY HVAC/control path.
+                # It exists only for explicit debugging or temporary backward
+                # compatibility when the real physics engine is disabled or
+                # allowed to fail over.
+                #
+                # Normal path:
+                #     controller -> ZoneControlCommand -> physics.engine
+                #
+                # Legacy path:
+                #     simplified _update_temperature / _update_co2 helpers
+                # --------------------------------------------------------
+
+                legacy_fallback_used = True
+
+                if self.use_physics_engine:
+                    performance_path = (
+                        BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_AFTER_ENGINE_ERROR
+                    )
+                    legacy_fallback_reason = physics_engine_error
+                else:
+                    performance_path = BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_EXPLICIT
+                    legacy_fallback_reason = "use_physics_engine_false"
+
+                internal_source_result = make_building_internal_source_result(
+                    chunk_records=chunk_records,
+                    people=people,
+                    locations=locations,
+                    role_to_zone_id=role_to_zone_id,
+                    building_model=self.building_model,
+                    dt_minutes=dt_minutes,
+                    include_people=True,
+                    include_lighting=True,
+                    lighting_power_result=None,
+                    include_hvac=False,
+                    zone_control_commands=zone_control_commands,
+                    zone_system_specs=zone_system_specs,
+                )
+
+                physics_inputs = make_physics_inputs_from_internal_sources(
+                    internal_source_result=internal_source_result,
+                    zone_ids=list(all_zone_models.keys()),
+                )
+
                 bridge_inputs_by_zone = (
                     internal_source_result.physics_bridge_inputs_by_zone()
                 )
 
-            appliance_energy_by_zone = {}
-            lighting_energy_by_zone = {}
+                appliance_energy_by_zone = (
+                    internal_source_result.appliance_electricity_wh_by_zone()
+                )
 
-            if internal_source_result is not None:
-                if hasattr(internal_source_result, "appliance_electricity_wh_by_zone"):
-                    appliance_energy_by_zone = (
-                        internal_source_result.appliance_electricity_wh_by_zone()
+                lighting_energy_by_zone = (
+                    internal_source_result.lighting_electricity_wh_by_zone()
+                )
+
+                for zone_id, zone_model in all_zone_models.items():
+                    occupied_state = zone_occupied_states[zone_id]
+                    command = zone_control_commands[zone_id]
+                    system_spec = zone_system_specs[zone_id]
+
+                    bridge_row = bridge_inputs_by_zone.get(zone_id, {})
+
+                    internal_sensible_heat_w = float(
+                        bridge_row.get("average_sensible_heat_w", 0.0)
                     )
 
-                if hasattr(internal_source_result, "lighting_electricity_wh_by_zone"):
-                    lighting_energy_by_zone = (
-                        internal_source_result.lighting_electricity_wh_by_zone()
+                    co2_generation_m3_h = float(
+                        bridge_row.get("average_co2_generation_m3_h", 0.0)
                     )
-            engine_zone_records_by_zone = {}
 
-            if physics_engine_result is not None:
-                engine_zone_records_by_zone = {
-                    row.get("zone_id"): row
-                    for row in getattr(physics_engine_result, "zone_records", [])
-                }
-            for zone_id, zone_model in all_zone_models.items():
+                    appliance_energy_wh = appliance_energy_by_zone.get(
+                        zone_id,
+                        0.0,
+                    )
+                    lighting_energy_wh = lighting_energy_by_zone.get(
+                        zone_id,
+                        0.0,
+                    )
 
-                new_state = self.building_model.get_zone_state(zone_id)
-                command = zone_control_commands[zone_id]
-                system_spec = zone_system_specs[zone_id]
+                    new_temp_c = self._update_temperature(
+                        zone_model=zone_model,
+                        zone_state=occupied_state,
+                        system_spec=system_spec,
+                        command=command,
+                        outdoor_temp_c=outdoor_temp_c,
+                        appliance_energy_wh=appliance_energy_wh,
+                        dt_hours=dt_hours,
+                        dt_seconds=dt_seconds,
+                        internal_sensible_heat_w=internal_sensible_heat_w,
+                    )
 
-                bridge_row = bridge_inputs_by_zone.get(zone_id, {})
+                    new_co2_ppm = self._update_co2(
+                        zone_model=zone_model,
+                        zone_state=occupied_state,
+                        command=command,
+                        dt_hours=dt_hours,
+                        co2_generation_m3_h=co2_generation_m3_h,
+                    )
 
-                appliance_energy_wh = appliance_energy_by_zone.get(zone_id, 0.0)
-                lighting_energy_wh = lighting_energy_by_zone.get(zone_id, 0.0)
+                    new_state = occupied_state.copy(
+                        indoor_temp_c=new_temp_c,
+                        co2_ppm=new_co2_ppm,
+                    )
 
-                energy_result = self._calculate_zone_energy(
-                    zone_model=zone_model,
-                    system_spec=system_spec,
-                    command=command,
-                    appliance_energy_wh=appliance_energy_wh,
-                    lighting_energy_wh=lighting_energy_wh,
-                    dt_hours=dt_hours,
-                )
+                    self.building_model.set_zone_state(zone_id, new_state)
 
-                zone_energy_results[zone_id] = energy_result
+                    energy_result = self._calculate_zone_energy(
+                        zone_model=zone_model,
+                        system_spec=system_spec,
+                        command=command,
+                        appliance_energy_wh=appliance_energy_wh,
+                        lighting_energy_wh=lighting_energy_wh,
+                        dt_hours=dt_hours,
+                    )
 
-                record = self._make_zone_record(
-                    step=step,
-                    day=day,
-                    hour=hour,
-                    zone_model=zone_model,
-                    zone_state=new_state,
-                    command=command,
-                    energy_result=energy_result,
-                    internal_source_row=bridge_row,
-                    dt_hours=dt_hours,
-                )
+                    zone_energy_results[zone_id] = energy_result
 
-                record["physics_engine_active"] = True
-                record["physics_path"] = performance_path
-                record["performance_path"] = performance_path
-                record["legacy_fallback_used"] = False
-                record["legacy_fallback_reason"] = None
-                record["physics_engine_source"] = getattr(
-                    physics_engine_result,
-                    "source",
-                    None,
-                )
-                engine_zone_record = engine_zone_records_by_zone.get(zone_id, {})
+                    record = self._make_zone_record(
+                        step=step,
+                        day=day,
+                        hour=hour,
+                        zone_model=zone_model,
+                        zone_state=new_state,
+                        command=command,
+                        energy_result=energy_result,
+                        internal_source_row=bridge_row,
+                        dt_hours=dt_hours,
+                    )
 
-                record["thermal_old_air_temperature_c"] = engine_zone_record.get(
-                    "thermal_old_air_temperature_c",
-                    None,
-                )
-                record["thermal_new_air_temperature_c"] = engine_zone_record.get(
-                    "thermal_new_air_temperature_c",
-                    None,
-                )
-                record["thermal_old_mass_temperature_c"] = engine_zone_record.get(
-                    "thermal_old_mass_temperature_c",
-                    None,
-                )
-                record["thermal_new_mass_temperature_c"] = engine_zone_record.get(
-                    "thermal_new_mass_temperature_c",
-                    None,
-                )
-                record["thermal_convective_gain_w"] = engine_zone_record.get(
-                    "thermal_convective_gain_w",
-                    0.0,
-                )
-                record["thermal_radiative_gain_w"] = engine_zone_record.get(
-                    "thermal_radiative_gain_w",
-                    0.0,
-                )
-                record["interzone_thermal_link_count"] = engine_zone_record.get(
-                    "interzone_thermal_link_count",
-                    0,
-                )
-                record["interzone_thermal_total_h_w_k"] = engine_zone_record.get(
-                    "interzone_thermal_total_h_w_k",
-                    0.0,
-                )
-                record["interzone_heat_gain_w"] = engine_zone_record.get(
-                    "interzone_heat_gain_w",
-                    0.0,
-                )
-                record["interzone_heat_loss_w"] = engine_zone_record.get(
-                    "interzone_heat_loss_w",
-                    0.0,
-                )
-                record["interzone_net_heat_gain_w"] = engine_zone_record.get(
-                    "interzone_net_heat_gain_w",
-                    0.0,
-                )
-                zone_records.append(record)
-                for key in ENGINE_ZONE_DIAGNOSTIC_KEYS:
-                    if key in engine_zone_record:
-                        record[key] = engine_zone_record.get(key)
-                        
-                # ------------------------------------------------------------
-                # Robust Phase 16.1 internal-source count alias.
-                #
-                # Some bridge rows expose the per-kind count correctly but leave
-                # internal_source_record_count at zero. Normalize the scalar alias
-                # from the by-kind dictionary so tests and output validation do not
-                # depend on one fragile field name.
-                # ------------------------------------------------------------
-                try:
-                    current_count = int(record.get("internal_source_record_count", 0))
-                except Exception:
-                    current_count = 0
-                
-                if current_count <= 0:
-                    by_kind = record.get("internal_record_count_by_source_kind", {})
-                
-                    if isinstance(by_kind, dict):
-                        fixed_count = 0
-                
-                        for item in by_kind.values():
-                            try:
-                                fixed_count += int(item)
-                            except Exception:
-                                pass
-                
-                        record["internal_source_record_count"] = fixed_count
-        else:
-        
-            # --------------------------------------------------------
-            # LEGACY FALLBACK PATH.
-            #
-            # Quarantined in Phase 10.13.
-            # This branch is not the normal ABBEY HVAC/control path.
-            # It exists only for explicit debugging or temporary backward
-            # compatibility when the real physics engine is disabled or
-            # allowed to fail over.
-            #
-            # Normal path:
-            #     controller -> ZoneControlCommand -> physics.engine
-            #
-            # Legacy path:
-            #     simplified _update_temperature / _update_co2 helpers
-            # --------------------------------------------------------
+                    record["physics_engine_active"] = False
+                    record["physics_engine_error"] = physics_engine_error
+                    record["physics_path"] = performance_path
+                    record["performance_path"] = performance_path
+                    record["legacy_fallback_used"] = legacy_fallback_used
+                    record["legacy_fallback_reason"] = legacy_fallback_reason
 
-            legacy_fallback_used = True
+                    self._add_weather_diagnostics_to_record(
+                        record=record,
+                        weather_state=weather_state,
+                        weather_source=weather_source,
+                    )
 
-            if self.use_physics_engine:
-                performance_path = (
-                    BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_AFTER_ENGINE_ERROR
-                )
-                legacy_fallback_reason = physics_engine_error
-            else:
-                performance_path = BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_EXPLICIT
-                legacy_fallback_reason = "use_physics_engine_false"
-                
-            internal_source_result = make_building_internal_source_result(
-                chunk_records=chunk_records,
-                people=people,
-                locations=locations,
-                role_to_zone_id=role_to_zone_id,
-                building_model=self.building_model,
-                dt_minutes=dt_minutes,
-                include_people=True,
-                include_lighting=True,
-                lighting_power_result=None,
-                include_hvac=False,
+                    zone_records.append(record)
+
+        with _measure_if_available(
+            timer,
+            "building_performance.aggregate_records",
+        ):
+            dwelling_energy_results = self._aggregate_dwelling_energy(
+                zone_energy_results
+            )
+
+            building_energy_result = self._aggregate_building_energy(
+                dwelling_energy_results
+            )
+
+            dwelling_records = self._make_dwelling_records(
+                step=step,
+                day=day,
+                hour=hour,
+                dwelling_energy_results=dwelling_energy_results,
+                zone_records=zone_records,
+                dt_hours=dt_hours,
+            )
+
+            building_record = self._make_building_record(
+                step=step,
+                day=day,
+                hour=hour,
+                building_energy_result=building_energy_result,
+                zone_records=zone_records,
+            )
+
+            building_record["internal_source_record_count"] = len(
+                internal_source_result.records
+            )
+
+            building_record["internal_total_electricity_wh"] = (
+                internal_source_result.total_electricity_wh()
+            )
+
+            building_record["internal_total_average_sensible_heat_w"] = (
+                internal_source_result.total_average_sensible_heat_w()
+            )
+
+            building_record["internal_total_co2_generation_m3_h"] = (
+                internal_source_result.total_co2_generation_m3_h()
+            )
+
+            building_record["internal_total_moisture_generation_kg_h"] = (
+                internal_source_result.total_moisture_generation_kg_h()
+            )
+
+            self._add_engine_status_to_building_record(
+                building_record=building_record,
+                physics_engine_result=physics_engine_result,
+                physics_engine_active=physics_engine_active,
+                physics_engine_error=physics_engine_error,
+                performance_path=performance_path,
+                legacy_fallback_used=legacy_fallback_used,
+                legacy_fallback_reason=legacy_fallback_reason,
+                interzone_thermal_flow_records=interzone_thermal_flow_records,
+                interzone_airflow_records=interzone_airflow_records,
+                window_airflow_records=window_airflow_records,
+            )
+
+            self._add_weather_diagnostics_to_record(
+                record=building_record,
+                weather_state=weather_state,
+                weather_source=weather_source,
+            )
+
+        with _measure_if_available(
+            timer,
+            "building_performance.make_result",
+        ):
+            return self._make_performance_result_from_adapter_payload(
+                observation=observation,
+                outdoor_temp_c=outdoor_temp_c,
                 zone_control_commands=zone_control_commands,
-                zone_system_specs=zone_system_specs,
-            )
-
-            physics_inputs = make_physics_inputs_from_internal_sources(
+                zone_records=zone_records,
+                dwelling_records=dwelling_records,
+                building_record=building_record,
+                zone_energy_results=zone_energy_results,
+                dwelling_energy_results=dwelling_energy_results,
+                building_energy_result=building_energy_result,
                 internal_source_result=internal_source_result,
-                zone_ids=list(all_zone_models.keys()),
+                physics_inputs=physics_inputs,
+                physics_engine_result=physics_engine_result,
+                interzone_thermal_flow_records=interzone_thermal_flow_records,
+                interzone_airflow_records=interzone_airflow_records,
+                window_airflow_records=window_airflow_records,
+                physics_engine_active=physics_engine_active,
+                physics_engine_error=physics_engine_error,
+                performance_path=performance_path,
+                legacy_fallback_used=legacy_fallback_used,
+                legacy_fallback_reason=legacy_fallback_reason,
+                weather_state=weather_state,
+                weather_source=weather_source,
             )
-
-            bridge_inputs_by_zone = (
-                internal_source_result.physics_bridge_inputs_by_zone()
-            )
-
-            appliance_energy_by_zone = (
-                internal_source_result.appliance_electricity_wh_by_zone()
-            )
-
-            lighting_energy_by_zone = (
-                internal_source_result.lighting_electricity_wh_by_zone()
-            )
-
-            for zone_id, zone_model in all_zone_models.items():
-                occupied_state = zone_occupied_states[zone_id]
-                command = zone_control_commands[zone_id]
-                system_spec = zone_system_specs[zone_id]
-
-                bridge_row = bridge_inputs_by_zone.get(zone_id, {})
-
-                internal_sensible_heat_w = float(
-                    bridge_row.get("average_sensible_heat_w", 0.0)
-                )
-
-                co2_generation_m3_h = float(
-                    bridge_row.get("average_co2_generation_m3_h", 0.0)
-                )
-
-                appliance_energy_wh = appliance_energy_by_zone.get(zone_id, 0.0)
-                lighting_energy_wh = lighting_energy_by_zone.get(zone_id, 0.0)
-
-                new_temp_c = self._update_temperature(
-                    zone_model=zone_model,
-                    zone_state=occupied_state,
-                    system_spec=system_spec,
-                    command=command,
-                    outdoor_temp_c=outdoor_temp_c,
-                    appliance_energy_wh=appliance_energy_wh,
-                    dt_hours=dt_hours,
-                    dt_seconds=dt_seconds,
-                    internal_sensible_heat_w=internal_sensible_heat_w,
-                )
-
-                new_co2_ppm = self._update_co2(
-                    zone_model=zone_model,
-                    zone_state=occupied_state,
-                    command=command,
-                    dt_hours=dt_hours,
-                    co2_generation_m3_h=co2_generation_m3_h,
-                )
-
-                new_state = occupied_state.copy(
-                    indoor_temp_c=new_temp_c,
-                    co2_ppm=new_co2_ppm,
-                )
-
-                self.building_model.set_zone_state(zone_id, new_state)
-
-                energy_result = self._calculate_zone_energy(
-                    zone_model=zone_model,
-                    system_spec=system_spec,
-                    command=command,
-                    appliance_energy_wh=appliance_energy_wh,
-                    lighting_energy_wh=lighting_energy_wh,
-                    dt_hours=dt_hours,
-                )
-
-                zone_energy_results[zone_id] = energy_result
-
-                record = self._make_zone_record(
-                    step=step,
-                    day=day,
-                    hour=hour,
-                    zone_model=zone_model,
-                    zone_state=new_state,
-                    command=command,
-                    energy_result=energy_result,
-                    internal_source_row=bridge_row,
-                    dt_hours=dt_hours,
-                )
-
-                record["physics_engine_active"] = False
-                record["physics_engine_error"] = physics_engine_error
-                record["physics_path"] = performance_path
-                record["performance_path"] = performance_path
-                record["legacy_fallback_used"] = legacy_fallback_used
-                record["legacy_fallback_reason"] = legacy_fallback_reason
-                zone_records.append(record)
-    
-        dwelling_energy_results = self._aggregate_dwelling_energy(zone_energy_results)
-        building_energy_result = self._aggregate_building_energy(dwelling_energy_results)
-    
-        dwelling_records = self._make_dwelling_records(
-            step=step,
-            day=day,
-            hour=hour,
-            dwelling_energy_results=dwelling_energy_results,
-            zone_records=zone_records,
-            dt_hours=dt_hours,
-        )
-    
-        building_record = self._make_building_record(
-            step=step,
-            day=day,
-            hour=hour,
-            building_energy_result=building_energy_result,
-            zone_records=zone_records,
-        )
-    
-        building_record["internal_source_record_count"] = len(
-            internal_source_result.records
-        )
-        building_record["internal_total_electricity_wh"] = (
-            internal_source_result.total_electricity_wh()
-        )
-        building_record["internal_total_average_sensible_heat_w"] = (
-            internal_source_result.total_average_sensible_heat_w()
-        )
-        building_record["internal_total_co2_generation_m3_h"] = (
-            internal_source_result.total_co2_generation_m3_h()
-        )
-        building_record["internal_total_moisture_generation_kg_h"] = (
-            internal_source_result.total_moisture_generation_kg_h()
-        )
-        
-        building_record["physics_engine_active"] = physics_engine_active
-        building_record["physics_engine_error"] = physics_engine_error
-        building_record["performance_path"] = performance_path
-        building_record["legacy_fallback_used"] = legacy_fallback_used
-        building_record["legacy_fallback_reason"] = legacy_fallback_reason
-        building_record["interzone_thermal_flow_record_count"] = len(
-            interzone_thermal_flow_records
-        )      
-        building_record["interzone_airflow_record_count"] = len(
-            interzone_airflow_records
-        )
-
-        building_record["window_airflow_record_count"] = len(
-            window_airflow_records
-        )
-        if physics_engine_result is not None:
-            building_record["physics_engine_source"] = getattr(
-                physics_engine_result,
-                "source",
-                None,
-            )
-            building_record["physics_engine_has_thermal_step_result"] = (
-                physics_engine_result.thermal_step_result is not None
-            )
-            building_record["physics_engine_has_interzone_thermal_network"] = (
-                getattr(physics_engine_result, "interzone_thermal_network", None)
-                is not None
-            )
-            building_record["physics_engine_interzone_thermal_link_count"] = (
-                len(
-                    getattr(
-                        getattr(
-                            physics_engine_result,
-                            "interzone_thermal_network",
-                            None,
-                        ),
-                        "links",
-                        {},
-                    )
-                )
-            )
-            building_record["physics_engine_interzone_thermal_flow_record_count"] = (
-                len(
-                    getattr(
-                        physics_engine_result,
-                        "interzone_thermal_flow_records",
-                        [],
-                    )
-                )
-            )
-            building_record["physics_engine_has_airflow_network"] = (
-                physics_engine_result.airflow_network is not None
-            )
-            building_record["physics_engine_has_co2_step_result"] = (
-                physics_engine_result.co2_step_result is not None
-            )
-            building_record["physics_engine_has_moisture_step_result"] = (
-                physics_engine_result.moisture_step_result is not None
-            )
-            building_record["physics_engine_has_acoustic_step_result"] = (
-                getattr(physics_engine_result, "acoustic_step_result", None)
-                is not None
-            )
-            engine_building_record = getattr(
-                physics_engine_result,
-                "building_record",
-                {},
-            ) or {}
-
-            for key in ENGINE_BUILDING_DIAGNOSTIC_KEYS:
-                if key in engine_building_record:
-                    building_record[key] = engine_building_record.get(key)   
-                    
-        updated_observation = self._make_updated_observation(
-            previous_observation=observation,
-            outdoor_temp_c=outdoor_temp_c,
-            zone_control_commands=zone_control_commands,
-        )
-    
-        return BuildingPerformanceStepResult(
-            observation=updated_observation,
-            zone_records=zone_records,
-            dwelling_records=dwelling_records,
-            building_record=building_record,
-            zone_energy_results=zone_energy_results,
-            dwelling_energy_results=dwelling_energy_results,
-            building_energy_result=building_energy_result,
-            zone_control_commands=zone_control_commands,
-            internal_source_result=internal_source_result,
-            physics_inputs=physics_inputs,
-            physics_engine_result=physics_engine_result,
-            interzone_thermal_flow_records=interzone_thermal_flow_records,
-            interzone_airflow_records=interzone_airflow_records,
-            window_airflow_records=window_airflow_records,
-            physics_engine_active=physics_engine_active,
-            physics_engine_error=physics_engine_error,
-            performance_path=performance_path,
-            legacy_fallback_used=legacy_fallback_used,
-            legacy_fallback_reason=legacy_fallback_reason,
-        )
 
     # ============================================================
     # OCCUPANCY
@@ -1567,6 +1461,450 @@ class SimpleBuildingPerformanceModel:
             rows.append(row)
 
         return rows
+
+    def _resolve_weather_for_step(
+        self,
+        performance_input: Any,
+        observation: Any,
+        outdoor_temp_c: float,
+    ) -> Tuple[Any, Optional[str]]:
+        """
+        Phase 17.3 adapter helper.
+
+        Supports both:
+            - Phase 17.2 weather helper returning (weather_state, weather_source)
+            - older helper returning only weather_state
+        """
+
+        weather_result = self._make_weather_state_for_engine(
+            performance_input=performance_input,
+            observation=observation,
+            outdoor_temp_c=outdoor_temp_c,
+        )
+
+        if isinstance(weather_result, tuple) and len(weather_result) == 2:
+            return weather_result
+
+        explicit_weather = _get_attr_or_key(
+            performance_input,
+            "weather_state",
+            None,
+        )
+
+        if explicit_weather is not None and weather_result is explicit_weather:
+            return weather_result, "weather_state_explicit"
+
+        return weather_result, "weather_default_synthetic"
+
+    def _build_physics_step_input(
+        self,
+        performance_input: Any,
+        dt_minutes: float,
+        weather_state: Any,
+        zone_control_commands: Dict[str, ZoneControlCommand],
+        zone_system_specs: Dict[str, ZoneSystemSpec],
+        people: Dict[str, Any],
+        locations: Dict[str, Any],
+        role_to_zone_id: Dict[str, str],
+        chunk_records: List[Any],
+    ) -> BuildingPhysicsStepInput:
+        physics_graph = _get_attr_or_key(
+            performance_input,
+            "physics_graph",
+            self.physics_graph,
+        )
+
+        return BuildingPhysicsStepInput(
+            building_model=self.building_model,
+            dt_minutes=dt_minutes,
+            physics_graph=physics_graph,
+            weather_state=weather_state,
+            zone_control_commands=zone_control_commands,
+            zone_system_specs=zone_system_specs,
+            people=people,
+            locations=locations,
+            role_to_zone_id=role_to_zone_id,
+            chunk_records=chunk_records,
+        )
+
+    def _run_physics_engine(
+        self,
+        step_input: BuildingPhysicsStepInput,
+    ) -> Any:
+        physics_engine_result = run_building_physics_step(
+            step_input=step_input,
+            require_physics_graph=False,
+            write_back_to_building_model=True,
+        )
+
+        self.last_physics_engine_result = physics_engine_result
+        self.last_physics_engine_error = None
+
+        return physics_engine_result
+
+    def _copy_engine_zone_diagnostics(
+        self,
+        record: Dict[str, Any],
+        engine_zone_record: Dict[str, Any],
+    ) -> None:
+        """
+        Copy engine-produced diagnostics into the public zone timestep row.
+
+        engine.py is the canonical producer of these fields.
+        performance.py only adapts them into the public output schema.
+        """
+
+        if engine_zone_record is None:
+            return
+
+        for key in ENGINE_ZONE_DIAGNOSTIC_KEYS:
+            if key in engine_zone_record:
+                record[key] = engine_zone_record.get(key)
+
+    def _normalize_internal_source_record_count(
+        self,
+        record: Dict[str, Any],
+    ) -> None:
+        """
+        Keep scalar internal_source_record_count robust.
+
+        Some bridge rows expose the per-kind count correctly even when
+        internal_source_record_count is absent or zero.
+        """
+
+        try:
+            current_count = int(record.get("internal_source_record_count", 0))
+        except Exception:
+            current_count = 0
+
+        if current_count > 0:
+            return
+
+        by_kind = record.get("internal_record_count_by_source_kind", {})
+
+        if not isinstance(by_kind, dict):
+            return
+
+        fixed_count = 0
+
+        for item in by_kind.values():
+            try:
+                fixed_count += int(item)
+            except Exception:
+                pass
+
+        record["internal_source_record_count"] = fixed_count
+
+    def _add_engine_status_to_zone_record(
+        self,
+        record: Dict[str, Any],
+        physics_engine_result: Any,
+        performance_path: str,
+    ) -> None:
+        record["physics_engine_active"] = True
+        record["physics_path"] = performance_path
+        record["performance_path"] = performance_path
+        record["legacy_fallback_used"] = False
+        record["legacy_fallback_reason"] = None
+        record["physics_engine_source"] = getattr(
+            physics_engine_result,
+            "source",
+            None,
+        )
+
+    def _make_engine_adapter_payload(
+        self,
+        step: Any,
+        day: Any,
+        hour: Any,
+        dt_hours: float,
+        all_zone_models: Dict[str, ZoneModel],
+        zone_control_commands: Dict[str, ZoneControlCommand],
+        zone_system_specs: Dict[str, ZoneSystemSpec],
+        physics_engine_result: Any,
+        performance_path: str,
+    ) -> Dict[str, Any]:
+        """
+        Convert BuildingPhysicsStepResult into the public performance payload.
+
+        This is the official Phase 17.3 adapter:
+            BuildingPhysicsStepResult
+                -> zone energy
+                -> public zone records
+                -> long physics records
+        """
+
+        internal_source_result = physics_engine_result.internal_source_result
+        physics_inputs = physics_engine_result.physics_inputs or {}
+
+        interzone_thermal_flow_records = self._make_interzone_thermal_flow_records(
+            step=step,
+            day=day,
+            hour=hour,
+            physics_engine_result=physics_engine_result,
+        )
+
+        interzone_airflow_records = self._make_interzone_airflow_records(
+            step=step,
+            day=day,
+            hour=hour,
+            physics_engine_result=physics_engine_result,
+        )
+
+        window_airflow_records = self._make_window_airflow_records(
+            step=step,
+            day=day,
+            hour=hour,
+            physics_engine_result=physics_engine_result,
+        )
+
+        bridge_inputs_by_zone = {}
+
+        if internal_source_result is not None and hasattr(
+            internal_source_result,
+            "physics_bridge_inputs_by_zone",
+        ):
+            bridge_inputs_by_zone = (
+                internal_source_result.physics_bridge_inputs_by_zone()
+            )
+
+        appliance_energy_by_zone = {}
+        lighting_energy_by_zone = {}
+
+        if internal_source_result is not None:
+            if hasattr(internal_source_result, "appliance_electricity_wh_by_zone"):
+                appliance_energy_by_zone = (
+                    internal_source_result.appliance_electricity_wh_by_zone()
+                )
+
+            if hasattr(internal_source_result, "lighting_electricity_wh_by_zone"):
+                lighting_energy_by_zone = (
+                    internal_source_result.lighting_electricity_wh_by_zone()
+                )
+
+        engine_zone_records_by_zone = {
+            row.get("zone_id"): row
+            for row in getattr(physics_engine_result, "zone_records", [])
+        }
+
+        zone_records = []
+        zone_energy_results = {}
+
+        for zone_id, zone_model in all_zone_models.items():
+            new_state = self.building_model.get_zone_state(zone_id)
+            command = zone_control_commands[zone_id]
+            system_spec = zone_system_specs[zone_id]
+
+            bridge_row = bridge_inputs_by_zone.get(zone_id, {})
+
+            appliance_energy_wh = appliance_energy_by_zone.get(zone_id, 0.0)
+            lighting_energy_wh = lighting_energy_by_zone.get(zone_id, 0.0)
+
+            energy_result = self._calculate_zone_energy(
+                zone_model=zone_model,
+                system_spec=system_spec,
+                command=command,
+                appliance_energy_wh=appliance_energy_wh,
+                lighting_energy_wh=lighting_energy_wh,
+                dt_hours=dt_hours,
+            )
+
+            zone_energy_results[zone_id] = energy_result
+
+            record = self._make_zone_record(
+                step=step,
+                day=day,
+                hour=hour,
+                zone_model=zone_model,
+                zone_state=new_state,
+                command=command,
+                energy_result=energy_result,
+                internal_source_row=bridge_row,
+                dt_hours=dt_hours,
+            )
+
+            self._add_engine_status_to_zone_record(
+                record=record,
+                physics_engine_result=physics_engine_result,
+                performance_path=performance_path,
+            )
+
+            engine_zone_record = engine_zone_records_by_zone.get(zone_id, {})
+
+            self._copy_engine_zone_diagnostics(
+                record=record,
+                engine_zone_record=engine_zone_record,
+            )
+
+            self._normalize_internal_source_record_count(record)
+
+            zone_records.append(record)
+
+        return {
+            "internal_source_result": internal_source_result,
+            "physics_inputs": physics_inputs,
+            "interzone_thermal_flow_records": interzone_thermal_flow_records,
+            "interzone_airflow_records": interzone_airflow_records,
+            "window_airflow_records": window_airflow_records,
+            "zone_records": zone_records,
+            "zone_energy_results": zone_energy_results,
+        }
+
+    def _add_engine_status_to_building_record(
+        self,
+        building_record: Dict[str, Any],
+        physics_engine_result: Any,
+        physics_engine_active: bool,
+        physics_engine_error: Optional[str],
+        performance_path: str,
+        legacy_fallback_used: bool,
+        legacy_fallback_reason: Optional[str],
+        interzone_thermal_flow_records: List[Dict[str, Any]],
+        interzone_airflow_records: List[Dict[str, Any]],
+        window_airflow_records: List[Dict[str, Any]],
+    ) -> None:
+        building_record["physics_engine_active"] = physics_engine_active
+        building_record["physics_engine_error"] = physics_engine_error
+        building_record["physics_path"] = performance_path
+        building_record["performance_path"] = performance_path
+        building_record["legacy_fallback_used"] = legacy_fallback_used
+        building_record["legacy_fallback_reason"] = legacy_fallback_reason
+
+        building_record["interzone_thermal_flow_record_count"] = len(
+            interzone_thermal_flow_records
+        )
+
+        building_record["interzone_airflow_record_count"] = len(
+            interzone_airflow_records
+        )
+
+        building_record["window_airflow_record_count"] = len(
+            window_airflow_records
+        )
+
+        if physics_engine_result is None:
+            return
+
+        building_record["physics_engine_source"] = getattr(
+            physics_engine_result,
+            "source",
+            None,
+        )
+
+        building_record["physics_engine_has_thermal_step_result"] = (
+            physics_engine_result.thermal_step_result is not None
+        )
+
+        building_record["physics_engine_has_interzone_thermal_network"] = (
+            getattr(physics_engine_result, "interzone_thermal_network", None)
+            is not None
+        )
+
+        building_record["physics_engine_interzone_thermal_link_count"] = (
+            len(
+                getattr(
+                    getattr(
+                        physics_engine_result,
+                        "interzone_thermal_network",
+                        None,
+                    ),
+                    "links",
+                    {},
+                )
+            )
+        )
+
+        building_record["physics_engine_interzone_thermal_flow_record_count"] = (
+            len(
+                getattr(
+                    physics_engine_result,
+                    "interzone_thermal_flow_records",
+                    [],
+                )
+            )
+        )
+
+        building_record["physics_engine_has_airflow_network"] = (
+            physics_engine_result.airflow_network is not None
+        )
+
+        building_record["physics_engine_has_co2_step_result"] = (
+            physics_engine_result.co2_step_result is not None
+        )
+
+        building_record["physics_engine_has_moisture_step_result"] = (
+            physics_engine_result.moisture_step_result is not None
+        )
+
+        building_record["physics_engine_has_acoustic_step_result"] = (
+            getattr(physics_engine_result, "acoustic_step_result", None)
+            is not None
+        )
+
+        engine_building_record = getattr(
+            physics_engine_result,
+            "building_record",
+            {},
+        ) or {}
+
+        for key in ENGINE_BUILDING_DIAGNOSTIC_KEYS:
+            if key in engine_building_record:
+                building_record[key] = engine_building_record.get(key)
+
+    def _make_performance_result_from_adapter_payload(
+        self,
+        observation: Any,
+        outdoor_temp_c: float,
+        zone_control_commands: Dict[str, ZoneControlCommand],
+        zone_records: List[Dict[str, Any]],
+        dwelling_records: List[Dict[str, Any]],
+        building_record: Dict[str, Any],
+        zone_energy_results: Dict[str, ZoneEnergyResult],
+        dwelling_energy_results: Dict[str, DwellingEnergyResult],
+        building_energy_result: BuildingEnergyResult,
+        internal_source_result: Any,
+        physics_inputs: Dict[str, Any],
+        physics_engine_result: Any,
+        interzone_thermal_flow_records: List[Dict[str, Any]],
+        interzone_airflow_records: List[Dict[str, Any]],
+        window_airflow_records: List[Dict[str, Any]],
+        physics_engine_active: bool,
+        physics_engine_error: Optional[str],
+        performance_path: str,
+        legacy_fallback_used: bool,
+        legacy_fallback_reason: Optional[str],
+        weather_state: Any = None,
+        weather_source: Optional[str] = None,
+    ) -> BuildingPerformanceStepResult:
+        updated_observation = self._make_updated_observation(
+            previous_observation=observation,
+            outdoor_temp_c=outdoor_temp_c,
+            zone_control_commands=zone_control_commands,
+        )
+
+        return BuildingPerformanceStepResult(
+            observation=updated_observation,
+            zone_records=zone_records,
+            dwelling_records=dwelling_records,
+            building_record=building_record,
+            zone_energy_results=zone_energy_results,
+            dwelling_energy_results=dwelling_energy_results,
+            building_energy_result=building_energy_result,
+            zone_control_commands=zone_control_commands,
+            internal_source_result=internal_source_result,
+            physics_inputs=physics_inputs,
+            physics_engine_result=physics_engine_result,
+            interzone_thermal_flow_records=interzone_thermal_flow_records,
+            interzone_airflow_records=interzone_airflow_records,
+            window_airflow_records=window_airflow_records,
+            physics_engine_active=physics_engine_active,
+            physics_engine_error=physics_engine_error,
+            weather_state=weather_state,
+            weather_source=weather_source,
+            performance_path=performance_path,
+            legacy_fallback_used=legacy_fallback_used,
+            legacy_fallback_reason=legacy_fallback_reason,
+        )
     
     def _make_zone_record(
         self,
@@ -2433,8 +2771,10 @@ class SimpleBuildingPerformanceModel:
                 number_of_people=zone_state.number_of_people,
             )
 
-        default_zone_id = self._default_observation_zone_id(zone_observations)
-
+        default_zone_id = self._default_observation_zone_id(
+            zone_observations=zone_observations,
+            previous_observation=previous_observation,
+        )
         default_zone = zone_observations[default_zone_id]
 
         electricity_tariff = 0.25
@@ -2462,21 +2802,131 @@ class SimpleBuildingPerformanceModel:
     def _default_observation_zone_id(
         self,
         zone_observations: Dict[str, ZoneObservation],
+        previous_observation: Any = None,
     ) -> str:
+        previous_default = _get_attr_or_key(
+            previous_observation,
+            "default_zone_id",
+            None,
+        )
+
+        for candidate in self._candidate_observation_zone_ids(previous_default):
+            if candidate in zone_observations:
+                return candidate
+
         preferred = [
-            "living_room",
             "dwelling_1_living_room",
+            "living_room",
+            "main_room",
         ]
 
         for zone_id in preferred:
-            if zone_id in zone_observations:
-                return zone_id
+            for candidate in self._candidate_observation_zone_ids(zone_id):
+                if candidate in zone_observations:
+                    return candidate
 
         for zone_id in zone_observations:
             return zone_id
 
         raise ValueError("No zone observations available.")
 
+    @staticmethod
+    def _candidate_observation_zone_ids(zone_id: Any) -> List[str]:
+        if zone_id is None:
+            return []
+
+        value = str(zone_id)
+
+        candidates = []
+
+        def add(candidate):
+            if candidate is None:
+                return
+
+            candidate = str(candidate)
+
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+
+        add(value)
+
+        if value == "main_room":
+            add("living_room")
+            add("dwelling_1_living_room")
+
+        if value == "living_room":
+            add("dwelling_1_living_room")
+
+        if value and not value.startswith("dwelling_") and value != "outside":
+            add("dwelling_1_" + value)
+
+        if value.startswith("dwelling_1_"):
+            add(value[len("dwelling_1_"):])
+
+        return candidates
+        
+    def _add_weather_diagnostics_to_record(
+        self,
+        record: Dict[str, Any],
+        weather_state: Any,
+        weather_source: str,
+    ) -> None:
+        record["weather_source"] = weather_source
+        record["weather_outdoor_temperature_c"] = _get_attr_or_key(
+            weather_state,
+            "outdoor_temperature_c",
+            None,
+        )
+        record["weather_outdoor_co2_ppm"] = _get_attr_or_key(
+            weather_state,
+            "outdoor_co2_ppm",
+            None,
+        )
+        record["weather_wind_speed_m_s"] = _get_attr_or_key(
+            weather_state,
+            "wind_speed_m_s",
+            None,
+        )
+        record["weather_wind_direction_deg"] = _get_attr_or_key(
+            weather_state,
+            "wind_direction_deg",
+            None,
+        )
+        record["weather_direct_normal_radiation_w_m2"] = _get_attr_or_key(
+            weather_state,
+            "direct_normal_radiation_w_m2",
+            None,
+        )
+        record["weather_diffuse_horizontal_radiation_w_m2"] = _get_attr_or_key(
+            weather_state,
+            "diffuse_horizontal_radiation_w_m2",
+            None,
+        )
+        record["weather_global_horizontal_radiation_w_m2"] = _get_attr_or_key(
+            weather_state,
+            "global_horizontal_radiation_w_m2",
+            None,
+        )
+        record["weather_outdoor_illuminance_lux"] = _get_attr_or_key(
+            weather_state,
+            "outdoor_illuminance_lux",
+            None,
+        )
+        record["weather_relative_humidity_percent"] = _get_attr_or_key(
+            weather_state,
+            "relative_humidity_percent",
+            None,
+        )
+        record["weather_atmospheric_pressure_pa"] = _get_attr_or_key(
+            weather_state,
+            "atmospheric_pressure_pa",
+            None,
+        )
+        record["weather_sky_condition"] = _get_attr_or_key(
+            weather_state,
+            "sky_condition",
+            None,
+        )
     # ============================================================
     # OUTDOOR CONDITIONS
     # ============================================================
@@ -2486,6 +2936,22 @@ class SimpleBuildingPerformanceModel:
         performance_input: Any,
         observation: Any,
     ) -> float:
+        weather_state = _get_attr_or_key(
+            performance_input,
+            "weather_state",
+            None,
+        )
+
+        if weather_state is not None:
+            value = _get_attr_or_key(
+                weather_state,
+                "outdoor_temperature_c",
+                None,
+            )
+
+            if value is not None:
+                return float(value)
+
         direct = _get_attr_or_key(performance_input, "outdoor_temp_c", None)
 
         if direct is not None:
@@ -2504,11 +2970,11 @@ class SimpleBuildingPerformanceModel:
         performance_input: Any,
         observation: Any,
         outdoor_temp_c: float,
-    ) -> Any:
+    ) -> Tuple[Any, str]:
         existing = _get_attr_or_key(performance_input, "weather_state", None)
 
         if existing is not None:
-            return existing
+            return existing, WEATHER_SOURCE_EXPLICIT
 
         outdoor_co2_ppm = _get_attr_or_key(
             performance_input,
@@ -2516,19 +2982,108 @@ class SimpleBuildingPerformanceModel:
             self.outdoor_co2_ppm,
         )
 
-        return SimpleNamespace(
-            datetime=None,
-            outdoor_temperature_c=float(outdoor_temp_c),
-            wind_speed_m_s=0.0,
-            wind_direction_deg=0.0,
-            direct_normal_radiation_w_m2=0.0,
-            diffuse_horizontal_radiation_w_m2=0.0,
-            global_horizontal_radiation_w_m2=0.0,
-            outdoor_illuminance_lux=0.0,
-            outdoor_co2_ppm=float(outdoor_co2_ppm),
-            relative_humidity_percent=50.0,
-            atmospheric_pressure_pa=101325.0,
+        step_datetime = self._make_synthetic_weather_datetime(
+            performance_input=performance_input,
         )
+
+        if observation is not None:
+            observation_outdoor_temp = _get_attr_or_key(
+                observation,
+                "outdoor_temp",
+                None,
+            )
+
+            if observation_outdoor_temp is not None:
+                return (
+                    WeatherState(
+                        datetime=step_datetime,
+                        outdoor_temperature_c=float(observation_outdoor_temp),
+                        wind_speed_m_s=0.0,
+                        wind_direction_deg=0.0,
+                        direct_normal_radiation_w_m2=0.0,
+                        diffuse_horizontal_radiation_w_m2=0.0,
+                        global_horizontal_radiation_w_m2=0.0,
+                        outdoor_illuminance_lux=0.0,
+                        outdoor_co2_ppm=float(outdoor_co2_ppm),
+                        outdoor_noise_db=45.0,
+                        relative_humidity_percent=50.0,
+                        atmospheric_pressure_pa=101325.0,
+                        sky_condition="synthetic_observation",
+                    ),
+                    WEATHER_SOURCE_FROM_OBSERVATION,
+                )
+
+        return (
+            WeatherState(
+                datetime=step_datetime,
+                outdoor_temperature_c=float(outdoor_temp_c),
+                wind_speed_m_s=0.0,
+                wind_direction_deg=0.0,
+                direct_normal_radiation_w_m2=0.0,
+                diffuse_horizontal_radiation_w_m2=0.0,
+                global_horizontal_radiation_w_m2=0.0,
+                outdoor_illuminance_lux=0.0,
+                outdoor_co2_ppm=float(outdoor_co2_ppm),
+                outdoor_noise_db=45.0,
+                relative_humidity_percent=50.0,
+                atmospheric_pressure_pa=101325.0,
+                sky_condition="synthetic_default",
+            ),
+            WEATHER_SOURCE_DEFAULT_SYNTHETIC,
+        )
+
+    def _make_synthetic_weather_datetime(
+        self,
+        performance_input: Any,
+    ) -> Any:
+        existing_datetime = _get_attr_or_key(
+            performance_input,
+            "datetime",
+            None,
+        )
+
+        if existing_datetime is not None:
+            return existing_datetime
+
+        base = datetime(2026, 1, 1, 0, 0, 0)
+
+        day = _get_attr_or_key(
+            performance_input,
+            "day",
+            0,
+        )
+
+        hour = _get_attr_or_key(
+            performance_input,
+            "hour",
+            0.0,
+        )
+
+        try:
+            day = int(day)
+        except Exception:
+            day = 0
+
+        try:
+            hour = float(hour)
+        except Exception:
+            hour = 0.0
+
+        return base + timedelta(
+            days=day,
+            hours=hour,
+        )
+    
+# ============================================================
+# BACKWARD COMPATIBILITY
+# ============================================================
+#
+# Phase 17.1:
+# BuildingPhysicsPerformanceModel is now the official public class.
+# Keep the old name as an alias so old imports and Phase 16 tests do
+# not break during the v0.3 -> v0.4 transition.
+
+SimpleBuildingPerformanceModel = BuildingPhysicsPerformanceModel
 # ============================================================
 # UTILS
 # ============================================================

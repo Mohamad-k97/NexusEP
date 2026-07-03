@@ -51,6 +51,38 @@ def score_action(
     
     cfg = _decision_cfg(config)
     zone_controls = systems.get_space_controls(location.current_space_id)
+
+    try:
+        current_zone = observation.get_zone(location.current_space_id)
+    except Exception:
+        current_zone = None
+
+    current_temp_c = 20.0
+    current_co2_ppm = 420.0
+
+    if current_zone is not None:
+        current_temp_c = getattr(current_zone, "indoor_temp", None)
+
+        if current_temp_c is None:
+            current_temp_c = getattr(current_zone, "indoor_temp_c", 20.0)
+
+        current_temp_c = float(current_temp_c)
+        current_co2_ppm = float(getattr(current_zone, "co2_ppm", 420.0))
+
+    heating_on = bool(getattr(zone_controls, "heating_on", False))
+    window_open = bool(getattr(zone_controls, "window_open", False))
+
+    if current_zone is not None:
+        heating_on = bool(
+            heating_on
+            or getattr(current_zone, "heating_on", False)
+        )
+
+        window_open = bool(
+            window_open
+            or getattr(current_zone, "window_open", False)
+        )
+
     score = 0.0
 
     # ------------------------------------------------------------
@@ -185,7 +217,34 @@ def score_action(
         if person.is_sleeping:
             if person.minutes_asleep < min_sleep:
                 wake_score -= 20.0
-    
+            emergency_hot_temp_c = float(
+                cfg.get("emergency_wake_hot_temp_c", 28.0)
+            )
+
+            emergency_cold_temp_c = float(
+                cfg.get("emergency_wake_cold_temp_c", 15.0)
+            )
+
+            emergency_co2_ppm = float(
+                cfg.get("emergency_wake_co2_ppm", 1800.0)
+            )
+
+            if current_temp_c > emergency_hot_temp_c:
+                wake_score += float(
+                    cfg.get("emergency_wake_thermal_bonus", 80.0)
+                )
+                wake_score += 5.0 * (current_temp_c - emergency_hot_temp_c)
+
+            if current_temp_c < emergency_cold_temp_c:
+                wake_score += float(
+                    cfg.get("emergency_wake_thermal_bonus", 80.0)
+                )
+                wake_score += 5.0 * (emergency_cold_temp_c - current_temp_c)
+
+            if current_co2_ppm > emergency_co2_ppm:
+                wake_score += float(
+                    cfg.get("emergency_wake_air_quality_bonus", 50.0)
+                )    
             if person.minutes_asleep > target_sleep:
                 extra_hours = (person.minutes_asleep - target_sleep) / 60.0
                 wake_score += float(cfg["wake_after_target_weight"]) * extra_hours
@@ -233,6 +292,26 @@ def score_action(
     if action.name == "turn_heating_on":
         score += float(cfg["thermal_control_weight"]) * cold_pressure
 
+        # If the room is cold but the window is open, the realistic first
+        # action is usually close_window, not heat harder.
+        if window_open:
+            high_co2_ppm = float(
+                cfg.get("keep_window_open_high_co2_ppm", 1200.0)
+            )
+
+            co2_pressure = 0.0
+
+            if current_co2_ppm > high_co2_ppm:
+                co2_pressure = min(
+                    1.0,
+                    (current_co2_ppm - high_co2_ppm) / 1000.0,
+                )
+
+            score -= (
+                float(cfg.get("heating_on_with_open_window_penalty", 6.0))
+                * max(0.0, 1.0 - co2_pressure)
+            )
+
     if action.name == "turn_heating_off":
         score += float(cfg["thermal_control_weight"]) * heat_pressure
         score += float(cfg["heating_off_hot_bonus"]) * heat_pressure
@@ -253,16 +332,62 @@ def score_action(
         score += float(cfg["thermal_control_weight"]) * heat_pressure
         score -= float(cfg["window_cold_penalty"]) * cold_pressure
         score -= float(cfg["window_noise_penalty"]) * person.acoustic_discomfort
-    
-        if zone_controls.heating_on:
-            score -= float(cfg["open_window_while_heating_penalty"]) * (0.5 + heat_pressure)
+
+        if heating_on:
+            score -= float(cfg["open_window_while_heating_penalty"]) * (
+                0.5 + heat_pressure
+            )
+
+        # Do not casually open windows in cold rooms unless air quality is bad.
+        if cold_pressure > 0.0 and person.air_quality_discomfort < 0.50:
+            score -= float(
+                cfg.get("open_window_cold_room_extra_penalty", 4.0)
+            ) * cold_pressure
 
     if action.name == "close_window":
         score += float(cfg["window_cold_penalty"]) * cold_pressure
         score += float(cfg["window_noise_penalty"]) * person.acoustic_discomfort
-    
-        if zone_controls.heating_on:
-            score += float(cfg["close_window_while_heating_bonus"])
+
+        if window_open:
+            score += float(
+                cfg.get("close_window_open_window_base_bonus", 0.75)
+            )
+
+        if heating_on and window_open:
+            score += float(
+                cfg.get("close_window_while_heating_bonus", 1.5)
+            )
+
+        if window_open and cold_pressure > 0.0:
+            score += (
+                float(cfg.get("close_window_before_heating_bonus", 4.0))
+                * cold_pressure
+            )
+
+        close_window_cold_temp_c = float(
+            cfg.get("close_window_cold_temp_c", 18.5)
+        )
+
+        if window_open and current_temp_c < close_window_cold_temp_c:
+            score += float(
+                cfg.get("close_window_cold_temp_bonus", 3.0)
+            )
+
+        # But if CO2 is very high, there is a reason to keep ventilating.
+        high_co2_ppm = float(
+            cfg.get("keep_window_open_high_co2_ppm", 1200.0)
+        )
+
+        if current_co2_ppm > high_co2_ppm:
+            co2_pressure = min(
+                1.0,
+                (current_co2_ppm - high_co2_ppm) / 1000.0,
+            )
+
+            score -= (
+                float(cfg.get("keep_window_open_high_co2_penalty", 3.0))
+                * co2_pressure
+            )
 
     # ------------------------------------------------------------
     # Daylight / lights / curtain

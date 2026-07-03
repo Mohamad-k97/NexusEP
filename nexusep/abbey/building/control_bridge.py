@@ -324,6 +324,14 @@ def _apply_action_to_control_state(
         if _is_auto_or_bms_mode(control_state.heating_mode):
             return False, "auto_placeholder_no_override"
 
+        if _is_semi_auto_mode(control_state.heating_mode):
+            return _set_heating_setpoint(
+                control_state=control_state,
+                new_setpoint_c=heating_on_setpoint_c,
+                minimum_heat_cool_gap_c=minimum_heat_cool_gap_c,
+                reason="semi_auto_heating_setpoint_on",
+            )
+
         control_state.heating_mode = "manual"
         control_state.manual_heating_on = True
         return True, "manual_heating_on"
@@ -331,6 +339,14 @@ def _apply_action_to_control_state(
     if action_name == "turn_heating_off":
         if _is_auto_or_bms_mode(control_state.heating_mode):
             return False, "auto_placeholder_no_override"
+
+        if _is_semi_auto_mode(control_state.heating_mode):
+            return _set_heating_setpoint(
+                control_state=control_state,
+                new_setpoint_c=heating_off_setpoint_c,
+                minimum_heat_cool_gap_c=minimum_heat_cool_gap_c,
+                reason="semi_auto_heating_setpoint_off",
+            )
 
         control_state.heating_mode = "manual"
         control_state.manual_heating_on = False
@@ -762,6 +778,9 @@ def _make_bridge_record(
         "before": before,
         "after": after,
     }
+
+def _is_semi_auto_mode(value: Any) -> bool:
+    return str(value).strip().lower() == "semi_auto"
 
 def _is_auto_or_bms_mode(value: Any) -> bool:
     return str(value).strip().lower() in {"auto", "bms"}

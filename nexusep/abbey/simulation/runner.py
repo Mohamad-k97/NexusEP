@@ -13,7 +13,11 @@ from nexusep.abbey.household import HouseholdState, update_household_dirty_cloth
 from nexusep.abbey.agents.decision import choose_action
 from nexusep.abbey.agents.health import update_health
 from nexusep.abbey.agents.idle_movement import update_idle_location
-from nexusep.abbey.agents.location import OccupantLocation, SpaceAssignment
+from nexusep.abbey.agents.location import (
+    OccupantLocation,
+    SpaceAssignment,
+    make_simple_space_id,
+)
 from nexusep.abbey.agents.needs import update_needs
 from nexusep.abbey.agents.perception import update_perception
 from nexusep.abbey.agents.sleep_state import update_sleep_episode_timers
@@ -38,13 +42,14 @@ from nexusep.building_performance import (
 
 from nexusep.abbey.building import (
     BuildingModel,
-    SimpleBuildingPerformanceModel,
+    BuildingPhysicsPerformanceModel,
     make_default_family_building,
     make_default_family_physics_graph,
     default_family_space_role_map,
     apply_control_action_bridge,
 )
 
+from nexusep.abbey.profiling.timers import AbbeyTimer
 
 AbbeyConfig = Mapping[str, Any]
 
@@ -75,9 +80,12 @@ class AbbeySimulation:
 
     building_model: Optional[BuildingModel] = None
     building_physics_graph: Optional[Any] = None
-    building_performance_model: Optional[SimpleBuildingPerformanceModel] = None
+    building_performance_model: Optional[BuildingPhysicsPerformanceModel] = None
     use_building_performance: bool = True
 
+    weather_provider: Optional[Any] = None
+    weather_state: Optional[Any] = None
+    
     building_zone_records: Optional[List[Dict[str, Any]]] = None
     building_dwelling_records: Optional[List[Dict[str, Any]]] = None
     building_records: Optional[List[Dict[str, Any]]] = None
@@ -91,7 +99,7 @@ class AbbeySimulation:
     building_internal_source_zone_records: Optional[List[Dict[str, Any]]] = None
     building_internal_source_building_records: Optional[List[Dict[str, Any]]] = None
     last_internal_source_result: Any = None
-
+    timer: Any = None
     def __post_init__(self) -> None:
         if self.building_zone_records is None:
             self.building_zone_records = []
@@ -193,9 +201,10 @@ class AbbeySimulation:
 
         building_model: Optional[BuildingModel] = None,
         building_physics_graph: Optional[Any] = None,
-        building_performance_model: Optional[SimpleBuildingPerformanceModel] = None,
+        building_performance_model: Optional[BuildingPhysicsPerformanceModel] = None,
         use_building_performance: bool = True,
-
+        weather_provider: Optional[Any] = None,
+        weather_state: Optional[Any] = None,
         random_seed: int = 42,
     ) -> "AbbeySimulation":
         config = load_jsonc(config_path)
@@ -319,7 +328,7 @@ class AbbeySimulation:
             )
 
         if use_building_performance and building_performance_model is None:
-            building_performance_model = SimpleBuildingPerformanceModel(
+            building_performance_model = BuildingPhysicsPerformanceModel(
                 building_model=building_model,
                 physics_graph=building_physics_graph,
                 use_physics_engine=True,
@@ -344,6 +353,7 @@ class AbbeySimulation:
             execution=execution or ExecutionState(),
             cooldowns=cooldowns or CooldownState(),
             clock=SimulationClock(dt_hours=dt_hours),
+            timer=AbbeyTimer(enabled=True),
             performance_model=performance_model or DummyBuildingPerformanceModel(),
             logger=SimulationLogger(),
             use_household_execution=use_household_execution,
@@ -354,6 +364,8 @@ class AbbeySimulation:
             building_physics_graph=building_physics_graph,
             building_performance_model=building_performance_model,
             use_building_performance=use_building_performance,
+            weather_provider=weather_provider,
+            weather_state=weather_state,
             building_zone_records=[],
             building_dwelling_records=[],
             building_records=[],
@@ -611,7 +623,35 @@ class AbbeySimulation:
             out[occupant_id] = new_location
 
         return out
+    def _current_weather_state_for_building_performance(self) -> Any:
+        """
+        Return the current WeatherState if an explicit weather source exists.
 
+        Priority:
+            1. weather_provider.get_state_by_step(clock.step)
+            2. static self.weather_state
+            3. None, letting BuildingPhysicsPerformanceModel create its
+               labelled fallback weather from observation/defaults.
+        """
+
+        if self.weather_provider is not None:
+            step = getattr(self.clock, "step", 0)
+
+            if hasattr(self.weather_provider, "get_state_by_step"):
+                return self.weather_provider.get_state_by_step(step)
+
+            if hasattr(self.weather_provider, "get_state"):
+                return self.weather_provider.get_state(step)
+
+            raise TypeError(
+                "weather_provider must expose get_state_by_step(step) "
+                "or get_state(step)."
+            )
+
+        if self.weather_state is not None:
+            return self.weather_state
+
+        return None
     def _run_building_performance_if_enabled(
         self,
         chunk_records: Optional[List[Dict[str, Any]]] = None,
@@ -635,7 +675,7 @@ class AbbeySimulation:
             )
 
         if self.building_performance_model is None:
-            self.building_performance_model = SimpleBuildingPerformanceModel(
+            self.building_performance_model = BuildingPhysicsPerformanceModel(
                 building_model=self.building_model,
                 physics_graph=self.building_physics_graph,
                 use_physics_engine=True,
@@ -662,18 +702,20 @@ class AbbeySimulation:
         )
 
         self._store_building_bridge_records(bridge_records)
-
+        weather_state = self._current_weather_state_for_building_performance()
         performance_input = {
             "step": getattr(self.clock, "step", None),
             "day": getattr(self.clock, "day", None),
             "hour": getattr(self.clock, "hour", None),
             "observation": self.observation,
+            "weather_state": weather_state,
             "locations": building_locations,
             "people": self.people,
             "chunk_records": chunk_records or [],
             "action_energy_wh": action_energy_wh or {},
             "role_to_zone_id": role_to_zone_id,
             "physics_graph": self.building_physics_graph,
+            "timer": getattr(self, "timer", None),
         }
 
         result = self.building_performance_model.step(
@@ -937,6 +979,11 @@ class AbbeySimulation:
 
         The building/control path is now the source of truth for actual
         control states after the physics timestep.
+
+        Phase 17.4:
+        - sync dwelling-aware zone IDs
+        - sync simple aliases such as living_room/kitchen
+        - keep legacy scalar controls aligned with observation.default_zone_id
         """
 
         if self.observation is None:
@@ -951,7 +998,18 @@ class AbbeySimulation:
         if not zone_observations:
             return
 
+        default_zone_id = getattr(
+            self.observation,
+            "default_zone_id",
+            None,
+        )
+
         systems = self.systems
+
+        if default_zone_id is not None:
+            systems = systems.copy(
+                default_space_id=default_zone_id,
+            )
 
         for zone_id, zone in zone_observations.items():
             updates = {
@@ -969,12 +1027,49 @@ class AbbeySimulation:
             if curtain_open is not None:
                 updates["curtain_closed"] = not bool(curtain_open)
 
-            systems = systems.set_space_controls(
-                zone_id,
-                **updates,
-            )
+            for space_id in self._system_space_aliases_for_observation_zone(
+                zone_id=zone_id,
+                default_zone_id=default_zone_id,
+            ):
+                systems = systems.set_space_controls(
+                    space_id,
+                    **updates,
+                )
 
         self.systems = systems
+
+    def _system_space_aliases_for_observation_zone(
+        self,
+        zone_id: str,
+        default_zone_id: Optional[str] = None,
+    ) -> List[str]:
+        aliases = []
+
+        def add(value):
+            if value is None:
+                return
+
+            value = str(value)
+
+            if value and value not in aliases:
+                aliases.append(value)
+
+        add(zone_id)
+
+        try:
+            simple_id = make_simple_space_id(zone_id)
+        except Exception:
+            simple_id = None
+
+        add(simple_id)
+
+        if simple_id == "living_room":
+            add("main_room")
+
+        if zone_id == default_zone_id:
+            add(default_zone_id)
+
+        return aliases
         
     def _store_building_internal_source_outputs(
         self,
@@ -1278,93 +1373,366 @@ class AbbeySimulation:
         return out
 
     # ============================================================
-    # MAIN STEP
+    # HOUSEHOLD INSPECTION / IDLE MOVEMENT
     # ============================================================
 
-    def step(self) -> None:
+    def _household_inspection_config(self) -> Dict[str, Any]:
+        return dict(
+            self.config.get(
+                "household_inspection",
+                {},
+            )
+        )
+
+    def _zone_number_of_people(self, zone: Any) -> float:
+        value = getattr(zone, "number_of_people", None)
+
+        if value is not None:
+            try:
+                return float(value)
+            except Exception:
+                return 0.0
+
+        people = getattr(zone, "occupied_person_ids", [])
+
+        try:
+            return float(len(people))
+        except Exception:
+            return 0.0
+
+    def _zone_control_risk_score(
+        self,
+        zone_id: str,
+        zone: Any,
+    ) -> float:
         """
-        Run one ABBEY timestep.
+        Score how much a room deserves a casual household inspection.
+
+        This is not a controller. It only makes unattended problematic rooms
+        more likely to be visited by an idle occupant.
         """
 
-        self._update_all_people_before_execution()
+        cfg = self._household_inspection_config()
 
-        # 1. Execute purposeful decisions/actions within the timestep.
-        if self.use_household_execution:
-            (
-                self.people,
-                self.locations,
-                self.household,
-                self.systems,
-                self.execution,
-                self.cooldowns,
-                chunk_records,
-            ) = execute_household_timestep(
-                people=self.people,
-                locations=self.locations,
-                assignments=self.assignments,
-                household=self.household,
-                observation=self.observation,
-                systems=self.systems,
+        cold_temp_c = float(cfg.get("cold_temp_c", 18.5))
+        hot_temp_c = float(cfg.get("hot_temp_c", 24.5))
+        high_co2_ppm = float(cfg.get("high_co2_ppm", 1200.0))
+        high_daylight = float(cfg.get("high_daylight", 0.75))
+
+        unoccupied_multiplier = float(
+            cfg.get("unoccupied_room_multiplier", 1.25)
+        )
+
+        zone_temp_c = getattr(zone, "indoor_temp", None)
+
+        if zone_temp_c is None:
+            zone_temp_c = getattr(zone, "indoor_temp_c", None)
+
+        if zone_temp_c is None:
+            zone_temp_c = 20.0
+
+        zone_temp_c = float(zone_temp_c)
+
+        co2_ppm = float(getattr(zone, "co2_ppm", 420.0))
+        daylight = float(getattr(zone, "indoor_daylight", 0.0))
+
+        controls = self.systems.get_space_controls(zone_id)
+
+        window_open = bool(
+            getattr(zone, "window_open", False)
+            or getattr(controls, "window_open", False)
+        )
+
+        heating_on = bool(
+            getattr(zone, "heating_on", False)
+            or getattr(controls, "heating_on", False)
+        )
+
+        lights_on = bool(
+            getattr(zone, "lights_on", False)
+            or getattr(controls, "lights_on", False)
+        )
+
+        score = 0.0
+
+        # Worst case: heating against an open window.
+        if heating_on and window_open:
+            score += float(cfg.get("heating_with_open_window_score", 8.0))
+
+        # Window open while the room is cold.
+        if window_open and zone_temp_c < cold_temp_c:
+            score += float(cfg.get("cold_open_window_score", 6.0))
+
+        # Heating still on in a hot room.
+        if heating_on and zone_temp_c > hot_temp_c:
+            score += float(cfg.get("hot_heating_on_score", 6.0))
+
+        # Lights on when daylight is already enough.
+        if lights_on and daylight > high_daylight:
+            score += float(cfg.get("lights_on_bright_room_score", 2.0))
+
+        # Bad air can justify a visit too.
+        if co2_ppm > high_co2_ppm:
+            score += float(cfg.get("high_co2_score", 2.0))
+
+        if self._zone_number_of_people(zone) <= 0.0:
+            score *= unoccupied_multiplier
+
+        return score
+
+    def _maybe_move_person_for_household_inspection(
+        self,
+        person: PersonState,
+        location: OccupantLocation,
+        assignment: SpaceAssignment,
+    ) -> OccupantLocation:
+        """
+        Low-probability inspection movement.
+
+        An idle person at home may casually enter a problematic room.
+        After this movement, perception is updated in that room and the normal
+        decision engine can choose close_window / turn_heating_off / etc.
+        """
+
+        cfg = self._household_inspection_config()
+
+        if not bool(cfg.get("enabled", True)):
+            return location
+
+        if not bool(getattr(person, "can_act", True)):
+            return location
+
+        if not location.is_home:
+            return location
+
+        if person.is_sleeping:
+            return location
+
+        if self.execution.actor_is_blocked(person.occupant_id):
+            return location
+
+        current_activity = str(
+            getattr(location, "current_activity", "idle")
+        ).strip().lower()
+
+        if current_activity not in {
+            "",
+            "idle",
+            "do_nothing",
+            "household_inspection",
+        }:
+            return location
+
+        minimum_dwell_minutes = float(
+            cfg.get("minimum_dwell_minutes", 10.0)
+        )
+
+        if location.minutes_since_last_space_change < minimum_dwell_minutes:
+            return location
+
+        probability_per_hour = float(
+            cfg.get("probability_per_hour", 0.20)
+        )
+
+        probability_this_step = probability_per_hour * self.clock.dt_hours
+
+        if self.rng.random() > probability_this_step:
+            return location
+
+        threshold = float(
+            cfg.get("minimum_room_risk_score", 2.0)
+        )
+
+        available_space_ids = set(self.observation.available_space_ids())
+        candidates = []
+
+        for zone_id, zone in self.observation.zone_observations.items():
+            if zone_id == location.current_space_id:
+                continue
+
+            if zone_id not in available_space_ids:
+                continue
+
+            score = self._zone_control_risk_score(
+                zone_id=zone_id,
+                zone=zone,
+            )
+
+            if score < threshold:
+                continue
+
+            candidates.append(
+                (
+                    score,
+                    zone_id,
+                )
+            )
+
+        if not candidates:
+            return location
+
+        candidates.sort(
+            key=lambda item: item[0],
+            reverse=True,
+        )
+
+        target_zone_id = candidates[0][1]
+
+        return location.copy(
+            current_space_id=target_zone_id,
+            current_space_role="inspection",
+            current_activity="household_inspection",
+            minutes_since_last_space_change=0.0,
+        )
+
+    def _update_all_idle_locations_before_execution(self) -> None:
+        """
+        Update idle/ambient movement for all occupants before perception.
+
+        Important ordering:
+            movement first
+            perception second
+            decision third
+
+        This lets an occupant enter a room, perceive that it is cold/hot/stale,
+        and then act on that room in the same timestep.
+        """
+
+        self._sync_people_from_locations()
+
+        available_space_ids = self.observation.available_space_ids()
+
+        for occupant_id, person in list(self.people.items()):
+            if occupant_id not in self.locations:
+                continue
+
+            if occupant_id not in self.assignments:
+                continue
+
+            old_location = self.locations[occupant_id]
+            assignment = self.assignments[occupant_id]
+
+            inspected_location = self._maybe_move_person_for_household_inspection(
+                person=person,
+                location=old_location,
+                assignment=assignment,
+            )
+
+            if inspected_location.current_space_id != old_location.current_space_id:
+                self.locations[occupant_id] = inspected_location
+                continue
+
+            self.locations[occupant_id] = update_idle_location(
+                person=person,
+                location=old_location,
+                assignment=assignment,
                 execution=self.execution,
-                cooldowns=self.cooldowns,
+                available_space_ids=available_space_ids,
                 clock=self.clock,
                 config=self.config,
                 rng=self.rng,
             )
-        else:
-            (
-                self.person,
-                self.location,
-                self.systems,
-                self.execution,
-                self.cooldowns,
-                chunk_records,
-            ) = execute_timestep(
-                person=self.person,
-                location=self.location,
-                assignment=self.assignment,
-                observation=self.observation,
-                systems=self.systems,
-                execution=self.execution,
+
+        self._sync_people_from_locations()
+        
+    # ============================================================
+    # MAIN STEP
+    # ============================================================
+
+    def step(self):
+        timer = getattr(self, "timer", None)
+    
+        if timer is None:
+            return self._step_inner()
+    
+        with timer.measure("simulation.step_total"):
+            return self._step_inner()
+    
+    def _step_inner(self) -> None:
+        """
+        Run one ABBEY timestep.
+        """
+
+        # 0. Ambient/inspection movement before perception.
+        #
+        # This is important:
+        #     move first -> perceive current room -> decide action
+        #
+        # Otherwise unattended rooms can stay hot/cold/open forever.
+        with self.timer.measure("simulation.idle_movement_before_execution"):
+            self._update_all_idle_locations_before_execution()
+        with self.timer.measure("simulation.people_update_before_execution"):
+            self._update_all_people_before_execution()
+
+        # 1. Execute purposeful decisions/actions within the timestep.
+
+        # 1. Execute purposeful decisions/actions within the timestep.
+        with self.timer.measure("simulation.household_execution"):
+            if self.use_household_execution:
+                (
+                    self.people,
+                    self.locations,
+                    self.household,
+                    self.systems,
+                    self.execution,
+                    self.cooldowns,
+                    chunk_records,
+                ) = execute_household_timestep(
+                    people=self.people,
+                    locations=self.locations,
+                    assignments=self.assignments,
+                    household=self.household,
+                    observation=self.observation,
+                    systems=self.systems,
+                    execution=self.execution,
+                    cooldowns=self.cooldowns,
+                    clock=self.clock,
+                    config=self.config,
+                    rng=self.rng,
+                )
+            else:
+                (
+                    self.person,
+                    self.location,
+                    self.systems,
+                    self.execution,
+                    self.cooldowns,
+                    chunk_records,
+                ) = execute_timestep(
+                    person=self.person,
+                    location=self.location,
+                    assignment=self.assignment,
+                    observation=self.observation,
+                    systems=self.systems,
+                    execution=self.execution,
+                    clock=self.clock,
+                    config=self.config,
+                    choose_action=choose_action,
+                    actor_id=self.person.occupant_id,
+                    cooldowns=self.cooldowns,
+                )
+
+            if self.cooldowns is None:
+                self.cooldowns = CooldownState()
+        with self.timer.measure("simulation.dirty_clothes"):
+            self.household = update_household_dirty_clothes(
+                household=self.household,
+                people=self.people,
+                locations=self.locations,
                 clock=self.clock,
                 config=self.config,
-                choose_action=choose_action,
-                actor_id=self.person.occupant_id,
-                cooldowns=self.cooldowns,
+                chunk_records=chunk_records,
             )
 
-        if self.cooldowns is None:
-            self.cooldowns = CooldownState()
 
-        self.household = update_household_dirty_clothes(
-            household=self.household,
-            people=self.people,
-            locations=self.locations,
-            clock=self.clock,
-            config=self.config,
-            chunk_records=chunk_records,
-        )
-
-        self._sync_person_from_location()
-
-        # 2. Ambient/idle Markov movement.
-        self.location = update_idle_location(
-            person=self.person,
-            location=self.location,
-            assignment=self.assignment,
-            execution=self.execution,
-            available_space_ids=self.observation.available_space_ids(),
-            clock=self.clock,
-            config=self.config,
-            rng=self.rng,
-        )
-
-        self._sync_person_from_location()
+        with self.timer.measure("simulation.sync_person_location"):
+            self._sync_person_from_location()
 
         # 3. Update internal needs based on representative executed action.
-        self._update_all_people_after_execution(
-            primary_chunk_records=chunk_records,
-        )
+        with self.timer.measure("simulation.update_people"):
+            self._update_all_people_after_execution(
+                primary_chunk_records=chunk_records,
+            )
 
         # 4. Old dummy/fallback performance model.
         action_energy_wh = sum(
@@ -1407,10 +1775,11 @@ class AbbeySimulation:
 
         # Do not pass scalar action_energy_wh here, because the new model can
         # already map appliance energy from chunk_records by actor/location.
-        self._run_building_performance_if_enabled(
-            chunk_records=chunk_records,
-            action_energy_wh={},
-        )
+        with self.timer.measure("simulation.building_performance"):
+            self._run_building_performance_if_enabled(
+                chunk_records=chunk_records,
+                action_energy_wh={},
+            )
 
         # 6. Log timestep after final observation has been updated.
         self.logger.record_step(
@@ -1440,14 +1809,63 @@ class AbbeySimulation:
     # RUN / EXPORT
     # ============================================================
 
-    def run(self):
+    def run(
+        self,
+        progress_every_steps: int = 100,
+        progress_every_sim_hours: float = None,
+    ):
         """
-        Run the full simulation and return the legacy logger dataframe.
+        Run the simulation.
+    
+        Progress printing is intentionally handled at runner level, not inside
+        low-level physics modules.
         """
-
+    
         for _ in range(self.n_steps):
+            current_step = int(getattr(self.clock, "step", 0))
+            current_day = int(getattr(self.clock, "day", 0))
+            current_hour = float(getattr(self.clock, "hour", 0.0))
+    
+            should_print = False
+    
+            if progress_every_steps is not None:
+                if int(progress_every_steps) > 0:
+                    if current_step % int(progress_every_steps) == 0:
+                        should_print = True
+    
+            if progress_every_sim_hours is not None:
+                interval_steps = int(
+                    round(
+                        float(progress_every_sim_hours)
+                        / float(getattr(self.clock, "dt_hours", 1.0))
+                    )
+                )
+    
+                if interval_steps > 0 and current_step % interval_steps == 0:
+                    should_print = True
+    
+            if current_step == 0 or current_step == self.n_steps - 1:
+                should_print = True
+    
+            if should_print:
+                percent = 100.0 * float(current_step) / max(float(self.n_steps), 1.0)
+    
+                print(
+                    "[ABBEY] step "
+                    + str(current_step)
+                    + "/"
+                    + str(self.n_steps)
+                    + " | day "
+                    + str(current_day)
+                    + " | hour "
+                    + "{:.2f}".format(current_hour)
+                    + " | "
+                    + "{:.1f}".format(percent)
+                    + "%"
+                )
+    
             self.step()
-
+    
         return self.logger.to_dataframe()
 
     def people_to_dataframe(self):
@@ -1506,20 +1924,56 @@ class AbbeySimulation:
         import pandas as pd
         return pd.DataFrame(self.building_window_airflow_records)
     
-    def save_building_debug_outputs(self, folder: Union[str, Path]):
+    def save_building_debug_outputs(
+        self,
+        folder: Union[str, Path],
+        prefix: str = "building",
+        output_mode: str = "debug",
+        include_diagnostics: bool = True,
+        include_long_records: bool = True,
+        include_plots: bool = True,
+        include_interzone_timestep_records: bool = True,
+        include_window_detail_timestep_records: bool = True,
+    ):
         from nexusep.abbey.building import save_debug_building_outputs
     
         return save_debug_building_outputs(
             sim=self,
             output_folder=str(folder),
+            prefix=prefix,
+            output_mode=output_mode,
+            include_diagnostics=include_diagnostics,
+            include_long_records=include_long_records,
+            include_plots=include_plots,
+            include_interzone_timestep_records=include_interzone_timestep_records,
+            include_window_detail_timestep_records=include_window_detail_timestep_records,
         )
     
-    def save_building_yearly_outputs(self, folder: Union[str, Path]):
+    def save_building_yearly_outputs(
+        self,
+        folder: Union[str, Path],
+        prefix: str = "building",
+        output_mode: str = "minimal",
+        include_timestep_diagnostics: bool = False,
+        include_long_records: bool = False,
+        include_interzone_summaries: bool = True,
+        include_interzone_timestep_records: bool = False,
+        include_window_detail_summaries: bool = True,
+        include_window_detail_timestep_records: bool = False,
+    ):
         from nexusep.abbey.building import save_yearly_building_outputs
     
         return save_yearly_building_outputs(
             sim=self,
             output_folder=str(folder),
+            prefix=prefix,
+            output_mode=output_mode,
+            include_timestep_diagnostics=include_timestep_diagnostics,
+            include_long_records=include_long_records,
+            include_interzone_summaries=include_interzone_summaries,
+            include_interzone_timestep_records=include_interzone_timestep_records,
+            include_window_detail_summaries=include_window_detail_summaries,
+            include_window_detail_timestep_records=include_window_detail_timestep_records,
         )
     
     def save_building_playback_html(

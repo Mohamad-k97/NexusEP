@@ -132,8 +132,18 @@ WINDOW_AIRFLOW_OPENING_SOURCE = (
 DEFAULT_WINDOW_WIND_SPEED_M_S = 0.0
 DEFAULT_WINDOW_WIND_ALIGNMENT_FACTOR = 0.0
 
-WINDOW_AIRFLOW_MODEL = "wind_aligned_opening_area_model"
+# Pressure-based but still simplified.
+# This is not a full pressure-network solver.
+WINDOW_AIRFLOW_MODEL = "pressure_limited_wind_opening_model"
 WINDOW_AIRFLOW_UNIT = "m3_h"
+
+DEFAULT_WINDOW_MAX_AIRFLOW_M3_H = 250.0
+DEFAULT_WINDOW_WIND_PRESSURE_COEFFICIENT = 0.35
+DEFAULT_WINDOW_MIN_PRESSURE_DIFFERENCE_PA = 0.0
+DEFAULT_WINDOW_MAX_PRESSURE_DIFFERENCE_PA = 10.0
+
+DEFAULT_ATMOSPHERIC_PRESSURE_PA = 101325.0
+DRY_AIR_GAS_CONSTANT_J_KG_K = 287.05
 
 WINDOW_THERMAL_CONDUCTANCE_SOURCE = "WindowStaticParameters + indoor_outdoor_temperature"
 WINDOW_OPENING_THERMAL_EXCHANGE_SOURCE = "WindowAirflowOpeningResult + indoor_outdoor_temperature"
@@ -3296,6 +3306,236 @@ def calculate_covering_effects_from_static_and_inputs(
         building_window_operation_state=operation_state,
     )
 
+def _bounded_float(
+    value: Any,
+    default: float,
+    lower: float,
+    upper: float,
+) -> float:
+    try:
+        value = float(value)
+    except Exception:
+        value = float(default)
+
+    if value < float(lower):
+        return float(lower)
+
+    if value > float(upper):
+        return float(upper)
+
+    return float(value)
+
+
+def _air_density_from_weather_state(weather_state: Any) -> float:
+    """
+    Estimate outdoor air density from weather pressure and temperature.
+
+    Uses:
+        rho = p / (R * T)
+
+    This is enough for the simplified window-orifice airflow model.
+    """
+
+    pressure_pa = DEFAULT_ATMOSPHERIC_PRESSURE_PA
+    outdoor_temperature_c = DEFAULT_WINDOW_OUTDOOR_TEMPERATURE_C
+
+    if weather_state is not None:
+        pressure_pa = _get_attr_or_default(
+            weather_state,
+            "atmospheric_pressure_pa",
+            DEFAULT_ATMOSPHERIC_PRESSURE_PA,
+        )
+
+        outdoor_temperature_c = _get_attr_or_default(
+            weather_state,
+            "outdoor_temperature_c",
+            DEFAULT_WINDOW_OUTDOOR_TEMPERATURE_C,
+        )
+
+    pressure_pa = _bounded_float(
+        value=pressure_pa,
+        default=DEFAULT_ATMOSPHERIC_PRESSURE_PA,
+        lower=50000.0,
+        upper=120000.0,
+    )
+
+    temperature_k = float(outdoor_temperature_c) + 273.15
+
+    if temperature_k <= 150.0:
+        temperature_k = 293.15
+
+    return pressure_pa / (DRY_AIR_GAS_CONSTANT_J_KG_K * temperature_k)
+
+
+def _window_wind_pressure_coefficient(
+    window_static_parameters: WindowStaticParameters,
+    alignment_factor: float,
+) -> float:
+    """
+    Effective Cp for the simplified local window model.
+
+    BoundaryConnection may later provide wind_pressure_coefficient.
+    Until then, use a conservative default and scale it by orientation
+    alignment.
+    """
+
+    cp = _get_attr_or_default(
+        window_static_parameters,
+        "wind_pressure_coefficient",
+        DEFAULT_WINDOW_WIND_PRESSURE_COEFFICIENT,
+    )
+
+    cp = _bounded_float(
+        value=cp,
+        default=DEFAULT_WINDOW_WIND_PRESSURE_COEFFICIENT,
+        lower=0.0,
+        upper=1.0,
+    )
+
+    alignment_factor = _bounded_float(
+        value=alignment_factor,
+        default=0.0,
+        lower=0.0,
+        upper=1.0,
+    )
+
+    return cp * alignment_factor
+
+
+def _max_window_airflow_m3_h(
+    window_static_parameters: WindowStaticParameters,
+) -> float:
+    """
+    Per-window safety cap.
+
+    This is intentionally kept as a static window parameter so later we can
+    move it into BoundaryConnection without changing the physics path.
+    """
+
+    value = _get_attr_or_default(
+        window_static_parameters,
+        "max_airflow_m3_h",
+        DEFAULT_WINDOW_MAX_AIRFLOW_M3_H,
+    )
+
+    return _bounded_float(
+        value=value,
+        default=DEFAULT_WINDOW_MAX_AIRFLOW_M3_H,
+        lower=0.0,
+        upper=2000.0,
+    )
+
+
+def _pressure_based_window_airflow_m3_s(
+    effective_opening_area_m2: float,
+    discharge_coefficient: float,
+    wind_speed_m_s: float,
+    alignment_factor: float,
+    weather_state: Any,
+    window_static_parameters: WindowStaticParameters,
+) -> float:
+    """
+    Simplified pressure-based window airflow.
+
+    Not a pressure network.
+
+    Uses wind pressure:
+        dP = 0.5 * rho * U^2 * Cp
+
+    Then an orifice equation:
+        q = Cd * A * sqrt(2 * dP / rho)
+
+    A cap is still required because one-sided residential window airflow
+    cannot be trusted from this simplified local equation alone.
+    """
+
+    effective_opening_area_m2 = max(
+        0.0,
+        float(effective_opening_area_m2),
+    )
+
+    discharge_coefficient = _bounded_float(
+        value=discharge_coefficient,
+        default=DEFAULT_WINDOW_DISCHARGE_COEFFICIENT,
+        lower=0.0,
+        upper=1.0,
+    )
+
+    wind_speed_m_s = max(
+        0.0,
+        float(wind_speed_m_s),
+    )
+
+    alignment_factor = _bounded_float(
+        value=alignment_factor,
+        default=0.0,
+        lower=0.0,
+        upper=1.0,
+    )
+
+    if effective_opening_area_m2 <= 0.0:
+        return 0.0
+
+    if discharge_coefficient <= 0.0:
+        return 0.0
+
+    if wind_speed_m_s <= 0.0:
+        return 0.0
+
+    if alignment_factor <= 0.0:
+        return 0.0
+
+    air_density_kg_m3 = _air_density_from_weather_state(
+        weather_state=weather_state,
+    )
+
+    cp = _window_wind_pressure_coefficient(
+        window_static_parameters=window_static_parameters,
+        alignment_factor=alignment_factor,
+    )
+
+    pressure_difference_pa = (
+        0.5
+        * air_density_kg_m3
+        * wind_speed_m_s
+        * wind_speed_m_s
+        * cp
+    )
+
+    pressure_difference_pa = _bounded_float(
+        value=pressure_difference_pa,
+        default=0.0,
+        lower=DEFAULT_WINDOW_MIN_PRESSURE_DIFFERENCE_PA,
+        upper=DEFAULT_WINDOW_MAX_PRESSURE_DIFFERENCE_PA,
+    )
+
+    if pressure_difference_pa <= 0.0:
+        return 0.0
+
+    airflow_m3_s = (
+        discharge_coefficient
+        * effective_opening_area_m2
+        * math.sqrt(
+            2.0
+            * pressure_difference_pa
+            / air_density_kg_m3
+        )
+    )
+
+    max_airflow_m3_h = _max_window_airflow_m3_h(
+        window_static_parameters=window_static_parameters,
+    )
+
+    max_airflow_m3_s = max_airflow_m3_h / 3600.0
+
+    if airflow_m3_s > max_airflow_m3_s:
+        airflow_m3_s = max_airflow_m3_s
+
+    return max(
+        0.0,
+        airflow_m3_s,
+    )
+
 def calculate_window_airflow_opening_result(
     window_static_parameters: WindowStaticParameters,
     window_operation_state: WindowOperationState,
@@ -3381,11 +3621,13 @@ def calculate_window_airflow_opening_result(
     ):
         outdoor_airflow_m3_s = 0.0
     else:
-        outdoor_airflow_m3_s = (
-            window_static_parameters.discharge_coefficient
-            * effective_opening_area_m2
-            * wind_speed_m_s
-            * alignment_factor
+        outdoor_airflow_m3_s = _pressure_based_window_airflow_m3_s(
+            effective_opening_area_m2=effective_opening_area_m2,
+            discharge_coefficient=window_static_parameters.discharge_coefficient,
+            wind_speed_m_s=wind_speed_m_s,
+            alignment_factor=alignment_factor,
+            weather_state=weather_state,
+            window_static_parameters=window_static_parameters,
         )
 
     outdoor_airflow_m3_h = outdoor_airflow_m3_s * 3600.0

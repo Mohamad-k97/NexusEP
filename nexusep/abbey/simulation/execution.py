@@ -478,6 +478,21 @@ def start_selected_proposals(
             locations[proposal.actor_id] = location.copy(
                 current_activity="idle",
             )
+        if proposal.action_name == "wake_up":
+            new_foreground = []
+
+            for foreground_action in execution.foreground_actions:
+                if (
+                    foreground_action.actor_id == proposal.actor_id
+                    and foreground_action.name == "sleep"
+                ):
+                    continue
+
+                new_foreground.append(foreground_action)
+
+            execution = execution.copy(
+                foreground_actions=new_foreground,
+            )
         action = action_from_proposal(
             proposal=proposal,
             config=config,

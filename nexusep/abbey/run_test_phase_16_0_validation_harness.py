@@ -18,7 +18,7 @@ from nexusep.abbey.building.factory import (
     make_default_family_physics_graph,
 )
 from nexusep.abbey.building.performance import (
-    SimpleBuildingPerformanceModel,
+    BuildingPhysicsPerformanceModel,
 )
 from nexusep.abbey.building.physics.weather import WeatherState
 from nexusep.abbey.building.outputs import (
@@ -329,7 +329,7 @@ def run_phase16_case(
     if weather_state is None:
         weather_state = make_phase16_weather()
 
-    model = SimpleBuildingPerformanceModel(
+    model = BuildingPhysicsPerformanceModel(
         building_model=building,
         physics_graph=graph,
         use_physics_engine=use_physics_engine,

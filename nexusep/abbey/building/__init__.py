@@ -27,6 +27,7 @@ from nexusep.abbey.building.controllers import (
 )
 
 from nexusep.abbey.building.performance import (
+    BuildingPhysicsPerformanceModel,
     SimpleBuildingPerformanceModel,
     BuildingPerformanceStepResult,
 )
@@ -77,6 +78,7 @@ __all__ = [
     "ThermostatController",
     "SimpleBMSController",
     "controller_for_control_state",
+    "BuildingPhysicsPerformanceModel",
     "SimpleBuildingPerformanceModel",
     "BuildingPerformanceStepResult",
     "make_default_family_building",

@@ -191,11 +191,26 @@ class DwellingObservation:
         return list(self.zone_observations.keys())
 
     def get_zone(self, zone_id: str) -> ZoneObservation:
-        if zone_id in self.zone_observations:
-            return self.zone_observations[zone_id]
+        """
+        Return a zone observation with simple/dwelling-aware compatibility.
 
-        if self.default_zone_id in self.zone_observations:
-            return self.zone_observations[self.default_zone_id]
+        This lets old agent locations such as:
+            living_room
+            kitchen
+            main_room
+
+        resolve against new building-performance observations such as:
+            dwelling_1_living_room
+            dwelling_1_kitchen
+        """
+
+        for candidate in self._candidate_zone_ids(zone_id):
+            if candidate in self.zone_observations:
+                return self.zone_observations[candidate]
+
+        for candidate in self._candidate_zone_ids(self.default_zone_id):
+            if candidate in self.zone_observations:
+                return self.zone_observations[candidate]
 
         return ZoneObservation(
             zone_id=zone_id or self.default_zone_id,
@@ -207,6 +222,44 @@ class DwellingObservation:
             indoor_relative_humidity_percent=self.indoor_relative_humidity_percent,
             indoor_humidity_ratio_kg_kg=self.indoor_humidity_ratio_kg_kg,
         )
+
+    @staticmethod
+    def _candidate_zone_ids(zone_id: str) -> list:
+        if zone_id is None:
+            zone_id = ""
+
+        value = str(zone_id)
+
+        candidates = []
+
+        def add(candidate):
+            if candidate is None:
+                return
+
+            candidate = str(candidate)
+
+            if candidate and candidate not in candidates:
+                candidates.append(candidate)
+
+        add(value)
+
+        if value == "main_room":
+            add("living_room")
+            add("dwelling_1_living_room")
+
+        if value == "living_room":
+            add("dwelling_1_living_room")
+
+        if value and not value.startswith("dwelling_") and value != "outside":
+            add("dwelling_1_" + value)
+
+        if value.startswith("dwelling_1_"):
+            add(value[len("dwelling_1_"):])
+
+        if value == "outside":
+            add("outside")
+
+        return candidates
 
     def to_dict(self) -> Dict[str, Any]:
         data = asdict(self)

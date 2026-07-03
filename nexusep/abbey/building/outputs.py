@@ -382,8 +382,8 @@ ZONE_TIMESTEP_YEARLY_SAFE_COLUMNS = (
     + ZONE_STATE_COLUMNS
     + ZONE_CONTROL_COLUMNS
     + ZONE_ENERGY_COLUMNS
+    + ZONE_ENGINE_STATUS_COLUMNS
 )
-
 
 DWELLING_CORE_COLUMNS = [
     "step",
@@ -516,6 +516,7 @@ BUILDING_ENGINE_STATUS_COLUMNS = [
     "physics_engine_active",
     "physics_engine_error",
     "physics_engine_source",
+    "physics_path",
     "performance_path",
     "legacy_fallback_used",
     "legacy_fallback_reason",
@@ -573,8 +574,10 @@ BUILDING_TIMESTEP_DEBUG_COLUMNS = (
     + BUILDING_DEBUG_COLUMNS
 )
 
-BUILDING_TIMESTEP_YEARLY_SAFE_COLUMNS = BUILDING_TIMESTEP_STANDARD_COLUMNS
-
+BUILDING_TIMESTEP_YEARLY_SAFE_COLUMNS = (
+    BUILDING_TIMESTEP_STANDARD_COLUMNS
+    + BUILDING_ENGINE_STATUS_COLUMNS
+)
 
 OUTPUT_SCHEMA_GROUPS = {
     "zone_core": ZONE_CORE_COLUMNS,

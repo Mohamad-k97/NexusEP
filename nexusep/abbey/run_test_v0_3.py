@@ -33,14 +33,12 @@ from nexusep.abbey.agents.location import (
 from nexusep.abbey.household import HouseholdState
 from nexusep.abbey.household.calendar import get_day_type, get_weekday_name
 from nexusep.abbey.systems import CooldownState
-
 from nexusep.abbey.building import (
     make_default_family_building,
     default_family_ids,
     default_family_space_role_map,
-    SimpleBuildingPerformanceModel,
+    BuildingPhysicsPerformanceModel,
 )
-
 
 # ============================================================
 # PATHS
@@ -136,14 +134,14 @@ def make_next_output_folder(output_root):
         if not path.is_dir():
             continue
 
-        match = re.match(r"abbey_v03_output_run_(\d+)$", path.name)
+        match = re.match(r"abbey_v04_output_run_(\d+)$", path.name)
 
         if match:
             existing.append(int(match.group(1)))
 
     next_id = max(existing, default=0) + 1
 
-    run_folder = output_root / "abbey_v03_output_run_{:03d}".format(next_id)
+    run_folder = output_root / "abbey_v04_output_run_{:03d}".format(next_id)
     run_folder.mkdir(parents=True, exist_ok=False)
 
     (run_folder / "csv").mkdir()
@@ -519,7 +517,7 @@ def make_sim(settings):
         random_seed=settings["random_seed"],
         use_household_execution=True,
         building_model=building,
-        building_performance_model=SimpleBuildingPerformanceModel(
+        building_performance_model=BuildingPhysicsPerformanceModel(
             building_model=building,
         ),
         use_building_performance=True,
@@ -926,7 +924,7 @@ def make_behavior_plots(settings, sim, action_summary, run_folder):
 # ============================================================
 
 def run_profile(profile_name, settings, run_folder):
-    print("\nABBEY v0.3 run")
+    print("\nABBEY v0.4 run")
     print("profile:", profile_name)
     print("duration_hours:", settings["duration_hours"])
     print("dt_minutes:", settings["dt_minutes"])
