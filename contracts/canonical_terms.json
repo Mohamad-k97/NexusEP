@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "contract_version": "1.0.0",
+  "policy": "Aliases are permitted only in named adapters, migrations, and compatibility shims. Canonical serialization uses canonical terms.",
+  "terms": [
+    {
+      "canonical": "scenario",
+      "aliases": ["case", "config"],
+      "rule": "The scenario is the complete immutable input, not an engine config object."
+    },
+    {
+      "canonical": "building",
+      "aliases": ["property"],
+      "rule": "Use building for the physical building container."
+    },
+    {
+      "canonical": "dwelling",
+      "aliases": ["apartment", "household_unit"],
+      "rule": "A dwelling is geometry; household state is not a synonym."
+    },
+    {
+      "canonical": "zone",
+      "aliases": ["space", "room"],
+      "rule": "Canonical thermal entities and IDs use zone and zone_id."
+    },
+    {
+      "canonical": "occupant",
+      "aliases": ["person", "agent"],
+      "rule": "Canonical human entities and IDs use occupant and occupant_id."
+    },
+    {
+      "canonical": "action",
+      "aliases": ["intent"],
+      "rule": "An action is an instruction or intent, not proof of execution."
+    },
+    {
+      "canonical": "event",
+      "aliases": ["action_record"],
+      "rule": "An event is an immutable occurrence with a timestep and identity."
+    },
+    {
+      "canonical": "control_command",
+      "aliases": ["requested_state"],
+      "rule": "A command is requested; it must remain distinct from actual system state."
+    },
+    {
+      "canonical": "system_state",
+      "aliases": ["control_state"],
+      "rule": "System state is actual constrained mode, flow, power, or actuator position."
+    },
+    {
+      "canonical": "physical_state",
+      "aliases": ["engine_state"],
+      "rule": "Physical state contains evolved physical quantities, not behavior-facing projections."
+    },
+    {
+      "canonical": "observation",
+      "aliases": ["perception"],
+      "rule": "An observation is an explicitly selected or transformed view of physical state."
+    },
+    {
+      "canonical": "timestep_index",
+      "aliases": ["step", "tick", "time_index"],
+      "rule": "The canonical index is zero-based and distinct from the simulation clock."
+    },
+    {
+      "canonical": "simulation_clock",
+      "aliases": ["clock"],
+      "rule": "The clock is the timestamp derived from period start and fixed timestep duration."
+    },
+    {
+      "canonical": "weather_series",
+      "aliases": ["weather"],
+      "rule": "The complete ordered series contains one weather state per timestep."
+    },
+    {
+      "canonical": "simulation_period",
+      "aliases": ["calendar"],
+      "rule": "The period defines start, timezone, fixed dt_minutes, and n_timesteps."
+    }
+  ],
+  "forbidden_canonical_field_tokens": [
+    "person",
+    "persons",
+    "space",
+    "spaces",
+    "room",
+    "rooms",
+    "time_index",
+    "relative_humidity_percent"
+  ]
+}

@@ -1,0 +1,1026 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexusep.example/contracts/multizone_dwelling_v1.schema.json",
+  "title": "NexusEP multizone_dwelling_v1 canonical scenario",
+  "description": "Backend-neutral input contract for one deterministic multizone dwelling.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "use_case",
+    "scenario_id",
+    "metadata",
+    "deterministic_seed",
+    "simulation_period",
+    "geometry_configuration",
+    "building",
+    "occupants",
+    "weather_source",
+    "weather_series",
+    "output_configuration"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "use_case": {
+      "const": "multizone_dwelling_v1"
+    },
+    "scenario_id": {
+      "$ref": "#/$defs/id"
+    },
+    "metadata": {
+      "$ref": "#/$defs/metadata"
+    },
+    "deterministic_seed": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4294967295,
+      "x-unit": "1",
+      "x-registry-path": "scenario.deterministic_seed"
+    },
+    "simulation_period": {
+      "$ref": "#/$defs/simulation_period"
+    },
+    "geometry_configuration": {
+      "$ref": "#/$defs/geometry_configuration"
+    },
+    "building": {
+      "$ref": "#/$defs/building"
+    },
+    "occupants": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "$ref": "#/$defs/occupant"
+      }
+    },
+    "weather_source": {
+      "$ref": "#/$defs/weather_source"
+    },
+    "weather_series": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/weather_state"
+      }
+    },
+    "output_configuration": {
+      "$ref": "#/$defs/output_configuration"
+    }
+  },
+  "$defs": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "description", "scenario_kind", "tags"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "description": {
+          "type": "string"
+        },
+        "scenario_kind": {
+          "enum": ["validated", "smoke_test", "benchmark", "profile"]
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "provenance_record": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["target_path", "method", "source_paths", "rule"],
+      "properties": {
+        "target_path": {
+          "type": "string",
+          "pattern": "^/"
+        },
+        "method": {
+          "enum": ["provided", "derived", "defaulted"]
+        },
+        "source_paths": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "pattern": "^/"
+          },
+          "uniqueItems": true
+        },
+        "rule": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    },
+    "geometry_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "geometry_tier",
+        "enabled_features",
+        "orientation_convention",
+        "optional_geometry_affects_physics",
+        "defaults_applied",
+        "derived_values"
+      ],
+      "properties": {
+        "geometry_tier": {
+          "const": "thermal_topology_v1"
+        },
+        "enabled_features": {
+          "type": "array",
+          "items": {
+            "enum": ["airflow", "solar_gains", "daylight"]
+          },
+          "uniqueItems": true
+        },
+        "orientation_convention": {
+          "const": "azimuth_clockwise_from_true_north_tilt_from_horizontal"
+        },
+        "optional_geometry_affects_physics": {
+          "const": false
+        },
+        "defaults_applied": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/provenance_record"
+          }
+        },
+        "derived_values": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/provenance_record"
+          }
+        }
+      }
+    },
+    "simulation_period": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_datetime", "timezone", "n_timesteps", "dt_minutes"],
+      "properties": {
+        "start_datetime": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        "timezone": {
+          "type": "string",
+          "minLength": 1
+        },
+        "n_timesteps": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 525600,
+          "x-unit": "1",
+          "x-registry-path": "scenario.simulation_period.n_timesteps"
+        },
+        "dt_minutes": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 60.0,
+          "x-unit": "min",
+          "x-registry-path": "scenario.simulation_period.dt_minutes"
+        }
+      }
+    },
+    "building": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "building_id",
+        "floor_area_m2",
+        "volume_m3",
+        "height_m",
+        "n_floors",
+        "dwelling"
+      ],
+      "properties": {
+        "scenario_id": {
+          "$ref": "#/$defs/id"
+        },
+        "building_id": {
+          "$ref": "#/$defs/id"
+        },
+        "floor_area_m2": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 10000.0,
+          "x-unit": "m2",
+          "x-registry-path": "scenario.building.floor_area_m2"
+        },
+        "volume_m3": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 100000.0,
+          "x-unit": "m3",
+          "x-registry-path": "scenario.building.volume_m3"
+        },
+        "height_m": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 100.0,
+          "x-unit": "m",
+          "x-registry-path": "scenario.building.height_m"
+        },
+        "n_floors": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 20,
+          "x-unit": "1",
+          "x-registry-path": "scenario.building.n_floors"
+        },
+        "dwelling": {
+          "$ref": "#/$defs/dwelling"
+        }
+      }
+    },
+    "dwelling": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "building_id",
+        "dwelling_id",
+        "floor_area_m2",
+        "volume_m3",
+        "zones"
+      ],
+      "properties": {
+        "scenario_id": {
+          "$ref": "#/$defs/id"
+        },
+        "building_id": {
+          "$ref": "#/$defs/id"
+        },
+        "dwelling_id": {
+          "$ref": "#/$defs/id"
+        },
+        "floor_area_m2": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 10000.0,
+          "x-unit": "m2",
+          "x-registry-path": "scenario.building.dwelling.floor_area_m2"
+        },
+        "volume_m3": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 100000.0,
+          "x-unit": "m3",
+          "x-registry-path": "scenario.building.dwelling.volume_m3"
+        },
+        "zones": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "$ref": "#/$defs/zone"
+          }
+        }
+      }
+    },
+    "zone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "building_id",
+        "dwelling_id",
+        "zone_id",
+        "zone_type",
+        "floor_area_m2",
+        "volume_m3",
+        "height_m",
+        "initial_air_temperature_c",
+        "initial_mean_radiant_temperature_c",
+        "initial_relative_humidity_fraction",
+        "initial_co2_ppm",
+        "surfaces",
+        "systems"
+      ],
+      "properties": {
+        "scenario_id": {
+          "$ref": "#/$defs/id"
+        },
+        "building_id": {
+          "$ref": "#/$defs/id"
+        },
+        "dwelling_id": {
+          "$ref": "#/$defs/id"
+        },
+        "zone_id": {
+          "$ref": "#/$defs/id"
+        },
+        "zone_type": {
+          "enum": ["living", "bedroom", "kitchen", "bathroom", "corridor", "other"]
+        },
+        "floor_area_m2": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1000.0,
+          "x-unit": "m2",
+          "x-registry-path": "scenario.building.dwelling.zones[].floor_area_m2"
+        },
+        "volume_m3": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 10000.0,
+          "x-unit": "m3",
+          "x-registry-path": "scenario.building.dwelling.zones[].volume_m3"
+        },
+        "height_m": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 20.0,
+          "x-unit": "m",
+          "x-registry-path": "scenario.building.dwelling.zones[].height_m"
+        },
+        "initial_air_temperature_c": {
+          "type": "number",
+          "minimum": -50.0,
+          "maximum": 80.0,
+          "x-unit": "degC",
+          "x-registry-path": "scenario.building.dwelling.zones[].initial_air_temperature_c"
+        },
+        "initial_mean_radiant_temperature_c": {
+          "type": "number",
+          "minimum": -50.0,
+          "maximum": 80.0,
+          "x-unit": "degC",
+          "x-registry-path": "scenario.building.dwelling.zones[].initial_mean_radiant_temperature_c"
+        },
+        "initial_relative_humidity_fraction": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "x-unit": "1",
+          "x-registry-path": "scenario.building.dwelling.zones[].initial_relative_humidity_fraction"
+        },
+        "initial_co2_ppm": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100000.0,
+          "x-unit": "ppm",
+          "x-registry-path": "scenario.building.dwelling.zones[].initial_co2_ppm"
+        },
+        "surfaces": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/surface"
+          }
+        },
+        "systems": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/system"
+          }
+        }
+      }
+    },
+    "surface": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "building_id",
+        "dwelling_id",
+        "zone_id",
+        "surface_id",
+        "boundary_type",
+        "adjacent_zone_id",
+        "paired_surface_id",
+        "area_m2",
+        "thermal_transmittance_w_m2_k",
+        "heat_capacity_j_k",
+        "azimuth_deg",
+        "tilt_deg",
+        "openings"
+      ],
+      "properties": {
+        "scenario_id": {
+          "$ref": "#/$defs/id"
+        },
+        "building_id": {
+          "$ref": "#/$defs/id"
+        },
+        "dwelling_id": {
+          "$ref": "#/$defs/id"
+        },
+        "zone_id": {
+          "$ref": "#/$defs/id"
+        },
+        "surface_id": {
+          "$ref": "#/$defs/id"
+        },
+        "boundary_type": {
+          "enum": ["exterior", "interzone"]
+        },
+        "adjacent_zone_id": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "paired_surface_id": {
+          "type": ["string", "null"],
+          "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+        },
+        "area_m2": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 10000.0,
+          "x-unit": "m2",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].area_m2"
+        },
+        "thermal_transmittance_w_m2_k": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 20.0,
+          "x-unit": "W/(m2*K)",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].thermal_transmittance_w_m2_k"
+        },
+        "heat_capacity_j_k": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1000000000000.0,
+          "x-unit": "J/K",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].heat_capacity_j_k"
+        },
+        "azimuth_deg": {
+          "type": "number",
+          "minimum": 0.0,
+          "exclusiveMaximum": 360.0,
+          "x-unit": "deg",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].azimuth_deg"
+        },
+        "tilt_deg": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 180.0,
+          "x-unit": "deg",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].tilt_deg"
+        },
+        "openings": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/opening"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "boundary_type": {
+                "const": "exterior"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "adjacent_zone_id": {
+                "type": "null"
+              },
+              "paired_surface_id": {
+                "type": "null"
+              }
+            }
+          },
+          "else": {
+            "properties": {
+              "adjacent_zone_id": {
+                "$ref": "#/$defs/id"
+              },
+              "paired_surface_id": {
+                "$ref": "#/$defs/id"
+              },
+              "openings": {
+                "maxItems": 0
+              }
+            }
+          }
+        }
+      ]
+    },
+    "opening": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "building_id",
+        "dwelling_id",
+        "zone_id",
+        "surface_id",
+        "opening_id",
+        "opening_type",
+        "boundary_type",
+        "adjacent_zone_id",
+        "area_m2",
+        "openable_area_m2",
+        "thermal_transmittance_w_m2_k",
+        "solar_transmittance_fraction",
+        "visible_transmittance_fraction"
+      ],
+      "properties": {
+        "scenario_id": {
+          "$ref": "#/$defs/id"
+        },
+        "building_id": {
+          "$ref": "#/$defs/id"
+        },
+        "dwelling_id": {
+          "$ref": "#/$defs/id"
+        },
+        "zone_id": {
+          "$ref": "#/$defs/id"
+        },
+        "surface_id": {
+          "$ref": "#/$defs/id"
+        },
+        "opening_id": {
+          "$ref": "#/$defs/id"
+        },
+        "opening_type": {
+          "const": "window"
+        },
+        "boundary_type": {
+          "const": "exterior"
+        },
+        "adjacent_zone_id": {
+          "type": "null"
+        },
+        "area_m2": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1000.0,
+          "x-unit": "m2",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].openings[].area_m2"
+        },
+        "openable_area_m2": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1000.0,
+          "x-unit": "m2",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].openings[].openable_area_m2"
+        },
+        "thermal_transmittance_w_m2_k": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 20.0,
+          "x-unit": "W/(m2*K)",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].openings[].thermal_transmittance_w_m2_k"
+        },
+        "solar_transmittance_fraction": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "x-unit": "1",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].openings[].solar_transmittance_fraction"
+        },
+        "visible_transmittance_fraction": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "x-unit": "1",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].openings[].visible_transmittance_fraction"
+        }
+      }
+    },
+    "system": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "building_id",
+        "dwelling_id",
+        "zone_id",
+        "system_id",
+        "system_type"
+      ],
+      "properties": {
+        "scenario_id": {
+          "$ref": "#/$defs/id"
+        },
+        "building_id": {
+          "$ref": "#/$defs/id"
+        },
+        "dwelling_id": {
+          "$ref": "#/$defs/id"
+        },
+        "zone_id": {
+          "$ref": "#/$defs/id"
+        },
+        "system_id": {
+          "$ref": "#/$defs/id"
+        },
+        "system_type": {
+          "enum": ["heating", "cooling", "ventilation", "lighting"]
+        },
+        "max_heating_power_w": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1000000.0,
+          "x-unit": "W",
+          "x-registry-path": "scenario.building.dwelling.zones[].systems[].max_heating_power_w"
+        },
+        "heating_efficiency_fraction": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 1.0,
+          "x-unit": "1",
+          "x-registry-path": "scenario.building.dwelling.zones[].systems[].heating_efficiency_fraction"
+        },
+        "heating_setpoint_c": {
+          "type": "number",
+          "minimum": -50.0,
+          "maximum": 80.0,
+          "x-unit": "degC",
+          "x-registry-path": "scenario.building.dwelling.zones[].systems[].heating_setpoint_c"
+        },
+        "max_cooling_power_w": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1000000.0,
+          "x-unit": "W",
+          "x-registry-path": "scenario.building.dwelling.zones[].systems[].max_cooling_power_w"
+        },
+        "cooling_cop": {
+          "type": "number",
+          "exclusiveMinimum": 0.0,
+          "maximum": 20.0,
+          "x-unit": "1",
+          "x-registry-path": "scenario.building.dwelling.zones[].systems[].cooling_cop"
+        },
+        "cooling_setpoint_c": {
+          "type": "number",
+          "minimum": -50.0,
+          "maximum": 80.0,
+          "x-unit": "degC",
+          "x-registry-path": "scenario.building.dwelling.zones[].systems[].cooling_setpoint_c"
+        },
+        "max_ventilation_volume_flow_m3_s": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1000.0,
+          "x-unit": "m3/s",
+          "x-registry-path": "scenario.building.dwelling.zones[].systems[].max_ventilation_volume_flow_m3_s"
+        },
+        "max_lighting_power_w": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1000000.0,
+          "x-unit": "W",
+          "x-registry-path": "scenario.building.dwelling.zones[].systems[].max_lighting_power_w"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "system_type": {
+                "const": "heating"
+              }
+            }
+          },
+          "then": {
+            "required": ["max_heating_power_w", "heating_efficiency_fraction", "heating_setpoint_c"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "system_type": {
+                "const": "cooling"
+              }
+            }
+          },
+          "then": {
+            "required": ["max_cooling_power_w", "cooling_cop", "cooling_setpoint_c"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "system_type": {
+                "const": "ventilation"
+              }
+            }
+          },
+          "then": {
+            "required": ["max_ventilation_volume_flow_m3_s"]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "system_type": {
+                "const": "lighting"
+              }
+            }
+          },
+          "then": {
+            "required": ["max_lighting_power_w"]
+          }
+        }
+      ]
+    },
+    "occupant": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "building_id",
+        "occupant_id",
+        "dwelling_id",
+        "home_zone_id",
+        "sleep_zone_id",
+        "sensible_heat_gain_w",
+        "co2_generation_kg_s",
+        "moisture_generation_kg_s",
+        "location_schedule"
+      ],
+      "properties": {
+        "scenario_id": {
+          "$ref": "#/$defs/id"
+        },
+        "building_id": {
+          "$ref": "#/$defs/id"
+        },
+        "occupant_id": {
+          "$ref": "#/$defs/id"
+        },
+        "dwelling_id": {
+          "$ref": "#/$defs/id"
+        },
+        "home_zone_id": {
+          "$ref": "#/$defs/id"
+        },
+        "sleep_zone_id": {
+          "$ref": "#/$defs/id"
+        },
+        "sensible_heat_gain_w": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1000.0,
+          "x-unit": "W",
+          "x-registry-path": "scenario.occupants[].sensible_heat_gain_w"
+        },
+        "co2_generation_kg_s": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "x-unit": "kg/s",
+          "x-registry-path": "scenario.occupants[].co2_generation_kg_s"
+        },
+        "moisture_generation_kg_s": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "x-unit": "kg/s",
+          "x-registry-path": "scenario.occupants[].moisture_generation_kg_s"
+        },
+        "location_schedule": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/schedule_entry"
+          }
+        }
+      }
+    },
+    "schedule_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start_timestep_index", "end_timestep_index", "zone_id", "activity"],
+      "properties": {
+        "start_timestep_index": {
+          "type": "integer",
+          "minimum": 0,
+          "x-unit": "1",
+          "x-registry-path": "scenario.occupants[].location_schedule[].start_timestep_index"
+        },
+        "end_timestep_index": {
+          "type": "integer",
+          "minimum": 1,
+          "x-unit": "1",
+          "x-registry-path": "scenario.occupants[].location_schedule[].end_timestep_index"
+        },
+        "zone_id": {
+          "$ref": "#/$defs/id"
+        },
+        "activity": {
+          "enum": ["away", "awake", "sleeping"]
+        }
+      }
+    },
+    "weather_source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_type",
+        "path",
+        "interpolation",
+        "allowable_derived_fields",
+        "synthetic_profile"
+      ],
+      "properties": {
+        "source_type": {
+          "enum": ["inline", "external_json", "synthetic_smoke_test"]
+        },
+        "path": {
+          "type": ["string", "null"]
+        },
+        "interpolation": {
+          "const": "none"
+        },
+        "allowable_derived_fields": {
+          "type": "array",
+          "items": {
+            "const": "timestamp"
+          },
+          "uniqueItems": true
+        },
+        "synthetic_profile": {
+          "type": ["string", "null"],
+          "enum": ["constant_mild_v1", null]
+        }
+      }
+    },
+    "weather_state": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "scenario_id",
+        "timestep_index",
+        "timestamp",
+        "outdoor_temperature_c",
+        "relative_humidity_fraction",
+        "atmospheric_pressure_pa",
+        "outdoor_co2_ppm",
+        "wind_speed_m_s",
+        "wind_direction_deg",
+        "direct_normal_radiation_w_m2",
+        "diffuse_horizontal_radiation_w_m2",
+        "global_horizontal_radiation_w_m2"
+      ],
+      "properties": {
+        "scenario_id": {
+          "$ref": "#/$defs/id"
+        },
+        "timestep_index": {
+          "type": "integer",
+          "minimum": 0,
+          "x-unit": "1",
+          "x-registry-path": "scenario.weather_series[].timestep_index"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "(Z|[+-][0-9]{2}:[0-9]{2})$"
+        },
+        "outdoor_temperature_c": {
+          "type": "number",
+          "minimum": -100.0,
+          "maximum": 100.0,
+          "x-unit": "degC",
+          "x-registry-path": "scenario.weather_series[].outdoor_temperature_c"
+        },
+        "sky_temperature_c": {
+          "type": ["number", "null"],
+          "minimum": -100.0,
+          "maximum": 100.0,
+          "x-unit": "degC",
+          "x-registry-path": "scenario.weather_series[].sky_temperature_c"
+        },
+        "relative_humidity_fraction": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "x-unit": "1",
+          "x-registry-path": "scenario.weather_series[].relative_humidity_fraction"
+        },
+        "atmospheric_pressure_pa": {
+          "type": "number",
+          "minimum": 10000.0,
+          "maximum": 120000.0,
+          "x-unit": "Pa",
+          "x-registry-path": "scenario.weather_series[].atmospheric_pressure_pa"
+        },
+        "outdoor_co2_ppm": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100000.0,
+          "x-unit": "ppm",
+          "x-registry-path": "scenario.weather_series[].outdoor_co2_ppm"
+        },
+        "wind_speed_m_s": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "x-unit": "m/s",
+          "x-registry-path": "scenario.weather_series[].wind_speed_m_s"
+        },
+        "wind_direction_deg": {
+          "type": "number",
+          "minimum": 0.0,
+          "exclusiveMaximum": 360.0,
+          "x-unit": "deg",
+          "x-registry-path": "scenario.weather_series[].wind_direction_deg"
+        },
+        "direct_normal_radiation_w_m2": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2000.0,
+          "x-unit": "W/m2",
+          "x-registry-path": "scenario.weather_series[].direct_normal_radiation_w_m2"
+        },
+        "diffuse_horizontal_radiation_w_m2": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2000.0,
+          "x-unit": "W/m2",
+          "x-registry-path": "scenario.weather_series[].diffuse_horizontal_radiation_w_m2"
+        },
+        "global_horizontal_radiation_w_m2": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 2000.0,
+          "x-unit": "W/m2",
+          "x-registry-path": "scenario.weather_series[].global_horizontal_radiation_w_m2"
+        },
+        "outdoor_illuminance_lux": {
+          "type": ["number", "null"],
+          "minimum": 0.0,
+          "maximum": 250000.0,
+          "x-unit": "lux",
+          "x-registry-path": "scenario.weather_series[].outdoor_illuminance_lux"
+        },
+        "outdoor_noise_db": {
+          "type": ["number", "null"],
+          "minimum": 0.0,
+          "maximum": 200.0,
+          "x-unit": "dB",
+          "x-registry-path": "scenario.weather_series[].outdoor_noise_db"
+        },
+        "rain": {
+          "type": ["boolean", "null"]
+        }
+      }
+    },
+    "output_configuration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "enabled",
+        "directory",
+        "formats",
+        "include_interval_timestamps",
+        "include_debug_graph",
+        "fields"
+      ],
+      "properties": {
+        "enabled": {
+          "type": "boolean"
+        },
+        "directory": {
+          "type": "string",
+          "minLength": 1
+        },
+        "formats": {
+          "type": "array",
+          "items": {
+            "enum": ["json", "csv", "npz"]
+          },
+          "uniqueItems": true
+        },
+        "include_interval_timestamps": {
+          "type": "boolean"
+        },
+        "include_debug_graph": {
+          "type": "boolean"
+        },
+        "fields": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

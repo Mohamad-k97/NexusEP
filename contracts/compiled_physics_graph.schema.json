@@ -1,0 +1,244 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://nexusep.example/contracts/compiled_physics_graph.schema.json",
+  "title": "NexusEP deterministic compiled physics graph",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "compiled_graph_version",
+    "scenario_schema_version",
+    "scenario_id",
+    "id_registry",
+    "time_axis",
+    "geometry_configuration",
+    "nodes",
+    "connections",
+    "systems",
+    "graph_sha256"
+  ],
+  "properties": {
+    "compiled_graph_version": {"const": "1.0.0"},
+    "scenario_schema_version": {"type": "string"},
+    "scenario_id": {"$ref": "#/$defs/external_id"},
+    "id_registry": {"$ref": "#/$defs/id_registry"},
+    "time_axis": {"$ref": "#/$defs/time_axis"},
+    "geometry_configuration": {"type": "object"},
+    "nodes": {
+      "type": "array",
+      "minItems": 2,
+      "items": {"$ref": "#/$defs/node"}
+    },
+    "connections": {
+      "type": "array",
+      "minItems": 1,
+      "items": {"$ref": "#/$defs/connection"}
+    },
+    "systems": {
+      "type": "array",
+      "items": {"$ref": "#/$defs/system_attachment"}
+    },
+    "graph_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "$defs": {
+    "external_id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+    },
+    "nullable_external_id": {
+      "type": ["string", "null"],
+      "pattern": "^[A-Za-z][A-Za-z0-9_.-]*$"
+    },
+    "id_registry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["registry_version", "ordering", "entity_types"],
+      "properties": {
+        "registry_version": {"const": "1.0.0"},
+        "ordering": {"const": "ascending_ascii_codepoint_by_external_id"},
+        "entity_types": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "scenario",
+            "building",
+            "dwelling",
+            "zone",
+            "surface",
+            "opening",
+            "system",
+            "occupant"
+          ],
+          "properties": {
+            "scenario": {"$ref": "#/$defs/id_registry_entry"},
+            "building": {"$ref": "#/$defs/id_registry_entry"},
+            "dwelling": {"$ref": "#/$defs/id_registry_entry"},
+            "zone": {"$ref": "#/$defs/id_registry_entry"},
+            "surface": {"$ref": "#/$defs/id_registry_entry"},
+            "opening": {"$ref": "#/$defs/id_registry_entry"},
+            "system": {"$ref": "#/$defs/id_registry_entry"},
+            "occupant": {"$ref": "#/$defs/id_registry_entry"}
+          }
+        }
+      }
+    },
+    "id_registry_entry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["external_ids", "indices"],
+      "properties": {
+        "external_ids": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/external_id"},
+          "uniqueItems": true
+        },
+        "indices": {
+          "type": "array",
+          "items": {"type": "integer", "minimum": 0, "x-unit": "1"},
+          "uniqueItems": true
+        }
+      }
+    },
+    "time_axis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "start_datetime",
+        "timezone",
+        "n_timesteps",
+        "dt_minutes",
+        "end_datetime_exclusive",
+        "timestamp_semantics",
+        "weather_final_interval",
+        "elapsed_time_policy"
+      ],
+      "properties": {
+        "start_datetime": {"type": "string", "format": "date-time"},
+        "timezone": {"type": "string", "minLength": 1},
+        "n_timesteps": {"type": "integer", "minimum": 1, "x-unit": "1"},
+        "dt_minutes": {"type": "number", "exclusiveMinimum": 0, "x-unit": "min"},
+        "end_datetime_exclusive": {"type": "string", "format": "date-time"},
+        "timestamp_semantics": {"const": "start_of_half_open_interval"},
+        "weather_final_interval": {"const": "last_state_applies_to_exclusive_end"},
+        "elapsed_time_policy": {"const": "fixed_duration_on_utc_timeline"}
+      }
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["method", "source_paths", "rule"],
+        "properties": {
+          "method": {"enum": ["provided", "derived", "defaulted"]},
+          "source_paths": {
+            "type": "array",
+            "items": {"type": "string"},
+            "uniqueItems": true
+          },
+          "rule": {"type": "string", "minLength": 1}
+        }
+      }
+    },
+    "node": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "node_index",
+        "node_id",
+        "node_type",
+        "scenario_id",
+        "building_id",
+        "dwelling_id",
+        "zone_id",
+        "volume_m3",
+        "provenance"
+      ],
+      "properties": {
+        "node_index": {"type": "integer", "minimum": 0, "x-unit": "1"},
+        "node_id": {"type": "string", "minLength": 1},
+        "node_type": {"enum": ["exterior", "zone"]},
+        "scenario_id": {"$ref": "#/$defs/external_id"},
+        "building_id": {"$ref": "#/$defs/nullable_external_id"},
+        "dwelling_id": {"$ref": "#/$defs/nullable_external_id"},
+        "zone_id": {"$ref": "#/$defs/nullable_external_id"},
+        "volume_m3": {"type": ["number", "null"], "exclusiveMinimum": 0, "x-unit": "m3"},
+        "provenance": {"$ref": "#/$defs/provenance"}
+      }
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "connection_index",
+        "connection_id",
+        "connection_type",
+        "boundary_type",
+        "directionality",
+        "source_node_id",
+        "target_node_id",
+        "owner_zone_ids",
+        "surface_ids",
+        "opening_ids",
+        "gross_area_m2",
+        "net_opaque_area_m2",
+        "thermal_transmittance_w_m2_k",
+        "heat_capacity_j_k",
+        "azimuth_deg",
+        "tilt_deg",
+        "openable_area_m2",
+        "solar_transmittance_fraction",
+        "visible_transmittance_fraction",
+        "provenance"
+      ],
+      "properties": {
+        "connection_index": {"type": "integer", "minimum": 0, "x-unit": "1"},
+        "connection_id": {"type": "string", "minLength": 1},
+        "connection_type": {"enum": ["surface", "opening"]},
+        "boundary_type": {"enum": ["exterior", "interzone"]},
+        "directionality": {"const": "bidirectional"},
+        "source_node_id": {"type": "string", "minLength": 1},
+        "target_node_id": {"type": "string", "minLength": 1},
+        "owner_zone_ids": {"type": "array", "items": {"$ref": "#/$defs/external_id"}},
+        "surface_ids": {"type": "array", "items": {"$ref": "#/$defs/external_id"}},
+        "opening_ids": {"type": "array", "items": {"$ref": "#/$defs/external_id"}},
+        "gross_area_m2": {"type": "number", "minimum": 0, "x-unit": "m2"},
+        "net_opaque_area_m2": {"type": ["number", "null"], "minimum": 0, "x-unit": "m2"},
+        "thermal_transmittance_w_m2_k": {"type": "number", "minimum": 0, "x-unit": "W/(m2*K)"},
+        "heat_capacity_j_k": {"type": ["number", "null"], "minimum": 0, "x-unit": "J/K"},
+        "azimuth_deg": {"type": ["number", "null"], "minimum": 0, "exclusiveMaximum": 360, "x-unit": "deg"},
+        "tilt_deg": {"type": ["number", "null"], "minimum": 0, "maximum": 180, "x-unit": "deg"},
+        "openable_area_m2": {"type": ["number", "null"], "minimum": 0, "x-unit": "m2"},
+        "solar_transmittance_fraction": {"type": ["number", "null"], "minimum": 0, "maximum": 1, "x-unit": "1"},
+        "visible_transmittance_fraction": {"type": ["number", "null"], "minimum": 0, "maximum": 1, "x-unit": "1"},
+        "provenance": {"$ref": "#/$defs/provenance"}
+      }
+    },
+    "system_attachment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "system_index",
+        "system_id",
+        "scenario_id",
+        "building_id",
+        "dwelling_id",
+        "zone_id",
+        "system_type"
+      ],
+      "properties": {
+        "system_index": {"type": "integer", "minimum": 0, "x-unit": "1"},
+        "system_id": {"$ref": "#/$defs/external_id"},
+        "scenario_id": {"$ref": "#/$defs/external_id"},
+        "building_id": {"$ref": "#/$defs/external_id"},
+        "dwelling_id": {"$ref": "#/$defs/external_id"},
+        "zone_id": {"$ref": "#/$defs/external_id"},
+        "system_type": {"enum": ["heating", "cooling", "ventilation", "lighting"]}
+      }
+    }
+  }
+}

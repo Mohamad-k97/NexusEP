@@ -1,0 +1,394 @@
+{
+  "schema_version": "1.0.0",
+  "use_case": "multizone_dwelling_v1",
+  "scenario_id": "minimal_two_zone_dwelling",
+  "metadata": {
+    "name": "Minimal two-zone dwelling",
+    "description": "Canonical validation scenario for multizone_dwelling_v1.",
+    "scenario_kind": "validated",
+    "tags": ["canonical", "validation", "two-zone"]
+  },
+  "deterministic_seed": 20260806,
+  "simulation_period": {
+    "start_datetime": "2026-01-15T00:00:00+01:00",
+    "timezone": "Europe/Rome",
+    "n_timesteps": 4,
+    "dt_minutes": 60.0
+  },
+  "geometry_configuration": {
+    "geometry_tier": "thermal_topology_v1",
+    "enabled_features": ["airflow", "solar_gains", "daylight"],
+    "orientation_convention": "azimuth_clockwise_from_true_north_tilt_from_horizontal",
+    "optional_geometry_affects_physics": false,
+    "defaults_applied": [],
+    "derived_values": []
+  },
+  "building": {
+    "scenario_id": "minimal_two_zone_dwelling",
+    "building_id": "building_001",
+    "floor_area_m2": 70.0,
+    "volume_m3": 175.0,
+    "height_m": 3.0,
+    "n_floors": 1,
+    "dwelling": {
+      "scenario_id": "minimal_two_zone_dwelling",
+      "building_id": "building_001",
+      "dwelling_id": "dwelling_001",
+      "floor_area_m2": 70.0,
+      "volume_m3": 175.0,
+      "zones": [
+        {
+          "scenario_id": "minimal_two_zone_dwelling",
+          "building_id": "building_001",
+          "dwelling_id": "dwelling_001",
+          "zone_id": "living_zone",
+          "zone_type": "living",
+          "floor_area_m2": 42.0,
+          "volume_m3": 105.0,
+          "height_m": 2.5,
+          "initial_air_temperature_c": 20.0,
+          "initial_mean_radiant_temperature_c": 20.0,
+          "initial_relative_humidity_fraction": 0.50,
+          "initial_co2_ppm": 700.0,
+          "surfaces": [
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "living_zone",
+              "surface_id": "living_exterior_south",
+              "boundary_type": "exterior",
+              "adjacent_zone_id": null,
+              "paired_surface_id": null,
+              "area_m2": 24.0,
+              "thermal_transmittance_w_m2_k": 0.35,
+              "heat_capacity_j_k": 1200000.0,
+              "azimuth_deg": 180.0,
+              "tilt_deg": 90.0,
+              "openings": [
+                {
+                  "scenario_id": "minimal_two_zone_dwelling",
+                  "building_id": "building_001",
+                  "dwelling_id": "dwelling_001",
+                  "zone_id": "living_zone",
+                  "surface_id": "living_exterior_south",
+                  "opening_id": "living_window_south",
+                  "opening_type": "window",
+                  "boundary_type": "exterior",
+                  "adjacent_zone_id": null,
+                  "area_m2": 4.0,
+                  "openable_area_m2": 2.0,
+                  "thermal_transmittance_w_m2_k": 1.4,
+                  "solar_transmittance_fraction": 0.55,
+                  "visible_transmittance_fraction": 0.70
+                }
+              ]
+            },
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "living_zone",
+              "surface_id": "living_to_bedroom",
+              "boundary_type": "interzone",
+              "adjacent_zone_id": "bedroom_zone",
+              "paired_surface_id": "bedroom_to_living",
+              "area_m2": 12.0,
+              "thermal_transmittance_w_m2_k": 1.8,
+              "heat_capacity_j_k": 600000.0,
+              "azimuth_deg": 90.0,
+              "tilt_deg": 90.0,
+              "openings": []
+            }
+          ],
+          "systems": [
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "living_zone",
+              "system_id": "living_heating",
+              "system_type": "heating",
+              "max_heating_power_w": 3000.0,
+              "heating_efficiency_fraction": 0.95,
+              "heating_setpoint_c": 20.0
+            },
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "living_zone",
+              "system_id": "living_cooling",
+              "system_type": "cooling",
+              "max_cooling_power_w": 2500.0,
+              "cooling_cop": 3.2,
+              "cooling_setpoint_c": 26.0
+            },
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "living_zone",
+              "system_id": "living_ventilation",
+              "system_type": "ventilation",
+              "max_ventilation_volume_flow_m3_s": 0.06
+            },
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "living_zone",
+              "system_id": "living_lighting",
+              "system_type": "lighting",
+              "max_lighting_power_w": 160.0
+            }
+          ]
+        },
+        {
+          "scenario_id": "minimal_two_zone_dwelling",
+          "building_id": "building_001",
+          "dwelling_id": "dwelling_001",
+          "zone_id": "bedroom_zone",
+          "zone_type": "bedroom",
+          "floor_area_m2": 28.0,
+          "volume_m3": 70.0,
+          "height_m": 2.5,
+          "initial_air_temperature_c": 19.0,
+          "initial_mean_radiant_temperature_c": 19.0,
+          "initial_relative_humidity_fraction": 0.52,
+          "initial_co2_ppm": 750.0,
+          "surfaces": [
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "bedroom_zone",
+              "surface_id": "bedroom_exterior_north",
+              "boundary_type": "exterior",
+              "adjacent_zone_id": null,
+              "paired_surface_id": null,
+              "area_m2": 18.0,
+              "thermal_transmittance_w_m2_k": 0.35,
+              "heat_capacity_j_k": 900000.0,
+              "azimuth_deg": 0.0,
+              "tilt_deg": 90.0,
+              "openings": [
+                {
+                  "scenario_id": "minimal_two_zone_dwelling",
+                  "building_id": "building_001",
+                  "dwelling_id": "dwelling_001",
+                  "zone_id": "bedroom_zone",
+                  "surface_id": "bedroom_exterior_north",
+                  "opening_id": "bedroom_window_north",
+                  "opening_type": "window",
+                  "boundary_type": "exterior",
+                  "adjacent_zone_id": null,
+                  "area_m2": 2.5,
+                  "openable_area_m2": 1.25,
+                  "thermal_transmittance_w_m2_k": 1.4,
+                  "solar_transmittance_fraction": 0.55,
+                  "visible_transmittance_fraction": 0.70
+                }
+              ]
+            },
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "bedroom_zone",
+              "surface_id": "bedroom_to_living",
+              "boundary_type": "interzone",
+              "adjacent_zone_id": "living_zone",
+              "paired_surface_id": "living_to_bedroom",
+              "area_m2": 12.0,
+              "thermal_transmittance_w_m2_k": 1.8,
+              "heat_capacity_j_k": 600000.0,
+              "azimuth_deg": 270.0,
+              "tilt_deg": 90.0,
+              "openings": []
+            }
+          ],
+          "systems": [
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "bedroom_zone",
+              "system_id": "bedroom_heating",
+              "system_type": "heating",
+              "max_heating_power_w": 1800.0,
+              "heating_efficiency_fraction": 0.95,
+              "heating_setpoint_c": 19.0
+            },
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "bedroom_zone",
+              "system_id": "bedroom_cooling",
+              "system_type": "cooling",
+              "max_cooling_power_w": 1500.0,
+              "cooling_cop": 3.2,
+              "cooling_setpoint_c": 26.0
+            },
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "bedroom_zone",
+              "system_id": "bedroom_ventilation",
+              "system_type": "ventilation",
+              "max_ventilation_volume_flow_m3_s": 0.04
+            },
+            {
+              "scenario_id": "minimal_two_zone_dwelling",
+              "building_id": "building_001",
+              "dwelling_id": "dwelling_001",
+              "zone_id": "bedroom_zone",
+              "system_id": "bedroom_lighting",
+              "system_type": "lighting",
+              "max_lighting_power_w": 90.0
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "occupants": [
+    {
+      "scenario_id": "minimal_two_zone_dwelling",
+      "building_id": "building_001",
+      "occupant_id": "occupant_001",
+      "dwelling_id": "dwelling_001",
+      "home_zone_id": "living_zone",
+      "sleep_zone_id": "bedroom_zone",
+      "sensible_heat_gain_w": 80.0,
+      "co2_generation_kg_s": 0.000005,
+      "moisture_generation_kg_s": 0.000012,
+      "location_schedule": [
+        {
+          "start_timestep_index": 0,
+          "end_timestep_index": 2,
+          "zone_id": "living_zone",
+          "activity": "awake"
+        },
+        {
+          "start_timestep_index": 2,
+          "end_timestep_index": 4,
+          "zone_id": "bedroom_zone",
+          "activity": "sleeping"
+        }
+      ]
+    },
+    {
+      "scenario_id": "minimal_two_zone_dwelling",
+      "building_id": "building_001",
+      "occupant_id": "occupant_002",
+      "dwelling_id": "dwelling_001",
+      "home_zone_id": "living_zone",
+      "sleep_zone_id": "bedroom_zone",
+      "sensible_heat_gain_w": 75.0,
+      "co2_generation_kg_s": 0.0000045,
+      "moisture_generation_kg_s": 0.000011,
+      "location_schedule": [
+        {
+          "start_timestep_index": 0,
+          "end_timestep_index": 1,
+          "zone_id": "bedroom_zone",
+          "activity": "sleeping"
+        },
+        {
+          "start_timestep_index": 1,
+          "end_timestep_index": 4,
+          "zone_id": "living_zone",
+          "activity": "awake"
+        }
+      ]
+    }
+  ],
+  "weather_source": {
+    "source_type": "inline",
+    "path": null,
+    "interpolation": "none",
+    "allowable_derived_fields": ["timestamp"],
+    "synthetic_profile": null
+  },
+  "weather_series": [
+    {
+      "scenario_id": "minimal_two_zone_dwelling",
+      "timestep_index": 0,
+      "timestamp": "2026-01-15T00:00:00+01:00",
+      "outdoor_temperature_c": 5.0,
+      "sky_temperature_c": 0.0,
+      "relative_humidity_fraction": 0.75,
+      "atmospheric_pressure_pa": 101325.0,
+      "outdoor_co2_ppm": 420.0,
+      "wind_speed_m_s": 2.0,
+      "wind_direction_deg": 180.0,
+      "direct_normal_radiation_w_m2": 0.0,
+      "diffuse_horizontal_radiation_w_m2": 0.0,
+      "global_horizontal_radiation_w_m2": 0.0,
+      "outdoor_illuminance_lux": 0.0,
+      "rain": false
+    },
+    {
+      "scenario_id": "minimal_two_zone_dwelling",
+      "timestep_index": 1,
+      "timestamp": "2026-01-15T01:00:00+01:00",
+      "outdoor_temperature_c": 4.5,
+      "sky_temperature_c": -0.5,
+      "relative_humidity_fraction": 0.77,
+      "atmospheric_pressure_pa": 101300.0,
+      "outdoor_co2_ppm": 420.0,
+      "wind_speed_m_s": 2.2,
+      "wind_direction_deg": 190.0,
+      "direct_normal_radiation_w_m2": 0.0,
+      "diffuse_horizontal_radiation_w_m2": 0.0,
+      "global_horizontal_radiation_w_m2": 0.0,
+      "outdoor_illuminance_lux": 0.0,
+      "rain": false
+    },
+    {
+      "scenario_id": "minimal_two_zone_dwelling",
+      "timestep_index": 2,
+      "timestamp": "2026-01-15T02:00:00+01:00",
+      "outdoor_temperature_c": 4.0,
+      "sky_temperature_c": -1.0,
+      "relative_humidity_fraction": 0.79,
+      "atmospheric_pressure_pa": 101275.0,
+      "outdoor_co2_ppm": 420.0,
+      "wind_speed_m_s": 2.5,
+      "wind_direction_deg": 200.0,
+      "direct_normal_radiation_w_m2": 0.0,
+      "diffuse_horizontal_radiation_w_m2": 0.0,
+      "global_horizontal_radiation_w_m2": 0.0,
+      "outdoor_illuminance_lux": 0.0,
+      "rain": false
+    },
+    {
+      "scenario_id": "minimal_two_zone_dwelling",
+      "timestep_index": 3,
+      "timestamp": "2026-01-15T03:00:00+01:00",
+      "outdoor_temperature_c": 3.5,
+      "sky_temperature_c": -1.5,
+      "relative_humidity_fraction": 0.80,
+      "atmospheric_pressure_pa": 101250.0,
+      "outdoor_co2_ppm": 420.0,
+      "wind_speed_m_s": 2.7,
+      "wind_direction_deg": 210.0,
+      "direct_normal_radiation_w_m2": 0.0,
+      "diffuse_horizontal_radiation_w_m2": 0.0,
+      "global_horizontal_radiation_w_m2": 0.0,
+      "outdoor_illuminance_lux": 0.0,
+      "rain": false
+    }
+  ],
+  "output_configuration": {
+    "enabled": true,
+    "directory": "artifacts/scenarios/minimal_two_zone_dwelling",
+    "formats": ["json"],
+    "include_interval_timestamps": true,
+    "include_debug_graph": false,
+    "fields": []
+  }
+}
