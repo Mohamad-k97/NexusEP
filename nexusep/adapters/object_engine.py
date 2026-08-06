@@ -77,6 +77,44 @@ class ObjectEngineAdapter:
         self.physics_graph = self._compile_physics_graph()
         self.defaults_applied = tuple(defaults)
 
+    def conformance_snapshot(self) -> dict[str, object]:
+        """Return a backend-decoded, side-effect-free contract snapshot."""
+
+        zone_states = []
+        for zone_id in sorted(self.building_model.all_zone_ids()):
+            state = self.building_model.get_zone_state(zone_id)
+            zone_states.append(
+                {
+                    "zone_id": zone_id,
+                    "air_temperature_c": state.indoor_temp_c,
+                    "mean_radiant_temperature_c": state.indoor_mass_temp_c,
+                    "relative_humidity_fraction": (
+                        (state.indoor_relative_humidity_percent or 0.0) / 100.0
+                    ),
+                    "co2_ppm": state.co2_ppm,
+                }
+            )
+        return {
+            "engine_name": self.engine_name,
+            "engine_version": self.engine_version,
+            "scenario_id": self.scenario.scenario_id,
+            "schema_version": self.scenario.schema_version,
+            "graph_sha256": self.compiled_graph["graph_sha256"],
+            "decoded_ids": {
+                "building": [self.building_model.building_id],
+                "dwelling": sorted(self.building_model.dwellings),
+                "zone": sorted(self.building_model.all_zone_ids()),
+                "occupant": sorted(item.occupant_id for item in self.scenario.occupants),
+            },
+            "initial_zone_states": zone_states,
+            "native_topology": {
+                "zone_connection_ids": sorted(self.physics_graph.zone_connections),
+                "boundary_connection_ids": sorted(
+                    self.physics_graph.boundary_connections
+                ),
+            },
+        }
+
     def _compile_building_model(self) -> tuple[BuildingModel, list[AppliedDefault]]:
         canonical_building = self.scenario.building
         canonical_dwelling = canonical_building.dwelling
@@ -573,6 +611,23 @@ class ObjectEngineAdapter:
             previous_acoustic_state=None,
             source="canonical_object_adapter",
         )
+        encoded_trace = {
+            "timestamp": object_weather.datetime.isoformat(),
+            "time_index": step_input.timestep_index,
+            "dt_minutes": step_input.dt_minutes,
+            "weather": object_weather.to_dict(),
+            "controls": {
+                zone_id: command.to_dict()
+                for zone_id, command in sorted(commands.items())
+            },
+            "occupants": [
+                item.model_dump(mode="json")
+                for item in sorted(
+                    step_input.occupant_states, key=lambda value: value.occupant_id
+                )
+            ],
+            "graph_sha256": self.compiled_graph["graph_sha256"],
+        }
         native_result = run_building_physics_step(
             native_input,
             require_physics_graph=True,
@@ -664,6 +719,30 @@ class ObjectEngineAdapter:
                     "action_events": [
                         item.model_dump(mode="json")
                         for item in step_input.action_events
+                    ],
+                    "step_trace": encoded_trace,
+                    "next_prior_zone_states": [
+                        {
+                            "zone_id": zone_id,
+                            "air_temperature_c": self.building_model.get_zone_state(
+                                zone_id
+                            ).indoor_temp_c,
+                            "mean_radiant_temperature_c": self.building_model.get_zone_state(
+                                zone_id
+                            ).indoor_mass_temp_c,
+                            "relative_humidity_fraction": (
+                                (
+                                    self.building_model.get_zone_state(zone_id)
+                                    .indoor_relative_humidity_percent
+                                    or 0.0
+                                )
+                                / 100.0
+                            ),
+                            "co2_ppm": self.building_model.get_zone_state(
+                                zone_id
+                            ).co2_ppm,
+                        }
+                        for zone_id in sorted(self.building_model.all_zone_ids())
                     ],
                 }
                 if include_debug

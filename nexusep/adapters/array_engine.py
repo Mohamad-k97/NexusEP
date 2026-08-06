@@ -8,7 +8,10 @@ from typing import Any, Literal, cast
 
 from nexusep.abbey.arrays import schema as array_schema
 from nexusep.abbey.arrays.decoder import (
+    decode_person_state_records,
     decode_system_state_records,
+    decode_time_state_record,
+    decode_weather_state_record,
     decode_zone_state_records,
 )
 from nexusep.abbey.arrays.encoder import compile_simulation_to_arrays
@@ -67,6 +70,42 @@ class ArrayEngineAdapter:
         self.defaults_applied = tuple(defaults)
         self._base_state = compile_simulation_to_arrays(readable)
         self._verify_backend_registry()
+
+    def conformance_snapshot(self) -> dict[str, object]:
+        """Return a backend-decoded, side-effect-free contract snapshot."""
+
+        state = copy.deepcopy(self._base_state)
+        zones = decode_zone_state_records(state)
+        people = decode_person_state_records(state)
+        return {
+            "engine_name": self.engine_name,
+            "engine_version": self.engine_version,
+            "scenario_id": self.scenario.scenario_id,
+            "schema_version": self.scenario.schema_version,
+            "graph_sha256": self.compiled_graph["graph_sha256"],
+            "decoded_ids": {
+                "building": [self.scenario.building.building_id],
+                "dwelling": [self.scenario.building.dwelling.dwelling_id],
+                "zone": sorted(item["zone_id"] for item in zones),
+                "occupant": sorted(item["person_id"] for item in people),
+            },
+            "initial_zone_states": [
+                {
+                    "zone_id": item["zone_id"],
+                    "air_temperature_c": item["air_temperature_C"],
+                    "mean_radiant_temperature_c": item[
+                        "mean_radiant_temperature_C"
+                    ],
+                    "relative_humidity_fraction": item["relative_humidity"],
+                    "co2_ppm": item["co2_ppm"],
+                }
+                for item in sorted(zones, key=lambda value: value["zone_id"])
+            ],
+            "native_topology": {
+                "representation": "compiled_zone_ua_without_surface_graph",
+                "zone_ids": sorted(item["zone_id"] for item in zones),
+            },
+        }
 
     def _compile_exact_readable_input(
         self,
@@ -384,6 +423,14 @@ class ArrayEngineAdapter:
                 )
 
     def _apply_step(self, state, step_input: SimulationStepInput) -> None:
+        if state.series is None:
+            raise BackendAdapterError("array state has no canonical weather/time series")
+        state.dynamic.weather_state[:] = state.series.weather_series[
+            step_input.timestep_index, :
+        ]
+        state.dynamic.time_state[:] = state.series.time_series[
+            step_input.timestep_index, :
+        ]
         registry = state.metadata["registry"]
         occupants_by_zone: defaultdict[str, int] = defaultdict(int)
         for prior in step_input.prior_zone_states:
@@ -525,6 +572,20 @@ class ArrayEngineAdapter:
             )
         state = copy.deepcopy(self._base_state)
         self._apply_step(state, step_input)
+        encoded_trace = {
+            "timestamp": step_input.timestamp.isoformat(),
+            "time_index": decode_time_state_record(state)["time_step_index"],
+            "dt_minutes": step_input.dt_minutes,
+            "weather": decode_weather_state_record(state),
+            "controls": {
+                item["zone_id"]: item
+                for item in decode_system_state_records(state)
+            },
+            "occupants": sorted(
+                decode_person_state_records(state), key=lambda item: item["person_id"]
+            ),
+            "graph_sha256": self.compiled_graph["graph_sha256"],
+        }
         state, _, _, _ = run_array_timestep(
             state=state,
             time_index=step_input.timestep_index,
@@ -640,6 +701,23 @@ class ArrayEngineAdapter:
                         key: value.model_dump(mode="json")
                         for key, value in controls.items()
                     },
+                    "step_trace": encoded_trace,
+                    "next_prior_zone_states": [
+                        {
+                            "zone_id": item["zone_id"],
+                            "air_temperature_c": item["air_temperature_C"],
+                            "mean_radiant_temperature_c": item[
+                                "mean_radiant_temperature_C"
+                            ],
+                            "relative_humidity_fraction": item[
+                                "relative_humidity"
+                            ],
+                            "co2_ppm": item["co2_ppm"],
+                        }
+                        for item in sorted(
+                            zone_records, key=lambda value: value["zone_id"]
+                        )
+                    ],
                 }
                 if include_debug
                 else None

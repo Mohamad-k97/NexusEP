@@ -1,0 +1,45 @@
+{
+  "report_version": "1.0.0",
+  "contract_version": "1.0.0",
+  "recorded_date": "2026-08-06",
+  "suite": "tests/conformance/test_backend_contract_v1.py",
+  "command": "python -m pytest tests/conformance/test_backend_contract_v1.py tests/adapters/test_canonical_adapters.py -q",
+  "shared_contract_definitions": 10,
+  "backend_cases": {
+    "object": {
+      "passed": 10,
+      "failed": 0
+    },
+    "array": {
+      "passed": 10,
+      "failed": 0
+    }
+  },
+  "adapter_regression_cases": {
+    "passed": 5,
+    "failed": 0
+  },
+  "total": {
+    "passed": 25,
+    "failed": 0,
+    "warnings": 0
+  },
+  "contract_areas": [
+    "schema_validation",
+    "required_optional_geometry",
+    "id_round_trip",
+    "timestamp_alignment",
+    "weather_mapping",
+    "graph_construction",
+    "missing_references",
+    "unit_conversions",
+    "output_schema_and_energy_hierarchy",
+    "deterministic_repeat"
+  ],
+  "scope_note": "Conformance is structural and semantic; no test compares one backend's numerical physics result with the other backend's result.",
+  "explicit_capability_notes": [
+    "The array kernel validates but does not consume atmospheric pressure.",
+    "The array kernel has no canonical surface-graph execution path.",
+    "Canonical v1 has no ventilation fan-power field, so both adapters expose explicit zero fan electrical power."
+  ]
+}

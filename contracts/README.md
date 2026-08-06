@@ -28,3 +28,8 @@ are governed by `docs/architecture/decisions/0001-dual-engine-policy.md`.
 Breaking public changes create a new contract version. Existing versions are
 immutable except for clarifications that do not change accepted data or output
 meaning.
+
+Contract version `1.0.0` is frozen by
+`docs/architecture/decisions/0003-contract-v1-freeze.md`. The normative
+publication index, compatibility rules, conformance evidence, and initial
+parity evidence are linked from `docs/architecture/contract_v1_index.md`.

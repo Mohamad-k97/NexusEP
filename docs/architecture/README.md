@@ -32,5 +32,12 @@ engine is currently the canonical source of behavioral truth.
 - `../../contracts/` — machine-readable schema, unit registry, terminology,
   and the minimal conformance scenario.
 
+- `decisions/0003-contract-v1-freeze.md` - frozen v1 scope and versioning rules.
+- `contract_v1_index.md` - normative contract publication index.
+- `conformance_report_v1.md` - shared object/array conformance result.
+- `initial_parity_report_v1.md` - measured, classified first parity result.
+- `compatibility_and_deprecation.md` - migration, warning, and removal policy.
+- `PHASE_2_15_2_17_GATE.md` - final Phase 2 contract-freeze evidence.
+
 The architecture gate remains governed by the Phase 1 baseline until the
 promotion evidence in ADR-0001 is complete.

@@ -1,0 +1,3649 @@
+{
+  "classification_counts": {
+    "contract_violation": 11,
+    "exact_match": 165,
+    "expected_model_difference": 22,
+    "missing_feature": 8,
+    "tolerance_match": 2
+  },
+  "comparisons": [
+    {
+      "absolute_difference": null,
+      "array_value": "885168497f39af100709e59c32516adac8dcb4f5cc87d5a5a379015f453f2b32",
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": "885168497f39af100709e59c32516adac8dcb4f5cc87d5a5a379015f453f2b32",
+      "quantity": "graph_sha256",
+      "rationale": "both adapters were constructed from the same compiled graph",
+      "relative_difference": null,
+      "scope": "initial_state",
+      "timestep_index": null,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": {
+        "building": [
+          "building_001"
+        ],
+        "dwelling": [
+          "dwelling_001"
+        ],
+        "occupant": [
+          "occupant_001",
+          "occupant_002"
+        ],
+        "zone": [
+          "bedroom_zone",
+          "living_zone"
+        ]
+      },
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": {
+        "building": [
+          "building_001"
+        ],
+        "dwelling": [
+          "dwelling_001"
+        ],
+        "occupant": [
+          "occupant_001",
+          "occupant_002"
+        ],
+        "zone": [
+          "bedroom_zone",
+          "living_zone"
+        ]
+      },
+      "quantity": "decoded_ids",
+      "rationale": "numeric backend IDs must decode to original canonical strings",
+      "relative_difference": null,
+      "scope": "initial_state",
+      "timestep_index": null,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 19.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 19.0,
+      "quantity": "air_temperature_c",
+      "rationale": "canonical initial state must survive backend encoding",
+      "relative_difference": 0.0,
+      "scope": "initial_state",
+      "timestep_index": null,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 19.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 19.0,
+      "quantity": "mean_radiant_temperature_c",
+      "rationale": "canonical initial state must survive backend encoding",
+      "relative_difference": 0.0,
+      "scope": "initial_state",
+      "timestep_index": null,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.52,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.52,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "canonical initial state must survive backend encoding",
+      "relative_difference": 0.0,
+      "scope": "initial_state",
+      "timestep_index": null,
+      "tolerance": {
+        "absolute": 0.005,
+        "rationale": "half a percentage point of relative humidity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 750.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 750.0,
+      "quantity": "co2_ppm",
+      "rationale": "canonical initial state must survive backend encoding",
+      "relative_difference": 0.0,
+      "scope": "initial_state",
+      "timestep_index": null,
+      "tolerance": {
+        "absolute": 5.0,
+        "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 20.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 20.0,
+      "quantity": "air_temperature_c",
+      "rationale": "canonical initial state must survive backend encoding",
+      "relative_difference": 0.0,
+      "scope": "initial_state",
+      "timestep_index": null,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 20.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 20.0,
+      "quantity": "mean_radiant_temperature_c",
+      "rationale": "canonical initial state must survive backend encoding",
+      "relative_difference": 0.0,
+      "scope": "initial_state",
+      "timestep_index": null,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.5,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.5,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "canonical initial state must survive backend encoding",
+      "relative_difference": 0.0,
+      "scope": "initial_state",
+      "timestep_index": null,
+      "tolerance": {
+        "absolute": 0.005,
+        "rationale": "half a percentage point of relative humidity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 700.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 700.0,
+      "quantity": "co2_ppm",
+      "rationale": "canonical initial state must survive backend encoding",
+      "relative_difference": 0.0,
+      "scope": "initial_state",
+      "timestep_index": null,
+      "tolerance": {
+        "absolute": 5.0,
+        "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": null,
+      "classification": "missing_feature",
+      "entity_id": null,
+      "object_value": {
+        "boundary_connection_ids": [
+          "opening:bedroom_window_north",
+          "opening:living_window_south",
+          "surface:bedroom_exterior_north",
+          "surface:living_exterior_south"
+        ],
+        "zone_connection_ids": [
+          "surface_pair:bedroom_to_living|living_to_bedroom"
+        ]
+      },
+      "quantity": "native_surface_graph",
+      "rationale": "the array backend has compiled UA values but no surface-graph kernel",
+      "relative_difference": null,
+      "scope": "topology",
+      "timestep_index": null,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "2026-01-15T00:00:00+01:00",
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": "2026-01-15T00:00:00+01:00",
+      "quantity": "timestamp",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": null,
+      "scope": "weather_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 5.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 5.0,
+      "quantity": "outdoor_temperature_c",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.75,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.75,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": null,
+      "classification": "missing_feature",
+      "entity_id": null,
+      "object_value": 101325.0,
+      "quantity": "atmospheric_pressure_pa",
+      "rationale": "array pressure consumption is not implemented",
+      "relative_difference": null,
+      "scope": "weather_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 420.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 420.0,
+      "quantity": "outdoor_co2_ppm",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 2.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 2.0,
+      "quantity": "wind_speed_m_s",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 180.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 180.0,
+      "quantity": "wind_direction_deg",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "direct_normal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "diffuse_horizontal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "global_horizontal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": [
+        {
+          "activity": "awake",
+          "is_present": true,
+          "occupant_id": "occupant_001",
+          "zone_id": "living_zone"
+        },
+        {
+          "activity": "sleeping",
+          "is_present": true,
+          "occupant_id": "occupant_002",
+          "zone_id": "bedroom_zone"
+        }
+      ],
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": [
+        {
+          "activity": "awake",
+          "is_present": true,
+          "occupant_id": "occupant_001",
+          "zone_id": "living_zone"
+        },
+        {
+          "activity": "sleeping",
+          "is_present": true,
+          "occupant_id": "occupant_002",
+          "zone_id": "bedroom_zone"
+        }
+      ],
+      "quantity": "occupant_locations_and_states",
+      "rationale": "occupant identities, locations, and presence are canonical inputs",
+      "relative_difference": null,
+      "scope": "occupancy_mapping",
+      "timestep_index": 0,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "heating",
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": "heating",
+      "quantity": "hvac_mode",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": null,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.3,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.3,
+      "quantity": "heating_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.01,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.01,
+      "quantity": "ventilation_volume_flow_m3_s",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": false,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": false,
+      "quantity": "lights_on",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "window_opening_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 1.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 1.0,
+      "quantity": "shading_open_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "heating",
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": "heating",
+      "quantity": "hvac_mode",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": null,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.4,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.4,
+      "quantity": "heating_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.02,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.02,
+      "quantity": "ventilation_volume_flow_m3_s",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": true,
+      "quantity": "lights_on",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 80.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 80.0,
+      "quantity": "lighting_power_w",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "window_opening_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 1.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 1.0,
+      "quantity": "shading_open_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 1.3337826605449656,
+      "array_value": 19.162578257924906,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 20.496360918469872,
+      "quantity": "air_temperature_c",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.06507412051585484,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.007917131844733527,
+      "array_value": 0.4463969321739883,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.4543140640187218,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.0174265612090038,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 0.005,
+        "rationale": "half a percentage point of relative humidity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 34.34003676733482,
+      "array_value": 686.554192229039,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 720.8942289963738,
+      "quantity": "co2_ppm",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.047635333154411416,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 5.0,
+        "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 540.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 540.0,
+      "quantity": "heating_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 568.421052631579,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 568.421052631579,
+      "quantity": "total_electrical_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 568.421052631579,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 568.421052631579,
+      "quantity": "electrical_energy_wh",
+      "rationale": "cumulative energy drift is evaluated separately from power",
+      "relative_difference": 0.0,
+      "scope": "cumulative_drift",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 0.01,
+        "rationale": "cumulative drift is checked separately from instantaneous power",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 1.977584655473727,
+      "array_value": 20.580002149151085,
+      "classification": "expected_model_difference",
+      "entity_id": "living_zone",
+      "object_value": 22.557586804624812,
+      "quantity": "air_temperature_c",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.08766827199212097,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.02033135481823234,
+      "array_value": 0.4044290265657901,
+      "classification": "expected_model_difference",
+      "entity_id": "living_zone",
+      "object_value": 0.42476038138402245,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.047865468883857426,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 0.005,
+        "rationale": "half a percentage point of relative humidity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 22.95766945129617,
+      "array_value": 618.3529914000262,
+      "classification": "expected_model_difference",
+      "entity_id": "living_zone",
+      "object_value": 641.3106608513224,
+      "quantity": "co2_ppm",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.03579804742497262,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 5.0,
+        "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 1200.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 1200.0,
+      "quantity": "heating_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 80.0,
+      "array_value": 80.0,
+      "classification": "contract_violation",
+      "entity_id": "living_zone",
+      "object_value": 160.0,
+      "quantity": "lighting_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.5,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 80.0,
+      "array_value": 1343.157894736842,
+      "classification": "contract_violation",
+      "entity_id": "living_zone",
+      "object_value": 1423.157894736842,
+      "quantity": "total_electrical_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.05621301775147929,
+      "scope": "step_output",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 80.0,
+      "array_value": 1343.157894736842,
+      "classification": "contract_violation",
+      "entity_id": "living_zone",
+      "object_value": 1423.157894736842,
+      "quantity": "electrical_energy_wh",
+      "rationale": "cumulative energy drift is evaluated separately from power",
+      "relative_difference": 0.05621301775147929,
+      "scope": "cumulative_drift",
+      "timestep_index": 0,
+      "tolerance": {
+        "absolute": 0.01,
+        "rationale": "cumulative drift is checked separately from instantaneous power",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "electrical_energy_aggregation",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 0,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "finite_physical_outputs",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 0,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "bounded_humidity_and_nonnegative_power",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 0,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "2026-01-15T01:00:00+01:00",
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": "2026-01-15T01:00:00+01:00",
+      "quantity": "timestamp",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": null,
+      "scope": "weather_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 4.5,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 4.5,
+      "quantity": "outdoor_temperature_c",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.77,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.77,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": null,
+      "classification": "missing_feature",
+      "entity_id": null,
+      "object_value": 101300.0,
+      "quantity": "atmospheric_pressure_pa",
+      "rationale": "array pressure consumption is not implemented",
+      "relative_difference": null,
+      "scope": "weather_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 420.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 420.0,
+      "quantity": "outdoor_co2_ppm",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 2.2,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 2.2,
+      "quantity": "wind_speed_m_s",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 190.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 190.0,
+      "quantity": "wind_direction_deg",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "direct_normal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "diffuse_horizontal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "global_horizontal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": [
+        {
+          "activity": "awake",
+          "is_present": true,
+          "occupant_id": "occupant_001",
+          "zone_id": "living_zone"
+        },
+        {
+          "activity": "awake",
+          "is_present": true,
+          "occupant_id": "occupant_002",
+          "zone_id": "living_zone"
+        }
+      ],
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": [
+        {
+          "activity": "awake",
+          "is_present": true,
+          "occupant_id": "occupant_001",
+          "zone_id": "living_zone"
+        },
+        {
+          "activity": "awake",
+          "is_present": true,
+          "occupant_id": "occupant_002",
+          "zone_id": "living_zone"
+        }
+      ],
+      "quantity": "occupant_locations_and_states",
+      "rationale": "occupant identities, locations, and presence are canonical inputs",
+      "relative_difference": null,
+      "scope": "occupancy_mapping",
+      "timestep_index": 1,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "off",
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": "off",
+      "quantity": "hvac_mode",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": null,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "heating_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.01,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.01,
+      "quantity": "ventilation_volume_flow_m3_s",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": true,
+      "quantity": "lights_on",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 45.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 45.0,
+      "quantity": "lighting_power_w",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "window_opening_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 1.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 1.0,
+      "quantity": "shading_open_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "off",
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": "off",
+      "quantity": "hvac_mode",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": null,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "heating_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.02,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.02,
+      "quantity": "ventilation_volume_flow_m3_s",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": false,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": false,
+      "quantity": "lights_on",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.25,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.25,
+      "quantity": "window_opening_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 1.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 1.0,
+      "quantity": "shading_open_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 1.0999605629779161,
+      "array_value": 17.387172642651386,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 18.487133205629302,
+      "quantity": "air_temperature_c",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.059498709223503615,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0252202988485018,
+      "array_value": 0.3967323424461118,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.4219526412946136,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.0597704490511593,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 0.005,
+        "rationale": "half a percentage point of relative humidity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 43.21379066274142,
+      "array_value": 575.4899454669394,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 618.7037361296808,
+      "quantity": "co2_ppm",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.0698456921127817,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 5.0,
+        "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "heating_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 45.0,
+      "array_value": 45.0,
+      "classification": "contract_violation",
+      "entity_id": "bedroom_zone",
+      "object_value": 90.0,
+      "quantity": "lighting_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.5,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 45.0,
+      "array_value": 45.0,
+      "classification": "contract_violation",
+      "entity_id": "bedroom_zone",
+      "object_value": 90.0,
+      "quantity": "total_electrical_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.5,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 45.0,
+      "array_value": 613.421052631579,
+      "classification": "contract_violation",
+      "entity_id": "bedroom_zone",
+      "object_value": 658.421052631579,
+      "quantity": "electrical_energy_wh",
+      "rationale": "cumulative energy drift is evaluated separately from power",
+      "relative_difference": 0.0683453237410072,
+      "scope": "cumulative_drift",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 0.01,
+        "rationale": "cumulative drift is checked separately from instantaneous power",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 1.5289380570106754,
+      "array_value": 17.29228803596766,
+      "classification": "expected_model_difference",
+      "entity_id": "living_zone",
+      "object_value": 15.763349978956983,
+      "quantity": "air_temperature_c",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.08841733689784202,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.06280811262225289,
+      "array_value": 0.3746365274381963,
+      "classification": "expected_model_difference",
+      "entity_id": "living_zone",
+      "object_value": 0.3118284148159434,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.1676507975656867,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 0.005,
+        "rationale": "half a percentage point of relative humidity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 35.388545753690096,
+      "array_value": 553.2911092986282,
+      "classification": "expected_model_difference",
+      "entity_id": "living_zone",
+      "object_value": 517.9025635449381,
+      "quantity": "co2_ppm",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.0639600838671525,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 5.0,
+        "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "heating_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "total_electrical_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 80.0,
+      "array_value": 1343.157894736842,
+      "classification": "contract_violation",
+      "entity_id": "living_zone",
+      "object_value": 1423.157894736842,
+      "quantity": "electrical_energy_wh",
+      "rationale": "cumulative energy drift is evaluated separately from power",
+      "relative_difference": 0.05621301775147929,
+      "scope": "cumulative_drift",
+      "timestep_index": 1,
+      "tolerance": {
+        "absolute": 0.01,
+        "rationale": "cumulative drift is checked separately from instantaneous power",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "electrical_energy_aggregation",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 1,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "finite_physical_outputs",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 1,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "bounded_humidity_and_nonnegative_power",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 1,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "2026-01-15T02:00:00+01:00",
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": "2026-01-15T02:00:00+01:00",
+      "quantity": "timestamp",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": null,
+      "scope": "weather_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 4.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 4.0,
+      "quantity": "outdoor_temperature_c",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.79,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.79,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": null,
+      "classification": "missing_feature",
+      "entity_id": null,
+      "object_value": 101275.0,
+      "quantity": "atmospheric_pressure_pa",
+      "rationale": "array pressure consumption is not implemented",
+      "relative_difference": null,
+      "scope": "weather_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 420.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 420.0,
+      "quantity": "outdoor_co2_ppm",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 2.5,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 2.5,
+      "quantity": "wind_speed_m_s",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 200.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 200.0,
+      "quantity": "wind_direction_deg",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "direct_normal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "diffuse_horizontal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "global_horizontal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": [
+        {
+          "activity": "sleeping",
+          "is_present": true,
+          "occupant_id": "occupant_001",
+          "zone_id": "bedroom_zone"
+        },
+        {
+          "activity": "awake",
+          "is_present": true,
+          "occupant_id": "occupant_002",
+          "zone_id": "living_zone"
+        }
+      ],
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": [
+        {
+          "activity": "sleeping",
+          "is_present": true,
+          "occupant_id": "occupant_001",
+          "zone_id": "bedroom_zone"
+        },
+        {
+          "activity": "awake",
+          "is_present": true,
+          "occupant_id": "occupant_002",
+          "zone_id": "living_zone"
+        }
+      ],
+      "quantity": "occupant_locations_and_states",
+      "rationale": "occupant identities, locations, and presence are canonical inputs",
+      "relative_difference": null,
+      "scope": "occupancy_mapping",
+      "timestep_index": 2,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "heating",
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": "heating",
+      "quantity": "hvac_mode",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": null,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.35,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.35,
+      "quantity": "heating_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_volume_flow_m3_s",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": false,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": false,
+      "quantity": "lights_on",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "window_opening_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 1.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 1.0,
+      "quantity": "shading_open_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "off",
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": "off",
+      "quantity": "hvac_mode",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": null,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "heating_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_volume_flow_m3_s",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": false,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": false,
+      "quantity": "lights_on",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "window_opening_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 1.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 1.0,
+      "quantity": "shading_open_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 1.4240586879691683,
+      "array_value": 20.11095245425562,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 21.53501114222479,
+      "quantity": "air_temperature_c",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.06612760395451778,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.13319411240483858,
+      "array_value": 0.405383531966362,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.5385776443712006,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.24730716879335973,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 0.005,
+        "rationale": "half a percentage point of relative humidity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 91.18225856932247,
+      "array_value": 667.1212914272731,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 758.3035499965956,
+      "quantity": "co2_ppm",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.12024506356291202,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 5.0,
+        "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 630.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 630.0,
+      "quantity": "heating_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 663.1578947368421,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 663.1578947368421,
+      "quantity": "total_electrical_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 45.0,
+      "array_value": 1276.578947368421,
+      "classification": "contract_violation",
+      "entity_id": "bedroom_zone",
+      "object_value": 1321.578947368421,
+      "quantity": "electrical_energy_wh",
+      "rationale": "cumulative energy drift is evaluated separately from power",
+      "relative_difference": 0.034050179211469536,
+      "scope": "cumulative_drift",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 0.01,
+        "rationale": "cumulative drift is checked separately from instantaneous power",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.04703284535827379,
+      "array_value": 18.36306010570663,
+      "classification": "tolerance_match",
+      "entity_id": "living_zone",
+      "object_value": 18.316027260348356,
+      "quantity": "air_temperature_c",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.0025612749229992197,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.14518592350199022,
+      "array_value": 0.38292754114313465,
+      "classification": "expected_model_difference",
+      "entity_id": "living_zone",
+      "object_value": 0.5281134646451249,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.2749142622211885,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 0.005,
+        "rationale": "half a percentage point of relative humidity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0587253266692187,
+      "array_value": 601.6037265384177,
+      "classification": "tolerance_match",
+      "entity_id": "living_zone",
+      "object_value": 601.662451865087,
+      "quantity": "co2_ppm",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 9.760510480116666e-05,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 5.0,
+        "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "heating_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "total_electrical_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 80.0,
+      "array_value": 1343.157894736842,
+      "classification": "contract_violation",
+      "entity_id": "living_zone",
+      "object_value": 1423.157894736842,
+      "quantity": "electrical_energy_wh",
+      "rationale": "cumulative energy drift is evaluated separately from power",
+      "relative_difference": 0.05621301775147929,
+      "scope": "cumulative_drift",
+      "timestep_index": 2,
+      "tolerance": {
+        "absolute": 0.01,
+        "rationale": "cumulative drift is checked separately from instantaneous power",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "electrical_energy_aggregation",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 2,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "finite_physical_outputs",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 2,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "bounded_humidity_and_nonnegative_power",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 2,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "2026-01-15T03:00:00+01:00",
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": "2026-01-15T03:00:00+01:00",
+      "quantity": "timestamp",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": null,
+      "scope": "weather_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 3.5,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 3.5,
+      "quantity": "outdoor_temperature_c",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.8,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.8,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": null,
+      "classification": "missing_feature",
+      "entity_id": null,
+      "object_value": 101250.0,
+      "quantity": "atmospheric_pressure_pa",
+      "rationale": "array pressure consumption is not implemented",
+      "relative_difference": null,
+      "scope": "weather_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 420.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 420.0,
+      "quantity": "outdoor_co2_ppm",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 2.7,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 2.7,
+      "quantity": "wind_speed_m_s",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 210.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 210.0,
+      "quantity": "wind_direction_deg",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "direct_normal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "diffuse_horizontal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": 0.0,
+      "quantity": "global_horizontal_radiation_w_m2",
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
+      "scope": "weather_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": [
+        {
+          "activity": "sleeping",
+          "is_present": true,
+          "occupant_id": "occupant_001",
+          "zone_id": "bedroom_zone"
+        },
+        {
+          "activity": "awake",
+          "is_present": true,
+          "occupant_id": "occupant_002",
+          "zone_id": "living_zone"
+        }
+      ],
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": [
+        {
+          "activity": "sleeping",
+          "is_present": true,
+          "occupant_id": "occupant_001",
+          "zone_id": "bedroom_zone"
+        },
+        {
+          "activity": "awake",
+          "is_present": true,
+          "occupant_id": "occupant_002",
+          "zone_id": "living_zone"
+        }
+      ],
+      "quantity": "occupant_locations_and_states",
+      "rationale": "occupant identities, locations, and presence are canonical inputs",
+      "relative_difference": null,
+      "scope": "occupancy_mapping",
+      "timestep_index": 3,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "off",
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": "off",
+      "quantity": "hvac_mode",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": null,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "heating_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_volume_flow_m3_s",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": false,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": false,
+      "quantity": "lights_on",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "window_opening_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "shading_open_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "cooling",
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": "cooling",
+      "quantity": "hvac_mode",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": null,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "heating_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.1,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.1,
+      "quantity": "cooling_power_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_volume_flow_m3_s",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": false,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": false,
+      "quantity": "lights_on",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "window_opening_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "shading_open_fraction",
+      "rationale": "canonical control commands must survive both encoders",
+      "relative_difference": 0.0,
+      "scope": "control_mapping",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "canonical input mapping is structural conformance, not physical parity",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 0.7363695672078805,
+      "array_value": 18.61636992546558,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 19.35273949267346,
+      "quantity": "air_temperature_c",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.03804988784593801,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.11301460225023618,
+      "array_value": 0.41878107671675624,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.5317956789669924,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.21251508186333118,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 0.005,
+        "rationale": "half a percentage point of relative humidity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 154.4226174692925,
+      "array_value": 743.4807463942179,
+      "classification": "expected_model_difference",
+      "entity_id": "bedroom_zone",
+      "object_value": 897.9033638635104,
+      "quantity": "co2_ppm",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.1719813330521904,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 5.0,
+        "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "heating_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "cooling_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "bedroom_zone",
+      "object_value": 0.0,
+      "quantity": "total_electrical_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 45.0,
+      "array_value": 1276.578947368421,
+      "classification": "contract_violation",
+      "entity_id": "bedroom_zone",
+      "object_value": 1321.578947368421,
+      "quantity": "electrical_energy_wh",
+      "rationale": "cumulative energy drift is evaluated separately from power",
+      "relative_difference": 0.034050179211469536,
+      "scope": "cumulative_drift",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 0.01,
+        "rationale": "cumulative drift is checked separately from instantaneous power",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.13505322102750483,
+      "array_value": 17.58391612753453,
+      "classification": "expected_model_difference",
+      "entity_id": "living_zone",
+      "object_value": 17.718969348562034,
+      "quantity": "air_temperature_c",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.007621956919207885,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 0.1,
+        "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.1316324444606805,
+      "array_value": 0.3922038999213198,
+      "classification": "expected_model_difference",
+      "entity_id": "living_zone",
+      "object_value": 0.5238363443820003,
+      "quantity": "relative_humidity_fraction",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.25128543651543467,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 0.005,
+        "rationale": "half a percentage point of relative humidity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 43.55809928032693,
+      "array_value": 641.8642409049089,
+      "classification": "expected_model_difference",
+      "entity_id": "living_zone",
+      "object_value": 685.4223401852358,
+      "quantity": "co2_ppm",
+      "rationale": "backend physical solvers differ and neither is canonical truth",
+      "relative_difference": 0.06354928447262942,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 5.0,
+        "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "heating_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 250.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 250.0,
+      "quantity": "cooling_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "ventilation_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 0.0,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 0.0,
+      "quantity": "lighting_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": 78.125,
+      "classification": "exact_match",
+      "entity_id": "living_zone",
+      "object_value": 78.125,
+      "quantity": "total_electrical_power_w",
+      "rationale": "the same physical command and power output contract applies",
+      "relative_difference": 0.0,
+      "scope": "step_output",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 1e-06,
+        "rationale": "commands and decoded power use the same watt contract",
+        "relative": 1e-09
+      }
+    },
+    {
+      "absolute_difference": 80.0,
+      "array_value": 1421.282894736842,
+      "classification": "contract_violation",
+      "entity_id": "living_zone",
+      "object_value": 1501.282894736842,
+      "quantity": "electrical_energy_wh",
+      "rationale": "cumulative energy drift is evaluated separately from power",
+      "relative_difference": 0.05328775827691229,
+      "scope": "cumulative_drift",
+      "timestep_index": 3,
+      "tolerance": {
+        "absolute": 0.01,
+        "rationale": "cumulative drift is checked separately from instantaneous power",
+        "relative": 1e-06
+      }
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "electrical_energy_aggregation",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 3,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "finite_physical_outputs",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 3,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": 0.0,
+      "array_value": true,
+      "classification": "exact_match",
+      "entity_id": null,
+      "object_value": true,
+      "quantity": "bounded_humidity_and_nonnegative_power",
+      "rationale": "the invariant is evaluated independently in each backend",
+      "relative_difference": 0.0,
+      "scope": "invariant",
+      "timestep_index": 3,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": null,
+      "classification": "missing_feature",
+      "entity_id": null,
+      "object_value": null,
+      "quantity": "thermal_balance_residual",
+      "rationale": "neither canonical adapter exposes a comparable thermal residual",
+      "relative_difference": null,
+      "scope": "conservation",
+      "timestep_index": null,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": null,
+      "classification": "missing_feature",
+      "entity_id": null,
+      "object_value": null,
+      "quantity": "moisture_balance_residual",
+      "rationale": "neither canonical adapter exposes a comparable moisture residual",
+      "relative_difference": null,
+      "scope": "conservation",
+      "timestep_index": null,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": null,
+      "classification": "missing_feature",
+      "entity_id": null,
+      "object_value": null,
+      "quantity": "co2_mass_balance_residual",
+      "rationale": "neither canonical adapter exposes a comparable CO2 residual",
+      "relative_difference": null,
+      "scope": "conservation",
+      "timestep_index": null,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "643847585b8c15ddbd199fd3e9a475056255ec447a71520d8dd6559668ec67f5",
+      "classification": "exact_match",
+      "entity_id": "object",
+      "object_value": "643847585b8c15ddbd199fd3e9a475056255ec447a71520d8dd6559668ec67f5",
+      "quantity": "repeat_run",
+      "rationale": "SHA-256 hashes of fresh structured runs must be identical",
+      "relative_difference": null,
+      "scope": "determinism",
+      "timestep_index": null,
+      "tolerance": null
+    },
+    {
+      "absolute_difference": null,
+      "array_value": "09918d628048c2fda6f0e5fa0ba9f9343a35fc5b8d981426c7c5968a6402e754",
+      "classification": "exact_match",
+      "entity_id": "array",
+      "object_value": "09918d628048c2fda6f0e5fa0ba9f9343a35fc5b8d981426c7c5968a6402e754",
+      "quantity": "repeat_run",
+      "rationale": "SHA-256 hashes of fresh structured runs must be identical",
+      "relative_difference": null,
+      "scope": "determinism",
+      "timestep_index": null,
+      "tolerance": null
+    }
+  ],
+  "contract_version": "1.0.0",
+  "engine_policy": {
+    "array": "experimental",
+    "canonical_truth": null,
+    "object": "reference_candidate"
+  },
+  "engine_versions": {
+    "array": "2.17.0",
+    "object": "2.17.0"
+  },
+  "graph_sha256": "885168497f39af100709e59c32516adac8dcb4f5cc87d5a5a379015f453f2b32",
+  "report_version": "1.0.0",
+  "scenario_id": "minimal_two_zone_dwelling",
+  "scenario_path": "contracts/examples/multizone_dwelling_v1_minimal.json",
+  "scenario_shape": {
+    "dt_minutes": 60.0,
+    "occupants": 2,
+    "systems": 8,
+    "timesteps": 4,
+    "zones": 2
+  },
+  "schema_version": "1.0.0",
+  "tolerances": {
+    "air_temperature_c": {
+      "absolute": 0.1,
+      "rationale": "sub-tenth-degree numerical variation is immaterial for this first harness",
+      "relative": 1e-06
+    },
+    "canonical_input": {
+      "absolute": 1e-12,
+      "rationale": "canonical input mapping is structural conformance, not physical parity",
+      "relative": 0.0
+    },
+    "co2_ppm": {
+      "absolute": 5.0,
+      "rationale": "small concentration variation while retaining ppm-scale sensitivity",
+      "relative": 1e-06
+    },
+    "cumulative_energy_wh": {
+      "absolute": 0.01,
+      "rationale": "cumulative drift is checked separately from instantaneous power",
+      "relative": 1e-06
+    },
+    "power_w": {
+      "absolute": 1e-06,
+      "rationale": "commands and decoded power use the same watt contract",
+      "relative": 1e-09
+    },
+    "relative_humidity_fraction": {
+      "absolute": 0.005,
+      "rationale": "half a percentage point of relative humidity",
+      "relative": 1e-06
+    }
+  }
+}

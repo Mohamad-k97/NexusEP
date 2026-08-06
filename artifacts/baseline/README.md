@@ -11,3 +11,6 @@ in the ignored sibling directories.
 - `artifact_manifest.json`: hashes for reports, inputs, raw artifacts, and
   protected legacy outputs; it intentionally excludes its own self-hash.
 - `inputs/abbey_config_phase_1_5.jsonc`: frozen deterministic input snapshot.
+- `phase_2_15_conformance.json`: shared structural/semantic backend suite.
+- `phase_2_16_initial_parity.json`: quantity-specific measured differences,
+  tolerances, classifications, and rationales for the first parity scenario.

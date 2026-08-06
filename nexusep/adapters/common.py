@@ -18,7 +18,7 @@ from nexusep.schema.outputs import (
 from nexusep.schema.scenario import CanonicalScenario
 from nexusep.schema.timestep import SimulationStepInput
 
-ADAPTER_CONTRACT_VERSION = "2.14.0"
+ADAPTER_CONTRACT_VERSION = "2.17.0"
 
 
 class BackendAdapterError(RuntimeError):
