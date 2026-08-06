@@ -1,0 +1,2387 @@
+{
+  "cases": {
+    "logs_off": {
+      "determinism": {
+        "log_hashes": [
+          null,
+          null,
+          null
+        ],
+        "logs_exactly_repeatable": true,
+        "state_exactly_repeatable": true,
+        "state_hashes": [
+          "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52",
+          "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52",
+          "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52"
+        ]
+      },
+      "logs_enabled": false,
+      "repetitions": 3,
+      "samples": [
+        {
+          "correctness": {
+            "all_person_state_finite": true,
+            "all_zone_state_finite": true,
+            "building_demands_nonnegative": true,
+            "co2_bounds": true,
+            "final_building_cooling_demand_w": 0.0,
+            "final_building_electricity_demand_w": 7280.0,
+            "final_building_heating_demand_w": 7100.0,
+            "final_zone_co2_max_ppm": 2614.198288267817,
+            "final_zone_co2_min_ppm": 420.0000000000004,
+            "final_zone_relative_humidity_max": 0.8576972371182462,
+            "final_zone_relative_humidity_min": 0.39895633469318137,
+            "final_zone_temperature_max_c": 24.64234767548614,
+            "final_zone_temperature_min_c": 16.97396825295355,
+            "relative_humidity_bounds": true,
+            "temperature_bounds": true
+          },
+          "decoded_output_bytes": 8858,
+          "decoding_output_s": 0.056669700003112666,
+          "encoding_compilation_s": 0.07790940000268165,
+          "first_timestep_s": 0.0010360000014770776,
+          "input_construction_s": 0.011401399999158457,
+          "log_allocation_s": 3.9998849388211966e-07,
+          "log_signature": null,
+          "logs_enabled": false,
+          "peak_rss_bytes": 151658496,
+          "peak_rss_growth_bytes": 3153920,
+          "raw_log_array_bytes": 0,
+          "raw_state_array_bytes": 1271312,
+          "repetition": 1,
+          "seconds_per_timestep": 0.0011634455251142135,
+          "simulated_hours_per_second": 859.5159622121815,
+          "state_signature": {
+            "array_count": 20,
+            "arrays": [
+              {
+                "bytes": 2464,
+                "dtype": "float64",
+                "name": "dynamic.action_scores",
+                "shape": [
+                  4,
+                  7,
+                  11
+                ]
+              },
+              {
+                "bytes": 56,
+                "dtype": "float64",
+                "name": "dynamic.building_state",
+                "shape": [
+                  1,
+                  7
+                ]
+              },
+              {
+                "bytes": 88,
+                "dtype": "float64",
+                "name": "dynamic.dwelling_state",
+                "shape": [
+                  1,
+                  11
+                ]
+              },
+              {
+                "bytes": 360,
+                "dtype": "float64",
+                "name": "dynamic.internal_gains",
+                "shape": [
+                  5,
+                  9
+                ]
+              },
+              {
+                "bytes": 800,
+                "dtype": "float64",
+                "name": "dynamic.person_state",
+                "shape": [
+                  4,
+                  25
+                ]
+              },
+              {
+                "bytes": 400,
+                "dtype": "float64",
+                "name": "dynamic.physics_result",
+                "shape": [
+                  5,
+                  10
+                ]
+              },
+              {
+                "bytes": 832,
+                "dtype": "float64",
+                "name": "dynamic.process_state",
+                "shape": [
+                  8,
+                  13
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "dynamic.system_state",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "dynamic.time_state",
+                "shape": [
+                  8
+                ]
+              },
+              {
+                "bytes": 80,
+                "dtype": "float64",
+                "name": "dynamic.weather_state",
+                "shape": [
+                  10
+                ]
+              },
+              {
+                "bytes": 880,
+                "dtype": "float64",
+                "name": "dynamic.zone_state",
+                "shape": [
+                  5,
+                  22
+                ]
+              },
+              {
+                "bytes": 160,
+                "dtype": "float64",
+                "name": "metadata.person_schedule_array",
+                "shape": [
+                  4,
+                  5
+                ]
+              },
+              {
+                "bytes": 560640,
+                "dtype": "float64",
+                "name": "series.time_series",
+                "shape": [
+                  8760,
+                  8
+                ]
+              },
+              {
+                "bytes": 700800,
+                "dtype": "float64",
+                "name": "series.weather_series",
+                "shape": [
+                  8760,
+                  10
+                ]
+              },
+              {
+                "bytes": 1064,
+                "dtype": "float64",
+                "name": "static.action_static",
+                "shape": [
+                  7,
+                  19
+                ]
+              },
+              {
+                "bytes": 72,
+                "dtype": "float64",
+                "name": "static.building_static",
+                "shape": [
+                  1,
+                  9
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "static.dwelling_static",
+                "shape": [
+                  1,
+                  8
+                ]
+              },
+              {
+                "bytes": 608,
+                "dtype": "float64",
+                "name": "static.person_static",
+                "shape": [
+                  4,
+                  19
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "static.system_static",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 600,
+                "dtype": "float64",
+                "name": "static.zone_static",
+                "shape": [
+                  5,
+                  15
+                ]
+              }
+            ],
+            "bytes": 1271312,
+            "sha256": "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52"
+          },
+          "steady_state_loop_s": 10.190746799999033,
+          "total_loop_s": 10.19178280000051
+        },
+        {
+          "correctness": {
+            "all_person_state_finite": true,
+            "all_zone_state_finite": true,
+            "building_demands_nonnegative": true,
+            "co2_bounds": true,
+            "final_building_cooling_demand_w": 0.0,
+            "final_building_electricity_demand_w": 7280.0,
+            "final_building_heating_demand_w": 7100.0,
+            "final_zone_co2_max_ppm": 2614.198288267817,
+            "final_zone_co2_min_ppm": 420.0000000000004,
+            "final_zone_relative_humidity_max": 0.8576972371182462,
+            "final_zone_relative_humidity_min": 0.39895633469318137,
+            "final_zone_temperature_max_c": 24.64234767548614,
+            "final_zone_temperature_min_c": 16.97396825295355,
+            "relative_humidity_bounds": true,
+            "temperature_bounds": true
+          },
+          "decoded_output_bytes": 8858,
+          "decoding_output_s": 0.01009630000044126,
+          "encoding_compilation_s": 0.1297333999973489,
+          "first_timestep_s": 0.0012424000015016645,
+          "input_construction_s": 0.01542140000674408,
+          "log_allocation_s": 1.7999991541728377e-06,
+          "log_signature": null,
+          "logs_enabled": false,
+          "peak_rss_bytes": 152301568,
+          "peak_rss_growth_bytes": 2981888,
+          "raw_log_array_bytes": 0,
+          "raw_state_array_bytes": 1271312,
+          "repetition": 2,
+          "seconds_per_timestep": 0.0011715098744297886,
+          "simulated_hours_per_second": 853.5992925255811,
+          "state_signature": {
+            "array_count": 20,
+            "arrays": [
+              {
+                "bytes": 2464,
+                "dtype": "float64",
+                "name": "dynamic.action_scores",
+                "shape": [
+                  4,
+                  7,
+                  11
+                ]
+              },
+              {
+                "bytes": 56,
+                "dtype": "float64",
+                "name": "dynamic.building_state",
+                "shape": [
+                  1,
+                  7
+                ]
+              },
+              {
+                "bytes": 88,
+                "dtype": "float64",
+                "name": "dynamic.dwelling_state",
+                "shape": [
+                  1,
+                  11
+                ]
+              },
+              {
+                "bytes": 360,
+                "dtype": "float64",
+                "name": "dynamic.internal_gains",
+                "shape": [
+                  5,
+                  9
+                ]
+              },
+              {
+                "bytes": 800,
+                "dtype": "float64",
+                "name": "dynamic.person_state",
+                "shape": [
+                  4,
+                  25
+                ]
+              },
+              {
+                "bytes": 400,
+                "dtype": "float64",
+                "name": "dynamic.physics_result",
+                "shape": [
+                  5,
+                  10
+                ]
+              },
+              {
+                "bytes": 832,
+                "dtype": "float64",
+                "name": "dynamic.process_state",
+                "shape": [
+                  8,
+                  13
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "dynamic.system_state",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "dynamic.time_state",
+                "shape": [
+                  8
+                ]
+              },
+              {
+                "bytes": 80,
+                "dtype": "float64",
+                "name": "dynamic.weather_state",
+                "shape": [
+                  10
+                ]
+              },
+              {
+                "bytes": 880,
+                "dtype": "float64",
+                "name": "dynamic.zone_state",
+                "shape": [
+                  5,
+                  22
+                ]
+              },
+              {
+                "bytes": 160,
+                "dtype": "float64",
+                "name": "metadata.person_schedule_array",
+                "shape": [
+                  4,
+                  5
+                ]
+              },
+              {
+                "bytes": 560640,
+                "dtype": "float64",
+                "name": "series.time_series",
+                "shape": [
+                  8760,
+                  8
+                ]
+              },
+              {
+                "bytes": 700800,
+                "dtype": "float64",
+                "name": "series.weather_series",
+                "shape": [
+                  8760,
+                  10
+                ]
+              },
+              {
+                "bytes": 1064,
+                "dtype": "float64",
+                "name": "static.action_static",
+                "shape": [
+                  7,
+                  19
+                ]
+              },
+              {
+                "bytes": 72,
+                "dtype": "float64",
+                "name": "static.building_static",
+                "shape": [
+                  1,
+                  9
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "static.dwelling_static",
+                "shape": [
+                  1,
+                  8
+                ]
+              },
+              {
+                "bytes": 608,
+                "dtype": "float64",
+                "name": "static.person_static",
+                "shape": [
+                  4,
+                  19
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "static.system_static",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 600,
+                "dtype": "float64",
+                "name": "static.zone_static",
+                "shape": [
+                  5,
+                  15
+                ]
+              }
+            ],
+            "bytes": 1271312,
+            "sha256": "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52"
+          },
+          "steady_state_loop_s": 10.261184100003447,
+          "total_loop_s": 10.262426500004949
+        },
+        {
+          "correctness": {
+            "all_person_state_finite": true,
+            "all_zone_state_finite": true,
+            "building_demands_nonnegative": true,
+            "co2_bounds": true,
+            "final_building_cooling_demand_w": 0.0,
+            "final_building_electricity_demand_w": 7280.0,
+            "final_building_heating_demand_w": 7100.0,
+            "final_zone_co2_max_ppm": 2614.198288267817,
+            "final_zone_co2_min_ppm": 420.0000000000004,
+            "final_zone_relative_humidity_max": 0.8576972371182462,
+            "final_zone_relative_humidity_min": 0.39895633469318137,
+            "final_zone_temperature_max_c": 24.64234767548614,
+            "final_zone_temperature_min_c": 16.97396825295355,
+            "relative_humidity_bounds": true,
+            "temperature_bounds": true
+          },
+          "decoded_output_bytes": 8858,
+          "decoding_output_s": 0.020534600000246428,
+          "encoding_compilation_s": 0.06393310001294594,
+          "first_timestep_s": 0.0012251000007381663,
+          "input_construction_s": 0.01802880001196172,
+          "log_allocation_s": 5.00003807246685e-07,
+          "log_signature": null,
+          "logs_enabled": false,
+          "peak_rss_bytes": 152350720,
+          "peak_rss_growth_bytes": 2039808,
+          "raw_log_array_bytes": 0,
+          "raw_state_array_bytes": 1271312,
+          "repetition": 3,
+          "seconds_per_timestep": 0.001579998527396631,
+          "simulated_hours_per_second": 632.9119822964035,
+          "state_signature": {
+            "array_count": 20,
+            "arrays": [
+              {
+                "bytes": 2464,
+                "dtype": "float64",
+                "name": "dynamic.action_scores",
+                "shape": [
+                  4,
+                  7,
+                  11
+                ]
+              },
+              {
+                "bytes": 56,
+                "dtype": "float64",
+                "name": "dynamic.building_state",
+                "shape": [
+                  1,
+                  7
+                ]
+              },
+              {
+                "bytes": 88,
+                "dtype": "float64",
+                "name": "dynamic.dwelling_state",
+                "shape": [
+                  1,
+                  11
+                ]
+              },
+              {
+                "bytes": 360,
+                "dtype": "float64",
+                "name": "dynamic.internal_gains",
+                "shape": [
+                  5,
+                  9
+                ]
+              },
+              {
+                "bytes": 800,
+                "dtype": "float64",
+                "name": "dynamic.person_state",
+                "shape": [
+                  4,
+                  25
+                ]
+              },
+              {
+                "bytes": 400,
+                "dtype": "float64",
+                "name": "dynamic.physics_result",
+                "shape": [
+                  5,
+                  10
+                ]
+              },
+              {
+                "bytes": 832,
+                "dtype": "float64",
+                "name": "dynamic.process_state",
+                "shape": [
+                  8,
+                  13
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "dynamic.system_state",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "dynamic.time_state",
+                "shape": [
+                  8
+                ]
+              },
+              {
+                "bytes": 80,
+                "dtype": "float64",
+                "name": "dynamic.weather_state",
+                "shape": [
+                  10
+                ]
+              },
+              {
+                "bytes": 880,
+                "dtype": "float64",
+                "name": "dynamic.zone_state",
+                "shape": [
+                  5,
+                  22
+                ]
+              },
+              {
+                "bytes": 160,
+                "dtype": "float64",
+                "name": "metadata.person_schedule_array",
+                "shape": [
+                  4,
+                  5
+                ]
+              },
+              {
+                "bytes": 560640,
+                "dtype": "float64",
+                "name": "series.time_series",
+                "shape": [
+                  8760,
+                  8
+                ]
+              },
+              {
+                "bytes": 700800,
+                "dtype": "float64",
+                "name": "series.weather_series",
+                "shape": [
+                  8760,
+                  10
+                ]
+              },
+              {
+                "bytes": 1064,
+                "dtype": "float64",
+                "name": "static.action_static",
+                "shape": [
+                  7,
+                  19
+                ]
+              },
+              {
+                "bytes": 72,
+                "dtype": "float64",
+                "name": "static.building_static",
+                "shape": [
+                  1,
+                  9
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "static.dwelling_static",
+                "shape": [
+                  1,
+                  8
+                ]
+              },
+              {
+                "bytes": 608,
+                "dtype": "float64",
+                "name": "static.person_static",
+                "shape": [
+                  4,
+                  19
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "static.system_static",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 600,
+                "dtype": "float64",
+                "name": "static.zone_static",
+                "shape": [
+                  5,
+                  15
+                ]
+              }
+            ],
+            "bytes": 1271312,
+            "sha256": "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52"
+          },
+          "steady_state_loop_s": 13.839561999993748,
+          "total_loop_s": 13.840787099994486
+        }
+      ],
+      "summary": {
+        "decoded_output_bytes": {
+          "max": 8858.0,
+          "median": 8858.0,
+          "min": 8858.0,
+          "range": 0.0
+        },
+        "decoding_output_s": {
+          "max": 0.056669700003112666,
+          "median": 0.020534600000246428,
+          "min": 0.01009630000044126,
+          "range": 0.046573400002671406
+        },
+        "encoding_compilation_s": {
+          "max": 0.1297333999973489,
+          "median": 0.07790940000268165,
+          "min": 0.06393310001294594,
+          "range": 0.06580029998440295
+        },
+        "first_timestep_s": {
+          "max": 0.0012424000015016645,
+          "median": 0.0012251000007381663,
+          "min": 0.0010360000014770776,
+          "range": 0.00020640000002458692
+        },
+        "input_construction_s": {
+          "max": 0.01802880001196172,
+          "median": 0.01542140000674408,
+          "min": 0.011401399999158457,
+          "range": 0.006627400012803264
+        },
+        "log_allocation_s": {
+          "max": 1.7999991541728377e-06,
+          "median": 5.00003807246685e-07,
+          "min": 3.9998849388211966e-07,
+          "range": 1.400010660290718e-06
+        },
+        "peak_rss_bytes": {
+          "max": 152350720.0,
+          "median": 152301568.0,
+          "min": 151658496.0,
+          "range": 692224.0
+        },
+        "peak_rss_growth_bytes": {
+          "max": 3153920.0,
+          "median": 2981888.0,
+          "min": 2039808.0,
+          "range": 1114112.0
+        },
+        "raw_log_array_bytes": {
+          "max": 0.0,
+          "median": 0.0,
+          "min": 0.0,
+          "range": 0.0
+        },
+        "raw_state_array_bytes": {
+          "max": 1271312.0,
+          "median": 1271312.0,
+          "min": 1271312.0,
+          "range": 0.0
+        },
+        "seconds_per_timestep": {
+          "max": 0.001579998527396631,
+          "median": 0.0011715098744297886,
+          "min": 0.0011634455251142135,
+          "range": 0.00041655300228241737
+        },
+        "simulated_hours_per_second": {
+          "max": 859.5159622121815,
+          "median": 853.5992925255811,
+          "min": 632.9119822964035,
+          "range": 226.60397991577804
+        },
+        "steady_state_loop_s": {
+          "max": 13.839561999993748,
+          "median": 10.261184100003447,
+          "min": 10.190746799999033,
+          "range": 3.648815199994715
+        },
+        "total_loop_s": {
+          "max": 13.840787099994486,
+          "median": 10.262426500004949,
+          "min": 10.19178280000051,
+          "range": 3.649004299993976
+        }
+      }
+    },
+    "logs_on": {
+      "determinism": {
+        "log_hashes": [
+          "3e92fdab22d7e6949b62cecd67ee64bac65acd49cd7957a498de757c2ee1864a",
+          "3e92fdab22d7e6949b62cecd67ee64bac65acd49cd7957a498de757c2ee1864a",
+          "3e92fdab22d7e6949b62cecd67ee64bac65acd49cd7957a498de757c2ee1864a"
+        ],
+        "logs_exactly_repeatable": true,
+        "state_exactly_repeatable": true,
+        "state_hashes": [
+          "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52",
+          "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52",
+          "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52"
+        ]
+      },
+      "logs_enabled": true,
+      "repetitions": 3,
+      "samples": [
+        {
+          "correctness": {
+            "all_person_state_finite": true,
+            "all_zone_state_finite": true,
+            "building_demands_nonnegative": true,
+            "co2_bounds": true,
+            "final_building_cooling_demand_w": 0.0,
+            "final_building_electricity_demand_w": 7280.0,
+            "final_building_heating_demand_w": 7100.0,
+            "final_zone_co2_max_ppm": 2614.198288267817,
+            "final_zone_co2_min_ppm": 420.0000000000004,
+            "final_zone_relative_humidity_max": 0.8576972371182462,
+            "final_zone_relative_humidity_min": 0.39895633469318137,
+            "final_zone_state_matches_log": true,
+            "final_zone_temperature_max_c": 24.64234767548614,
+            "final_zone_temperature_min_c": 16.97396825295355,
+            "relative_humidity_bounds": true,
+            "temperature_bounds": true
+          },
+          "decoded_output_bytes": 26001262,
+          "decoding_output_s": 0.8407048999943072,
+          "encoding_compilation_s": 0.17918010000721551,
+          "first_timestep_s": 0.002048500013188459,
+          "input_construction_s": 0.050686600006883964,
+          "log_allocation_s": 0.0006283999973675236,
+          "log_signature": {
+            "array_count": 5,
+            "arrays": [
+              {
+                "bytes": 560640,
+                "dtype": "float64",
+                "name": "building_log",
+                "shape": [
+                  8760,
+                  1,
+                  8
+                ]
+              },
+              {
+                "bytes": 840960,
+                "dtype": "float64",
+                "name": "dwelling_log",
+                "shape": [
+                  8760,
+                  1,
+                  12
+                ]
+              },
+              {
+                "bytes": 6167040,
+                "dtype": "float64",
+                "name": "person_log",
+                "shape": [
+                  8760,
+                  4,
+                  22
+                ]
+              },
+              {
+                "bytes": 5956800,
+                "dtype": "float64",
+                "name": "system_log",
+                "shape": [
+                  8760,
+                  5,
+                  17
+                ]
+              },
+              {
+                "bytes": 7358400,
+                "dtype": "float64",
+                "name": "zone_log",
+                "shape": [
+                  8760,
+                  5,
+                  21
+                ]
+              }
+            ],
+            "bytes": 20883840,
+            "sha256": "3e92fdab22d7e6949b62cecd67ee64bac65acd49cd7957a498de757c2ee1864a"
+          },
+          "logs_enabled": true,
+          "peak_rss_bytes": 235896832,
+          "peak_rss_growth_bytes": 85536768,
+          "raw_log_array_bytes": 20883840,
+          "raw_state_array_bytes": 1271312,
+          "repetition": 1,
+          "seconds_per_timestep": 0.00151802415525272,
+          "simulated_hours_per_second": 658.7510459170002,
+          "state_signature": {
+            "array_count": 20,
+            "arrays": [
+              {
+                "bytes": 2464,
+                "dtype": "float64",
+                "name": "dynamic.action_scores",
+                "shape": [
+                  4,
+                  7,
+                  11
+                ]
+              },
+              {
+                "bytes": 56,
+                "dtype": "float64",
+                "name": "dynamic.building_state",
+                "shape": [
+                  1,
+                  7
+                ]
+              },
+              {
+                "bytes": 88,
+                "dtype": "float64",
+                "name": "dynamic.dwelling_state",
+                "shape": [
+                  1,
+                  11
+                ]
+              },
+              {
+                "bytes": 360,
+                "dtype": "float64",
+                "name": "dynamic.internal_gains",
+                "shape": [
+                  5,
+                  9
+                ]
+              },
+              {
+                "bytes": 800,
+                "dtype": "float64",
+                "name": "dynamic.person_state",
+                "shape": [
+                  4,
+                  25
+                ]
+              },
+              {
+                "bytes": 400,
+                "dtype": "float64",
+                "name": "dynamic.physics_result",
+                "shape": [
+                  5,
+                  10
+                ]
+              },
+              {
+                "bytes": 832,
+                "dtype": "float64",
+                "name": "dynamic.process_state",
+                "shape": [
+                  8,
+                  13
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "dynamic.system_state",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "dynamic.time_state",
+                "shape": [
+                  8
+                ]
+              },
+              {
+                "bytes": 80,
+                "dtype": "float64",
+                "name": "dynamic.weather_state",
+                "shape": [
+                  10
+                ]
+              },
+              {
+                "bytes": 880,
+                "dtype": "float64",
+                "name": "dynamic.zone_state",
+                "shape": [
+                  5,
+                  22
+                ]
+              },
+              {
+                "bytes": 160,
+                "dtype": "float64",
+                "name": "metadata.person_schedule_array",
+                "shape": [
+                  4,
+                  5
+                ]
+              },
+              {
+                "bytes": 560640,
+                "dtype": "float64",
+                "name": "series.time_series",
+                "shape": [
+                  8760,
+                  8
+                ]
+              },
+              {
+                "bytes": 700800,
+                "dtype": "float64",
+                "name": "series.weather_series",
+                "shape": [
+                  8760,
+                  10
+                ]
+              },
+              {
+                "bytes": 1064,
+                "dtype": "float64",
+                "name": "static.action_static",
+                "shape": [
+                  7,
+                  19
+                ]
+              },
+              {
+                "bytes": 72,
+                "dtype": "float64",
+                "name": "static.building_static",
+                "shape": [
+                  1,
+                  9
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "static.dwelling_static",
+                "shape": [
+                  1,
+                  8
+                ]
+              },
+              {
+                "bytes": 608,
+                "dtype": "float64",
+                "name": "static.person_static",
+                "shape": [
+                  4,
+                  19
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "static.system_static",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 600,
+                "dtype": "float64",
+                "name": "static.zone_static",
+                "shape": [
+                  5,
+                  15
+                ]
+              }
+            ],
+            "bytes": 1271312,
+            "sha256": "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52"
+          },
+          "steady_state_loop_s": 13.295843100000639,
+          "total_loop_s": 13.297891600013827
+        },
+        {
+          "correctness": {
+            "all_person_state_finite": true,
+            "all_zone_state_finite": true,
+            "building_demands_nonnegative": true,
+            "co2_bounds": true,
+            "final_building_cooling_demand_w": 0.0,
+            "final_building_electricity_demand_w": 7280.0,
+            "final_building_heating_demand_w": 7100.0,
+            "final_zone_co2_max_ppm": 2614.198288267817,
+            "final_zone_co2_min_ppm": 420.0000000000004,
+            "final_zone_relative_humidity_max": 0.8576972371182462,
+            "final_zone_relative_humidity_min": 0.39895633469318137,
+            "final_zone_state_matches_log": true,
+            "final_zone_temperature_max_c": 24.64234767548614,
+            "final_zone_temperature_min_c": 16.97396825295355,
+            "relative_humidity_bounds": true,
+            "temperature_bounds": true
+          },
+          "decoded_output_bytes": 26001262,
+          "decoding_output_s": 2.6223592999886023,
+          "encoding_compilation_s": 0.04174969998712186,
+          "first_timestep_s": 0.0006499000010080636,
+          "input_construction_s": 0.017186700002639554,
+          "log_allocation_s": 0.00039180000021588057,
+          "log_signature": {
+            "array_count": 5,
+            "arrays": [
+              {
+                "bytes": 560640,
+                "dtype": "float64",
+                "name": "building_log",
+                "shape": [
+                  8760,
+                  1,
+                  8
+                ]
+              },
+              {
+                "bytes": 840960,
+                "dtype": "float64",
+                "name": "dwelling_log",
+                "shape": [
+                  8760,
+                  1,
+                  12
+                ]
+              },
+              {
+                "bytes": 6167040,
+                "dtype": "float64",
+                "name": "person_log",
+                "shape": [
+                  8760,
+                  4,
+                  22
+                ]
+              },
+              {
+                "bytes": 5956800,
+                "dtype": "float64",
+                "name": "system_log",
+                "shape": [
+                  8760,
+                  5,
+                  17
+                ]
+              },
+              {
+                "bytes": 7358400,
+                "dtype": "float64",
+                "name": "zone_log",
+                "shape": [
+                  8760,
+                  5,
+                  21
+                ]
+              }
+            ],
+            "bytes": 20883840,
+            "sha256": "3e92fdab22d7e6949b62cecd67ee64bac65acd49cd7957a498de757c2ee1864a"
+          },
+          "logs_enabled": true,
+          "peak_rss_bytes": 243949568,
+          "peak_rss_growth_bytes": 75313152,
+          "raw_log_array_bytes": 20883840,
+          "raw_state_array_bytes": 1271312,
+          "repetition": 2,
+          "seconds_per_timestep": 0.0010547620205485877,
+          "simulated_hours_per_second": 948.0811600325677,
+          "state_signature": {
+            "array_count": 20,
+            "arrays": [
+              {
+                "bytes": 2464,
+                "dtype": "float64",
+                "name": "dynamic.action_scores",
+                "shape": [
+                  4,
+                  7,
+                  11
+                ]
+              },
+              {
+                "bytes": 56,
+                "dtype": "float64",
+                "name": "dynamic.building_state",
+                "shape": [
+                  1,
+                  7
+                ]
+              },
+              {
+                "bytes": 88,
+                "dtype": "float64",
+                "name": "dynamic.dwelling_state",
+                "shape": [
+                  1,
+                  11
+                ]
+              },
+              {
+                "bytes": 360,
+                "dtype": "float64",
+                "name": "dynamic.internal_gains",
+                "shape": [
+                  5,
+                  9
+                ]
+              },
+              {
+                "bytes": 800,
+                "dtype": "float64",
+                "name": "dynamic.person_state",
+                "shape": [
+                  4,
+                  25
+                ]
+              },
+              {
+                "bytes": 400,
+                "dtype": "float64",
+                "name": "dynamic.physics_result",
+                "shape": [
+                  5,
+                  10
+                ]
+              },
+              {
+                "bytes": 832,
+                "dtype": "float64",
+                "name": "dynamic.process_state",
+                "shape": [
+                  8,
+                  13
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "dynamic.system_state",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "dynamic.time_state",
+                "shape": [
+                  8
+                ]
+              },
+              {
+                "bytes": 80,
+                "dtype": "float64",
+                "name": "dynamic.weather_state",
+                "shape": [
+                  10
+                ]
+              },
+              {
+                "bytes": 880,
+                "dtype": "float64",
+                "name": "dynamic.zone_state",
+                "shape": [
+                  5,
+                  22
+                ]
+              },
+              {
+                "bytes": 160,
+                "dtype": "float64",
+                "name": "metadata.person_schedule_array",
+                "shape": [
+                  4,
+                  5
+                ]
+              },
+              {
+                "bytes": 560640,
+                "dtype": "float64",
+                "name": "series.time_series",
+                "shape": [
+                  8760,
+                  8
+                ]
+              },
+              {
+                "bytes": 700800,
+                "dtype": "float64",
+                "name": "series.weather_series",
+                "shape": [
+                  8760,
+                  10
+                ]
+              },
+              {
+                "bytes": 1064,
+                "dtype": "float64",
+                "name": "static.action_static",
+                "shape": [
+                  7,
+                  19
+                ]
+              },
+              {
+                "bytes": 72,
+                "dtype": "float64",
+                "name": "static.building_static",
+                "shape": [
+                  1,
+                  9
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "static.dwelling_static",
+                "shape": [
+                  1,
+                  8
+                ]
+              },
+              {
+                "bytes": 608,
+                "dtype": "float64",
+                "name": "static.person_static",
+                "shape": [
+                  4,
+                  19
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "static.system_static",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 600,
+                "dtype": "float64",
+                "name": "static.zone_static",
+                "shape": [
+                  5,
+                  15
+                ]
+              }
+            ],
+            "bytes": 1271312,
+            "sha256": "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52"
+          },
+          "steady_state_loop_s": 9.23906540000462,
+          "total_loop_s": 9.239715300005628
+        },
+        {
+          "correctness": {
+            "all_person_state_finite": true,
+            "all_zone_state_finite": true,
+            "building_demands_nonnegative": true,
+            "co2_bounds": true,
+            "final_building_cooling_demand_w": 0.0,
+            "final_building_electricity_demand_w": 7280.0,
+            "final_building_heating_demand_w": 7100.0,
+            "final_zone_co2_max_ppm": 2614.198288267817,
+            "final_zone_co2_min_ppm": 420.0000000000004,
+            "final_zone_relative_humidity_max": 0.8576972371182462,
+            "final_zone_relative_humidity_min": 0.39895633469318137,
+            "final_zone_state_matches_log": true,
+            "final_zone_temperature_max_c": 24.64234767548614,
+            "final_zone_temperature_min_c": 16.97396825295355,
+            "relative_humidity_bounds": true,
+            "temperature_bounds": true
+          },
+          "decoded_output_bytes": 26001262,
+          "decoding_output_s": 2.346605800004909,
+          "encoding_compilation_s": 0.04072049999376759,
+          "first_timestep_s": 0.0025270999904023483,
+          "input_construction_s": 0.00995790000888519,
+          "log_allocation_s": 0.0006156000017654151,
+          "log_signature": {
+            "array_count": 5,
+            "arrays": [
+              {
+                "bytes": 560640,
+                "dtype": "float64",
+                "name": "building_log",
+                "shape": [
+                  8760,
+                  1,
+                  8
+                ]
+              },
+              {
+                "bytes": 840960,
+                "dtype": "float64",
+                "name": "dwelling_log",
+                "shape": [
+                  8760,
+                  1,
+                  12
+                ]
+              },
+              {
+                "bytes": 6167040,
+                "dtype": "float64",
+                "name": "person_log",
+                "shape": [
+                  8760,
+                  4,
+                  22
+                ]
+              },
+              {
+                "bytes": 5956800,
+                "dtype": "float64",
+                "name": "system_log",
+                "shape": [
+                  8760,
+                  5,
+                  17
+                ]
+              },
+              {
+                "bytes": 7358400,
+                "dtype": "float64",
+                "name": "zone_log",
+                "shape": [
+                  8760,
+                  5,
+                  21
+                ]
+              }
+            ],
+            "bytes": 20883840,
+            "sha256": "3e92fdab22d7e6949b62cecd67ee64bac65acd49cd7957a498de757c2ee1864a"
+          },
+          "logs_enabled": true,
+          "peak_rss_bytes": 243712000,
+          "peak_rss_growth_bytes": 71565312,
+          "raw_log_array_bytes": 20883840,
+          "raw_state_array_bytes": 1271312,
+          "repetition": 3,
+          "seconds_per_timestep": 0.0011678414840169344,
+          "simulated_hours_per_second": 856.2805943152293,
+          "state_signature": {
+            "array_count": 20,
+            "arrays": [
+              {
+                "bytes": 2464,
+                "dtype": "float64",
+                "name": "dynamic.action_scores",
+                "shape": [
+                  4,
+                  7,
+                  11
+                ]
+              },
+              {
+                "bytes": 56,
+                "dtype": "float64",
+                "name": "dynamic.building_state",
+                "shape": [
+                  1,
+                  7
+                ]
+              },
+              {
+                "bytes": 88,
+                "dtype": "float64",
+                "name": "dynamic.dwelling_state",
+                "shape": [
+                  1,
+                  11
+                ]
+              },
+              {
+                "bytes": 360,
+                "dtype": "float64",
+                "name": "dynamic.internal_gains",
+                "shape": [
+                  5,
+                  9
+                ]
+              },
+              {
+                "bytes": 800,
+                "dtype": "float64",
+                "name": "dynamic.person_state",
+                "shape": [
+                  4,
+                  25
+                ]
+              },
+              {
+                "bytes": 400,
+                "dtype": "float64",
+                "name": "dynamic.physics_result",
+                "shape": [
+                  5,
+                  10
+                ]
+              },
+              {
+                "bytes": 832,
+                "dtype": "float64",
+                "name": "dynamic.process_state",
+                "shape": [
+                  8,
+                  13
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "dynamic.system_state",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "dynamic.time_state",
+                "shape": [
+                  8
+                ]
+              },
+              {
+                "bytes": 80,
+                "dtype": "float64",
+                "name": "dynamic.weather_state",
+                "shape": [
+                  10
+                ]
+              },
+              {
+                "bytes": 880,
+                "dtype": "float64",
+                "name": "dynamic.zone_state",
+                "shape": [
+                  5,
+                  22
+                ]
+              },
+              {
+                "bytes": 160,
+                "dtype": "float64",
+                "name": "metadata.person_schedule_array",
+                "shape": [
+                  4,
+                  5
+                ]
+              },
+              {
+                "bytes": 560640,
+                "dtype": "float64",
+                "name": "series.time_series",
+                "shape": [
+                  8760,
+                  8
+                ]
+              },
+              {
+                "bytes": 700800,
+                "dtype": "float64",
+                "name": "series.weather_series",
+                "shape": [
+                  8760,
+                  10
+                ]
+              },
+              {
+                "bytes": 1064,
+                "dtype": "float64",
+                "name": "static.action_static",
+                "shape": [
+                  7,
+                  19
+                ]
+              },
+              {
+                "bytes": 72,
+                "dtype": "float64",
+                "name": "static.building_static",
+                "shape": [
+                  1,
+                  9
+                ]
+              },
+              {
+                "bytes": 64,
+                "dtype": "float64",
+                "name": "static.dwelling_static",
+                "shape": [
+                  1,
+                  8
+                ]
+              },
+              {
+                "bytes": 608,
+                "dtype": "float64",
+                "name": "static.person_static",
+                "shape": [
+                  4,
+                  19
+                ]
+              },
+              {
+                "bytes": 640,
+                "dtype": "float64",
+                "name": "static.system_static",
+                "shape": [
+                  5,
+                  16
+                ]
+              },
+              {
+                "bytes": 600,
+                "dtype": "float64",
+                "name": "static.zone_static",
+                "shape": [
+                  5,
+                  15
+                ]
+              }
+            ],
+            "bytes": 1271312,
+            "sha256": "c3d7e23c5dc1069caa6ce49a19b2ad378b1cb3d9d4daab7026e8b7c940ce3a52"
+          },
+          "steady_state_loop_s": 10.227764299997943,
+          "total_loop_s": 10.230291399988346
+        }
+      ],
+      "summary": {
+        "decoded_output_bytes": {
+          "max": 26001262.0,
+          "median": 26001262.0,
+          "min": 26001262.0,
+          "range": 0.0
+        },
+        "decoding_output_s": {
+          "max": 2.6223592999886023,
+          "median": 2.346605800004909,
+          "min": 0.8407048999943072,
+          "range": 1.781654399994295
+        },
+        "encoding_compilation_s": {
+          "max": 0.17918010000721551,
+          "median": 0.04174969998712186,
+          "min": 0.04072049999376759,
+          "range": 0.13845960001344793
+        },
+        "first_timestep_s": {
+          "max": 0.0025270999904023483,
+          "median": 0.002048500013188459,
+          "min": 0.0006499000010080636,
+          "range": 0.0018771999893942848
+        },
+        "input_construction_s": {
+          "max": 0.050686600006883964,
+          "median": 0.017186700002639554,
+          "min": 0.00995790000888519,
+          "range": 0.040728699997998774
+        },
+        "log_allocation_s": {
+          "max": 0.0006283999973675236,
+          "median": 0.0006156000017654151,
+          "min": 0.00039180000021588057,
+          "range": 0.00023659999715164304
+        },
+        "peak_rss_bytes": {
+          "max": 243949568.0,
+          "median": 243712000.0,
+          "min": 235896832.0,
+          "range": 8052736.0
+        },
+        "peak_rss_growth_bytes": {
+          "max": 85536768.0,
+          "median": 75313152.0,
+          "min": 71565312.0,
+          "range": 13971456.0
+        },
+        "raw_log_array_bytes": {
+          "max": 20883840.0,
+          "median": 20883840.0,
+          "min": 20883840.0,
+          "range": 0.0
+        },
+        "raw_state_array_bytes": {
+          "max": 1271312.0,
+          "median": 1271312.0,
+          "min": 1271312.0,
+          "range": 0.0
+        },
+        "seconds_per_timestep": {
+          "max": 0.00151802415525272,
+          "median": 0.0011678414840169344,
+          "min": 0.0010547620205485877,
+          "range": 0.00046326213470413227
+        },
+        "simulated_hours_per_second": {
+          "max": 948.0811600325677,
+          "median": 856.2805943152293,
+          "min": 658.7510459170002,
+          "range": 289.33011411556754
+        },
+        "steady_state_loop_s": {
+          "max": 13.295843100000639,
+          "median": 10.227764299997943,
+          "min": 9.23906540000462,
+          "range": 4.056777699996019
+        },
+        "total_loop_s": {
+          "max": 13.297891600013827,
+          "median": 10.230291399988346,
+          "min": 9.239715300005628,
+          "range": 4.058176300008199
+        }
+      }
+    }
+  },
+  "compilation_and_warmup": {
+    "first_run_interpretation": "first_timestep_s is reported separately, but this reference timestep path does not call Numba dispatchers; it is not JIT cost",
+    "numba_installed": true,
+    "numba_used_by_run_array_timestep": false,
+    "warmup": {
+      "compile_s": 0.020208200003253296,
+      "included_in_measured_repetitions": false,
+      "loop_s": 0.020225100000970997,
+      "timesteps": 24
+    }
+  },
+  "correctness_against_object_baseline": {
+    "checks": {
+      "array_exactly_repeatable": true,
+      "array_final_state_and_log_invariants": true,
+      "both_annual_performance_runs_completed": true,
+      "object_energy_and_engine_path_invariants": true,
+      "object_golden_repeatable": true
+    },
+    "object_config_sha256": "c1c9d88f2578a1c8ae6cff4a1e9cf90c10905c7f4bde5e1c0be314ff9337aebf",
+    "object_manifest": "artifacts\\baseline\\deterministic_object_manifest.json",
+    "object_profile": "artifacts\\baseline\\object_profile.json",
+    "statewise_comparison": {
+      "reason": "The surviving array benchmark is a synthetic five-zone/four-person readable-input scenario, while the trusted object baseline uses the current AbbeySimulation one-person/eight-zone config. No authoritative shared object-to-array scenario adapter exists in the frozen source, so claiming per-field equivalence would be misleading. Structural, physical, logging, repeatability, and energy/path invariants are checked instead.",
+      "status": "known deviation",
+      "supported": false
+    }
+  },
+  "cprofile": {
+    "logs_off": {
+      "sha256": "8ade924a2645e28b64b7372f531979ae897d49f4262d5ac8bea3f6784f9acc56",
+      "source": "artifacts\\benchmarks\\phase1_4\\phase18_21\\generated\\abbey_8760_logs_off_profile.csv",
+      "top_functions": [
+        {
+          "cumulative_time_per_call_s": 9.2488787,
+          "cumulative_time_s": 9.2488787,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\benchmarks\\arrays\\phase_18_21_profile_8760.py",
+          "function_name": "run_loop",
+          "line_number": 46,
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "total_time_per_call_s": 0.0132344,
+          "total_time_s": 0.0132344
+        },
+        {
+          "cumulative_time_per_call_s": 0.0010542972945205,
+          "cumulative_time_s": 9.2356443,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\timestep.py",
+          "function_name": "run_array_timestep",
+          "line_number": 858,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 8.051780821917809e-06,
+          "total_time_s": 0.0705336
+        },
+        {
+          "cumulative_time_per_call_s": 0.001044640479452,
+          "cumulative_time_s": 9.1510506,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\timestep.py",
+          "function_name": "run_array_timestep_arrays",
+          "line_number": 509,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.704337899543379e-05,
+          "total_time_s": 0.1493
+        },
+        {
+          "cumulative_time_per_call_s": 0.0001945765525114,
+          "cumulative_time_s": 1.7044906000000002,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\action_kernels.py",
+          "function_name": "score_all_person_actions",
+          "line_number": 988,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 0.0001786834018264,
+          "total_time_s": 1.5652666000000002
+        },
+        {
+          "cumulative_time_per_call_s": 0.0001563298287671,
+          "cumulative_time_s": 1.3694493,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\person_kernels.py",
+          "function_name": "update_person_dynamics",
+          "line_number": 1080,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 2.150961187214612e-05,
+          "total_time_s": 0.1884242
+        },
+        {
+          "cumulative_time_per_call_s": 0.000114938892694,
+          "cumulative_time_s": 1.0068647000000002,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\execution_kernels.py",
+          "function_name": "run_execution_step_from_chosen_actions",
+          "line_number": 1254,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.791826484018265e-06,
+          "total_time_s": 0.0156964
+        },
+        {
+          "cumulative_time_per_call_s": 0.0001104105479452,
+          "cumulative_time_s": 0.9671964,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\daylight_kernels.py",
+          "function_name": "run_daylight_step",
+          "line_number": 567,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 8.90216894977169e-07,
+          "total_time_s": 0.0077983
+        },
+        {
+          "cumulative_time_per_call_s": 0.0001095203310502,
+          "cumulative_time_s": 0.9593981,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\daylight_kernels.py",
+          "function_name": "step_building_daylight",
+          "line_number": 522,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 3.160924657534246e-06,
+          "total_time_s": 0.0276897
+        },
+        {
+          "cumulative_time_per_call_s": 2.1271881278538816e-05,
+          "cumulative_time_s": 0.9317084,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\daylight_kernels.py",
+          "function_name": "step_zone_daylight",
+          "line_number": 458,
+          "primitive_calls": 43800,
+          "total_calls": 43800,
+          "total_time_per_call_s": 1.8332237442922376e-06,
+          "total_time_s": 0.0802952
+        },
+        {
+          "cumulative_time_per_call_s": 9.838324200913244e-05,
+          "cumulative_time_s": 0.8618372000000001,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\person_kernels.py",
+          "function_name": "update_person_perception",
+          "line_number": 630,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 3.49387100456621e-05,
+          "total_time_s": 0.3060631
+        },
+        {
+          "cumulative_time_per_call_s": 8.30979794520548e-05,
+          "cumulative_time_s": 0.7279383,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\execution_kernels.py",
+          "function_name": "advance_execution_state_arrays",
+          "line_number": 1104,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 2.8348059360730594e-06,
+          "total_time_s": 0.0248329
+        },
+        {
+          "cumulative_time_per_call_s": 8.128124429223745e-05,
+          "cumulative_time_s": 0.7120237,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\airflow_kernels.py",
+          "function_name": "run_airflow_step",
+          "line_number": 727,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.1246803652968038e-06,
+          "total_time_s": 0.0098522
+        },
+        {
+          "cumulative_time_per_call_s": 8.015656392694065e-05,
+          "cumulative_time_s": 0.7021715000000001,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\airflow_kernels.py",
+          "function_name": "step_building_airflow",
+          "line_number": 677,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.61439497716895e-06,
+          "total_time_s": 0.0141421
+        },
+        {
+          "cumulative_time_per_call_s": 7.05719292237443e-05,
+          "cumulative_time_s": 0.6182101,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\airflow_kernels.py",
+          "function_name": "calculate_all_zone_airflow_components_m3_s",
+          "line_number": 545,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.0215091324200914e-05,
+          "total_time_s": 0.0894842
+        },
+        {
+          "cumulative_time_per_call_s": 3.1433493150684936e-05,
+          "cumulative_time_s": 0.5507148000000001,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\system_kernels.py",
+          "function_name": "enforce_system_constraints",
+          "line_number": 573,
+          "primitive_calls": 17520,
+          "total_calls": 17520,
+          "total_time_per_call_s": 3.1433493150684936e-05,
+          "total_time_s": 0.5507148000000001
+        },
+        {
+          "cumulative_time_per_call_s": 1.8978412363891816e-05,
+          "cumulative_time_s": 0.5403154,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\person_kernels.py",
+          "function_name": "fanger_pmv_scalar",
+          "line_number": 142,
+          "primitive_calls": 28470,
+          "total_calls": 28470,
+          "total_time_per_call_s": 1.5786491043203374e-05,
+          "total_time_s": 0.4494414
+        },
+        {
+          "cumulative_time_per_call_s": 5.925476027397261e-05,
+          "cumulative_time_s": 0.5190717,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\thermal_kernels.py",
+          "function_name": "run_thermal_step",
+          "line_number": 1258,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.466746575342466e-06,
+          "total_time_s": 0.0128487
+        },
+        {
+          "cumulative_time_per_call_s": 5.778801369863014e-05,
+          "cumulative_time_s": 0.506223,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\thermal_kernels.py",
+          "function_name": "step_building_thermal_semi_implicit_fast",
+          "line_number": 832,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 5.778801369863014e-05,
+          "total_time_s": 0.506223
+        },
+        {
+          "cumulative_time_per_call_s": 5.588567351598173e-05,
+          "cumulative_time_s": 0.4895585,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\timestep.py",
+          "function_name": "run_system_update_if_available",
+          "line_number": 452,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.073390410958904e-06,
+          "total_time_s": 0.0094029
+        },
+        {
+          "cumulative_time_per_call_s": 5.481228310502283e-05,
+          "cumulative_time_s": 0.4801556,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\system_kernels.py",
+          "function_name": "update_system_control_state",
+          "line_number": 1411,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 2.4444178082191783e-06,
+          "total_time_s": 0.0214131
+        },
+        {
+          "cumulative_time_per_call_s": 1.0847155251141552e-05,
+          "cumulative_time_s": 0.4751054,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\daylight_kernels.py",
+          "function_name": "calculate_zone_daylight_lux",
+          "line_number": 268,
+          "primitive_calls": 43800,
+          "total_calls": 43800,
+          "total_time_per_call_s": 2.0410114155251143e-06,
+          "total_time_s": 0.0893963
+        },
+        {
+          "cumulative_time_per_call_s": 1.078262100456621e-05,
+          "cumulative_time_s": 0.4722788,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\airflow_kernels.py",
+          "function_name": "calculate_zone_airflow_components_m3_s",
+          "line_number": 499,
+          "primitive_calls": 43800,
+          "total_calls": 43800,
+          "total_time_per_call_s": 1.6213196347031965e-06,
+          "total_time_s": 0.0710138
+        },
+        {
+          "cumulative_time_per_call_s": 5.130859589041096e-05,
+          "cumulative_time_s": 0.4494633,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\execution_kernels.py",
+          "function_name": "advance_foreground_actions",
+          "line_number": 855,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.1588219178082191e-05,
+          "total_time_s": 0.1015128
+        },
+        {
+          "cumulative_time_per_call_s": 5.1272305936073065e-05,
+          "cumulative_time_s": 0.4491454,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\co2_kernels.py",
+          "function_name": "run_co2_step",
+          "line_number": 533,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 9.05730593607306e-07,
+          "total_time_s": 0.0079342
+        },
+        {
+          "cumulative_time_per_call_s": 5.036657534246576e-05,
+          "cumulative_time_s": 0.4412112,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\co2_kernels.py",
+          "function_name": "step_building_co2_balance",
+          "line_number": 487,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 3.9060388127853886e-06,
+          "total_time_s": 0.0342169
+        }
+      ]
+    },
+    "logs_on": {
+      "sha256": "5481c943465db9e2ee1a9ba02cd20c637d7358afa26cd512cc8b7da1a747f33f",
+      "source": "artifacts\\benchmarks\\phase1_4\\phase18_21\\generated\\abbey_8760_logs_on_profile.csv",
+      "top_functions": [
+        {
+          "cumulative_time_per_call_s": 9.7436324,
+          "cumulative_time_s": 9.7436324,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\benchmarks\\arrays\\phase_18_21_profile_8760.py",
+          "function_name": "run_loop",
+          "line_number": 46,
+          "primitive_calls": 1,
+          "total_calls": 1,
+          "total_time_per_call_s": 0.0155108,
+          "total_time_s": 0.0155108
+        },
+        {
+          "cumulative_time_per_call_s": 0.0011105161643835,
+          "cumulative_time_s": 9.7281216,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\timestep.py",
+          "function_name": "run_array_timestep",
+          "line_number": 858,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 9.294315068493152e-06,
+          "total_time_s": 0.0814182
+        },
+        {
+          "cumulative_time_per_call_s": 0.0010254402511415,
+          "cumulative_time_s": 8.9828566,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\timestep.py",
+          "function_name": "run_array_timestep_arrays",
+          "line_number": 509,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.7943527397260274e-05,
+          "total_time_s": 0.1571853
+        },
+        {
+          "cumulative_time_per_call_s": 0.0001913350913242,
+          "cumulative_time_s": 1.6760954,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\action_kernels.py",
+          "function_name": "score_all_person_actions",
+          "line_number": 988,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 0.0001756271575342,
+          "total_time_s": 1.5384939000000002
+        },
+        {
+          "cumulative_time_per_call_s": 0.0001555015525114,
+          "cumulative_time_s": 1.3621936,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\person_kernels.py",
+          "function_name": "update_person_dynamics",
+          "line_number": 1080,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 2.183453196347032e-05,
+          "total_time_s": 0.1912705
+        },
+        {
+          "cumulative_time_per_call_s": 0.0001130294634703,
+          "cumulative_time_s": 0.9901381,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\execution_kernels.py",
+          "function_name": "run_execution_step_from_chosen_actions",
+          "line_number": 1254,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.768127853881279e-06,
+          "total_time_s": 0.0154888
+        },
+        {
+          "cumulative_time_per_call_s": 0.0001073018150684,
+          "cumulative_time_s": 0.9399639,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\daylight_kernels.py",
+          "function_name": "run_daylight_step",
+          "line_number": 567,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 9.226940639269408e-07,
+          "total_time_s": 0.0080828
+        },
+        {
+          "cumulative_time_per_call_s": 0.0001063791210045,
+          "cumulative_time_s": 0.9318811,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\daylight_kernels.py",
+          "function_name": "step_building_daylight",
+          "line_number": 522,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 3.030719178082192e-06,
+          "total_time_s": 0.0265491
+        },
+        {
+          "cumulative_time_per_call_s": 2.0669680365296804e-05,
+          "cumulative_time_s": 0.905332,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\daylight_kernels.py",
+          "function_name": "step_zone_daylight",
+          "line_number": 458,
+          "primitive_calls": 43800,
+          "total_calls": 43800,
+          "total_time_per_call_s": 1.813141552511416e-06,
+          "total_time_s": 0.0794156
+        },
+        {
+          "cumulative_time_per_call_s": 9.733140410958903e-05,
+          "cumulative_time_s": 0.8526231000000001,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\person_kernels.py",
+          "function_name": "update_person_perception",
+          "line_number": 630,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 3.5060890410958906e-05,
+          "total_time_s": 0.3071334
+        },
+        {
+          "cumulative_time_per_call_s": 8.204206621004566e-05,
+          "cumulative_time_s": 0.7186885000000001,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\execution_kernels.py",
+          "function_name": "advance_execution_state_arrays",
+          "line_number": 1104,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 3.0012328767123293e-06,
+          "total_time_s": 0.0262908
+        },
+        {
+          "cumulative_time_per_call_s": 7.929293378995434e-05,
+          "cumulative_time_s": 0.6946061,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\airflow_kernels.py",
+          "function_name": "run_airflow_step",
+          "line_number": 727,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.207203196347032e-06,
+          "total_time_s": 0.0105751
+        },
+        {
+          "cumulative_time_per_call_s": 7.808573059360731e-05,
+          "cumulative_time_s": 0.6840310000000001,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\airflow_kernels.py",
+          "function_name": "step_building_airflow",
+          "line_number": 677,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.6597602739726028e-06,
+          "total_time_s": 0.0145395
+        },
+        {
+          "cumulative_time_per_call_s": 7.41572488584475e-05,
+          "cumulative_time_s": 0.6496175000000001,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\logger.py",
+          "function_name": "write_current_state_to_logs",
+          "line_number": 304,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 3.762933789954338e-06,
+          "total_time_s": 0.0329633
+        },
+        {
+          "cumulative_time_per_call_s": 6.86167808219178e-05,
+          "cumulative_time_s": 0.601083,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\airflow_kernels.py",
+          "function_name": "calculate_all_zone_airflow_components_m3_s",
+          "line_number": 545,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 9.94851598173516e-06,
+          "total_time_s": 0.087149
+        },
+        {
+          "cumulative_time_per_call_s": 1.860311907270812e-05,
+          "cumulative_time_s": 0.5296308000000001,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\person_kernels.py",
+          "function_name": "fanger_pmv_scalar",
+          "line_number": 142,
+          "primitive_calls": 28470,
+          "total_calls": 28470,
+          "total_time_per_call_s": 1.544337197049526e-05,
+          "total_time_s": 0.4396728
+        },
+        {
+          "cumulative_time_per_call_s": 3.0010142694063927e-05,
+          "cumulative_time_s": 0.5257777,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\system_kernels.py",
+          "function_name": "enforce_system_constraints",
+          "line_number": 573,
+          "primitive_calls": 17520,
+          "total_calls": 17520,
+          "total_time_per_call_s": 3.0010142694063927e-05,
+          "total_time_s": 0.5257777
+        },
+        {
+          "cumulative_time_per_call_s": 5.724945205479452e-05,
+          "cumulative_time_s": 0.5015052,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\thermal_kernels.py",
+          "function_name": "run_thermal_step",
+          "line_number": 1258,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.4422602739726028e-06,
+          "total_time_s": 0.0126342
+        },
+        {
+          "cumulative_time_per_call_s": 5.5807191780821925e-05,
+          "cumulative_time_s": 0.488871,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\thermal_kernels.py",
+          "function_name": "step_building_thermal_semi_implicit_fast",
+          "line_number": 832,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 5.5807191780821925e-05,
+          "total_time_s": 0.488871
+        },
+        {
+          "cumulative_time_per_call_s": 1.0699077625570777e-05,
+          "cumulative_time_s": 0.4686196,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\daylight_kernels.py",
+          "function_name": "calculate_zone_daylight_lux",
+          "line_number": 268,
+          "primitive_calls": 43800,
+          "total_calls": 43800,
+          "total_time_per_call_s": 2.006344748858448e-06,
+          "total_time_s": 0.0878779
+        },
+        {
+          "cumulative_time_per_call_s": 5.318131278538813e-05,
+          "cumulative_time_s": 0.4658683,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\timestep.py",
+          "function_name": "run_system_update_if_available",
+          "line_number": 452,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.0807077625570778e-06,
+          "total_time_s": 0.009467
+        },
+        {
+          "cumulative_time_per_call_s": 1.043571689497717e-05,
+          "cumulative_time_s": 0.4570844,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\airflow_kernels.py",
+          "function_name": "calculate_zone_airflow_components_m3_s",
+          "line_number": 499,
+          "primitive_calls": 43800,
+          "total_calls": 43800,
+          "total_time_per_call_s": 1.531840182648402e-06,
+          "total_time_s": 0.0670946
+        },
+        {
+          "cumulative_time_per_call_s": 5.210060502283105e-05,
+          "cumulative_time_s": 0.4564013,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\system_kernels.py",
+          "function_name": "update_system_control_state",
+          "line_number": 1411,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 2.5163013698630136e-06,
+          "total_time_s": 0.0220428
+        },
+        {
+          "cumulative_time_per_call_s": 5.0696073059360737e-05,
+          "cumulative_time_s": 0.4440976,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\execution_kernels.py",
+          "function_name": "advance_foreground_actions",
+          "line_number": 855,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 1.15701598173516e-05,
+          "total_time_s": 0.1013546
+        },
+        {
+          "cumulative_time_per_call_s": 4.93256392694064e-05,
+          "cumulative_time_s": 0.4320926,
+          "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\arrays\\co2_kernels.py",
+          "function_name": "run_co2_step",
+          "line_number": 533,
+          "primitive_calls": 8760,
+          "total_calls": 8760,
+          "total_time_per_call_s": 9.955251141552513e-07,
+          "total_time_s": 0.0087208
+        }
+      ]
+    }
+  },
+  "environment": {
+    "cpu": {
+      "logical_cores": 12,
+      "model": "13th Gen Intel(R) Core(TM) i7-1355U",
+      "physical_cores": 10
+    },
+    "operating_system": {
+      "machine": "AMD64",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "release": "11",
+      "version": "10.0.26200"
+    },
+    "packages": {
+      "numba": "0.66.0",
+      "numpy": "2.4.6",
+      "pandas": "3.0.5",
+      "psutil": "7.2.2"
+    },
+    "python": {
+      "executable": "C:\\Works\\NexusEP\\NexusEP\\.venv\\Scripts\\python.exe",
+      "implementation": "CPython",
+      "version": "3.12.2"
+    },
+    "ram_bytes": 16849256448,
+    "repository": {
+      "branch": "main",
+      "commit": "7d2729173146536771935ffa92eabaa3c4000c53",
+      "dirty": true,
+      "dirty_status_sha256": "944d7432a31b25cdd402d845e5098d6153d2a5c3e5446f3c3a7923fa11a11dee"
+    },
+    "thread_environment": {
+      "MKL_NUM_THREADS": null,
+      "NUMBA_NUM_THREADS": null,
+      "NUMEXPR_NUM_THREADS": null,
+      "OMP_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "VECLIB_MAXIMUM_THREADS": null
+    }
+  },
+  "measurement_policy": {
+    "measured_repetitions": 3,
+    "peak_memory": "process RSS sampled every 20 ms",
+    "reported_statistic": "median with min/max/range",
+    "timing_boundaries": [
+      "input construction",
+      "array encoding/compilation",
+      "log allocation",
+      "first timestep (non-JIT)",
+      "steady-state remaining loop",
+      "final-state and optional log decoding"
+    ],
+    "warmup_separate": true
+  },
+  "runner": "Phase 18 reference array timestep path",
+  "scenario": {
+    "actions": 7,
+    "buildings": 1,
+    "dt_minutes": 60,
+    "dwellings": 1,
+    "logging_modes": [
+      "off",
+      "on"
+    ],
+    "numpy_seed": 20260806,
+    "object_reference_start_timestamp": "2026-01-01T00:00:00+01:00",
+    "other_optional_kernels": "thermal, airflow, CO2, moisture, daylight enabled",
+    "people": 4,
+    "run_acoustics": false,
+    "seed": 20260806,
+    "simulated_hours": 8760.0,
+    "systems": 5,
+    "timesteps": 8760,
+    "timezone": "Europe/Rome",
+    "zones": 5
+  },
+  "schema_version": 1
+}

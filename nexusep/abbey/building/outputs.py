@@ -12,6 +12,9 @@ from typing import Any, Dict, Optional, List
 import json
 import math
 import pandas as pd
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 

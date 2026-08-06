@@ -6,7 +6,7 @@ authors = [
     { name = "Mohamad Hasan Khajedehi" }
 ]
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.12,<3.13"
 license = { file = "LICENSE" }
 
 dependencies = [
@@ -17,6 +17,7 @@ dependencies = [
     "pyproj",
     "rasterio",
     "scipy",
+    "matplotlib",
     "lxml",
     "pydantic",
     "pyarrow"
@@ -28,7 +29,22 @@ dev = [
     "ruff",
     "mypy"
 ]
+benchmark = [
+    "numba",
+    "psutil"
+]
 
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools==80.9.0"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["nexusep*"]
+exclude = ["artifacts*", "benchmarks*", "data*", "docs*", "outputs*", "tests*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --basetemp=artifacts/test-temp"
+markers = [
+    "slow: long-running integration or annual simulation coverage",
+]

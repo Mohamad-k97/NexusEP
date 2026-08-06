@@ -1,0 +1,913 @@
+{
+  "annual_logs_on_feasibility": {
+    "feasible": true,
+    "memory_safety_limit_bytes": 10109553868.8,
+    "policy": "run when projected loop <= 360 s and projected retained-memory growth <= 60% of physical RAM",
+    "projected_loop_s_per_repetition": 148.09384335663967,
+    "projected_peak_rss_growth_bytes": 1317984548.5714285
+  },
+  "cases": {
+    "annual_logs_off": {
+      "checkpoint": "artifacts\\profiles\\phase1_6_object\\annual_logs_off_measurements.json",
+      "dt_minutes": 60,
+      "logs_enabled": false,
+      "name": "annual_logs_off",
+      "repetitions": 2,
+      "samples": [
+        {
+          "initialization_s": 0.017748899990692735,
+          "output_inspection_s": 9.199997293762863e-06,
+          "peak_rss_bytes": 1204072448,
+          "peak_rss_growth_bytes": 1070006272,
+          "repetition": 1,
+          "retained_record_count_total": 505722,
+          "retained_record_counts": {
+            "action_events": 21147,
+            "building": 8760,
+            "building_dwelling": 8760,
+            "building_zone": 70080,
+            "control_bridge": 9117,
+            "internal_source": 11178,
+            "internal_source_building": 8760,
+            "internal_source_zone": 70080,
+            "interzone_airflow": 122640,
+            "interzone_thermal": 122640,
+            "logger_main": 0,
+            "logger_people": 0,
+            "logger_zones": 0,
+            "window_airflow": 52560
+          },
+          "rss_after_initialization_bytes": 135000064,
+          "rss_after_loop_bytes": 1204072448,
+          "rss_start_bytes": 134066176,
+          "seconds_per_timestep": 0.020975267248859505,
+          "simulated_hours_per_second": 47.67519708500369,
+          "simulation_loop_s": 183.74334110000927,
+          "total_s": 183.76109919999726
+        },
+        {
+          "initialization_s": 0.014445299995713867,
+          "output_inspection_s": 8.699993486516178e-06,
+          "peak_rss_bytes": 1205219328,
+          "peak_rss_growth_bytes": 1059217408,
+          "repetition": 2,
+          "retained_record_count_total": 505722,
+          "retained_record_counts": {
+            "action_events": 21147,
+            "building": 8760,
+            "building_dwelling": 8760,
+            "building_zone": 70080,
+            "control_bridge": 9117,
+            "internal_source": 11178,
+            "internal_source_building": 8760,
+            "internal_source_zone": 70080,
+            "interzone_airflow": 122640,
+            "interzone_thermal": 122640,
+            "logger_main": 0,
+            "logger_people": 0,
+            "logger_zones": 0,
+            "window_airflow": 52560
+          },
+          "rss_after_initialization_bytes": 147042304,
+          "rss_after_loop_bytes": 1205219328,
+          "rss_start_bytes": 146001920,
+          "seconds_per_timestep": 0.021288227089042176,
+          "simulated_hours_per_second": 46.974320398655294,
+          "simulation_loop_s": 186.48486930000945,
+          "total_s": 186.49932329999865
+        }
+      ],
+      "simulated_hours": 8760.0,
+      "summary": {
+        "initialization_s": {
+          "max": 0.017748899990692735,
+          "median": 0.0160970999932033,
+          "min": 0.014445299995713867,
+          "range": 0.0033035999949788675
+        },
+        "peak_rss_bytes": {
+          "max": 1205219328.0,
+          "median": 1204645888.0,
+          "min": 1204072448.0,
+          "range": 1146880.0
+        },
+        "peak_rss_growth_bytes": {
+          "max": 1070006272.0,
+          "median": 1064611840.0,
+          "min": 1059217408.0,
+          "range": 10788864.0
+        },
+        "retained_record_count_total": {
+          "max": 505722.0,
+          "median": 505722.0,
+          "min": 505722.0,
+          "range": 0.0
+        },
+        "seconds_per_timestep": {
+          "max": 0.021288227089042176,
+          "median": 0.02113174716895084,
+          "min": 0.020975267248859505,
+          "range": 0.0003129598401826715
+        },
+        "simulated_hours_per_second": {
+          "max": 47.67519708500369,
+          "median": 47.32475874182949,
+          "min": 46.974320398655294,
+          "range": 0.7008766863483942
+        },
+        "simulation_loop_s": {
+          "max": 186.48486930000945,
+          "median": 185.11410520000936,
+          "min": 183.74334110000927,
+          "range": 2.7415282000001753
+        },
+        "total_s": {
+          "max": 186.49932329999865,
+          "median": 185.13021124999796,
+          "min": 183.76109919999726,
+          "range": 2.738224100001389
+        }
+      },
+      "timesteps": 8760
+    },
+    "annual_logs_on": {
+      "checkpoint": "artifacts\\profiles\\phase1_6_object\\annual_logs_on_measurements.json",
+      "dt_minutes": 60,
+      "logs_enabled": true,
+      "name": "annual_logs_on",
+      "repetitions": 2,
+      "samples": [
+        {
+          "initialization_s": 0.012390299991238862,
+          "output_inspection_s": 1.2100004823878407e-05,
+          "peak_rss_bytes": 1564925952,
+          "peak_rss_growth_bytes": 1415921664,
+          "repetition": 1,
+          "retained_record_count_total": 593322,
+          "retained_record_counts": {
+            "action_events": 21147,
+            "building": 8760,
+            "building_dwelling": 8760,
+            "building_zone": 70080,
+            "control_bridge": 9117,
+            "internal_source": 11178,
+            "internal_source_building": 8760,
+            "internal_source_zone": 70080,
+            "interzone_airflow": 122640,
+            "interzone_thermal": 122640,
+            "logger_main": 8760,
+            "logger_people": 8760,
+            "logger_zones": 70080,
+            "window_airflow": 52560
+          },
+          "rss_after_initialization_bytes": 149884928,
+          "rss_after_loop_bytes": 1564925952,
+          "rss_start_bytes": 149004288,
+          "seconds_per_timestep": 0.02608462786529718,
+          "simulated_hours_per_second": 38.33675547008257,
+          "simulation_loop_s": 228.5013401000033,
+          "total_s": 228.51374249999935
+        },
+        {
+          "initialization_s": 0.016495000003487803,
+          "output_inspection_s": 5.399997462518513e-06,
+          "peak_rss_bytes": 1567981568,
+          "peak_rss_growth_bytes": 1449611264,
+          "repetition": 2,
+          "retained_record_count_total": 593322,
+          "retained_record_counts": {
+            "action_events": 21147,
+            "building": 8760,
+            "building_dwelling": 8760,
+            "building_zone": 70080,
+            "control_bridge": 9117,
+            "internal_source": 11178,
+            "internal_source_building": 8760,
+            "internal_source_zone": 70080,
+            "interzone_airflow": 122640,
+            "interzone_thermal": 122640,
+            "logger_main": 8760,
+            "logger_people": 8760,
+            "logger_zones": 70080,
+            "window_airflow": 52560
+          },
+          "rss_after_initialization_bytes": 119627776,
+          "rss_after_loop_bytes": 1567969280,
+          "rss_start_bytes": 118370304,
+          "seconds_per_timestep": 0.019249836700912893,
+          "simulated_hours_per_second": 51.94849263072328,
+          "simulation_loop_s": 168.62856949999696,
+          "total_s": 168.6450698999979
+        }
+      ],
+      "simulated_hours": 8760.0,
+      "summary": {
+        "initialization_s": {
+          "max": 0.016495000003487803,
+          "median": 0.014442649997363333,
+          "min": 0.012390299991238862,
+          "range": 0.004104700012248941
+        },
+        "peak_rss_bytes": {
+          "max": 1567981568.0,
+          "median": 1566453760.0,
+          "min": 1564925952.0,
+          "range": 3055616.0
+        },
+        "peak_rss_growth_bytes": {
+          "max": 1449611264.0,
+          "median": 1432766464.0,
+          "min": 1415921664.0,
+          "range": 33689600.0
+        },
+        "retained_record_count_total": {
+          "max": 593322.0,
+          "median": 593322.0,
+          "min": 593322.0,
+          "range": 0.0
+        },
+        "seconds_per_timestep": {
+          "max": 0.02608462786529718,
+          "median": 0.022667232283105035,
+          "min": 0.019249836700912893,
+          "range": 0.006834791164384287
+        },
+        "simulated_hours_per_second": {
+          "max": 51.94849263072328,
+          "median": 45.14262405040293,
+          "min": 38.33675547008257,
+          "range": 13.611737160640708
+        },
+        "simulation_loop_s": {
+          "max": 228.5013401000033,
+          "median": 198.56495480000012,
+          "min": 168.62856949999696,
+          "range": 59.87277060000633
+        },
+        "total_s": {
+          "max": 228.51374249999935,
+          "median": 198.57940619999863,
+          "min": 168.6450698999979,
+          "range": 59.868672600001446
+        }
+      },
+      "timesteps": 8760
+    },
+    "one_step": {
+      "checkpoint": "artifacts\\profiles\\phase1_6_object\\one_step_measurements.json",
+      "dt_minutes": 60,
+      "logs_enabled": true,
+      "name": "one_step",
+      "repetitions": 3,
+      "samples": [
+        {
+          "initialization_s": 0.008576399995945394,
+          "output_inspection_s": 6.199989002197981e-06,
+          "peak_rss_bytes": 123805696,
+          "peak_rss_growth_bytes": 36864,
+          "repetition": 1,
+          "retained_record_count_total": 69,
+          "retained_record_counts": {
+            "action_events": 3,
+            "building": 1,
+            "building_dwelling": 1,
+            "building_zone": 8,
+            "control_bridge": 1,
+            "internal_source": 2,
+            "internal_source_building": 1,
+            "internal_source_zone": 8,
+            "interzone_airflow": 14,
+            "interzone_thermal": 14,
+            "logger_main": 1,
+            "logger_people": 1,
+            "logger_zones": 8,
+            "window_airflow": 6
+          },
+          "rss_after_initialization_bytes": 123801600,
+          "rss_after_loop_bytes": 123805696,
+          "rss_start_bytes": 123768832,
+          "seconds_per_timestep": 0.016921800008276477,
+          "simulated_hours_per_second": 59.0953680761443,
+          "simulation_loop_s": 0.016921800008276477,
+          "total_s": 0.02550439999322407
+        },
+        {
+          "initialization_s": 0.006705099993268959,
+          "output_inspection_s": 5.900001269765198e-06,
+          "peak_rss_bytes": 123822080,
+          "peak_rss_growth_bytes": 32768,
+          "repetition": 2,
+          "retained_record_count_total": 69,
+          "retained_record_counts": {
+            "action_events": 3,
+            "building": 1,
+            "building_dwelling": 1,
+            "building_zone": 8,
+            "control_bridge": 1,
+            "internal_source": 2,
+            "internal_source_building": 1,
+            "internal_source_zone": 8,
+            "interzone_airflow": 14,
+            "interzone_thermal": 14,
+            "logger_main": 1,
+            "logger_people": 1,
+            "logger_zones": 8,
+            "window_airflow": 6
+          },
+          "rss_after_initialization_bytes": 123817984,
+          "rss_after_loop_bytes": 123822080,
+          "rss_start_bytes": 123789312,
+          "seconds_per_timestep": 0.013837300008162856,
+          "simulated_hours_per_second": 72.26843382813722,
+          "simulation_loop_s": 0.013837300008162856,
+          "total_s": 0.02054830000270158
+        },
+        {
+          "initialization_s": 0.007266299988259561,
+          "output_inspection_s": 4.999994416721165e-06,
+          "peak_rss_bytes": 123842560,
+          "peak_rss_growth_bytes": 40960,
+          "repetition": 3,
+          "retained_record_count_total": 69,
+          "retained_record_counts": {
+            "action_events": 3,
+            "building": 1,
+            "building_dwelling": 1,
+            "building_zone": 8,
+            "control_bridge": 1,
+            "internal_source": 2,
+            "internal_source_building": 1,
+            "internal_source_zone": 8,
+            "interzone_airflow": 14,
+            "interzone_thermal": 14,
+            "logger_main": 1,
+            "logger_people": 1,
+            "logger_zones": 8,
+            "window_airflow": 6
+          },
+          "rss_after_initialization_bytes": 123842560,
+          "rss_after_loop_bytes": 123842560,
+          "rss_start_bytes": 123801600,
+          "seconds_per_timestep": 0.012703000000328757,
+          "simulated_hours_per_second": 78.72156183374949,
+          "simulation_loop_s": 0.012703000000328757,
+          "total_s": 0.01997429998300504
+        }
+      ],
+      "simulated_hours": 1.0,
+      "summary": {
+        "initialization_s": {
+          "max": 0.008576399995945394,
+          "median": 0.007266299988259561,
+          "min": 0.006705099993268959,
+          "range": 0.0018713000026764348
+        },
+        "peak_rss_bytes": {
+          "max": 123842560.0,
+          "median": 123822080.0,
+          "min": 123805696.0,
+          "range": 36864.0
+        },
+        "peak_rss_growth_bytes": {
+          "max": 40960.0,
+          "median": 36864.0,
+          "min": 32768.0,
+          "range": 8192.0
+        },
+        "retained_record_count_total": {
+          "max": 69.0,
+          "median": 69.0,
+          "min": 69.0,
+          "range": 0.0
+        },
+        "seconds_per_timestep": {
+          "max": 0.016921800008276477,
+          "median": 0.013837300008162856,
+          "min": 0.012703000000328757,
+          "range": 0.004218800007947721
+        },
+        "simulated_hours_per_second": {
+          "max": 78.72156183374949,
+          "median": 72.26843382813722,
+          "min": 59.0953680761443,
+          "range": 19.626193757605193
+        },
+        "simulation_loop_s": {
+          "max": 0.016921800008276477,
+          "median": 0.013837300008162856,
+          "min": 0.012703000000328757,
+          "range": 0.004218800007947721
+        },
+        "total_s": {
+          "max": 0.02550439999322407,
+          "median": 0.02054830000270158,
+          "min": 0.01997429998300504,
+          "range": 0.00553010001021903
+        }
+      },
+      "timesteps": 1
+    },
+    "short_integration": {
+      "checkpoint": "artifacts\\profiles\\phase1_6_object\\short_integration_measurements.json",
+      "dt_minutes": 60,
+      "logs_enabled": true,
+      "name": "short_integration",
+      "repetitions": 3,
+      "samples": [
+        {
+          "initialization_s": 0.009837300007347949,
+          "output_inspection_s": 1.1399999493733048e-05,
+          "peak_rss_bytes": 149098496,
+          "peak_rss_growth_bytes": 25276416,
+          "repetition": 1,
+          "retained_record_count_total": 11383,
+          "retained_record_counts": {
+            "action_events": 396,
+            "building": 168,
+            "building_dwelling": 168,
+            "building_zone": 1344,
+            "control_bridge": 170,
+            "internal_source": 233,
+            "internal_source_building": 168,
+            "internal_source_zone": 1344,
+            "interzone_airflow": 2352,
+            "interzone_thermal": 2352,
+            "logger_main": 168,
+            "logger_people": 168,
+            "logger_zones": 1344,
+            "window_airflow": 1008
+          },
+          "rss_after_initialization_bytes": 123891712,
+          "rss_after_loop_bytes": 149094400,
+          "rss_start_bytes": 123822080,
+          "seconds_per_timestep": 0.01522524583335672,
+          "simulated_hours_per_second": 65.68038447097634,
+          "simulation_loop_s": 2.557841300003929,
+          "total_s": 2.5676900000107707
+        },
+        {
+          "initialization_s": 0.01086619999841787,
+          "output_inspection_s": 7.400012691505253e-06,
+          "peak_rss_bytes": 149381120,
+          "peak_rss_growth_bytes": 22720512,
+          "repetition": 2,
+          "retained_record_count_total": 11383,
+          "retained_record_counts": {
+            "action_events": 396,
+            "building": 168,
+            "building_dwelling": 168,
+            "building_zone": 1344,
+            "control_bridge": 170,
+            "internal_source": 233,
+            "internal_source_building": 168,
+            "internal_source_zone": 1344,
+            "interzone_airflow": 2352,
+            "interzone_thermal": 2352,
+            "logger_main": 168,
+            "logger_people": 168,
+            "logger_zones": 1344,
+            "window_airflow": 1008
+          },
+          "rss_after_initialization_bytes": 127582208,
+          "rss_after_loop_bytes": 149381120,
+          "rss_start_bytes": 126660608,
+          "seconds_per_timestep": 0.016905689880894942,
+          "simulated_hours_per_second": 59.151682483546345,
+          "simulation_loop_s": 2.84015589999035,
+          "total_s": 2.8510295000014594
+        },
+        {
+          "initialization_s": 0.010741999998572282,
+          "output_inspection_s": 8.500006515532732e-06,
+          "peak_rss_bytes": 149565440,
+          "peak_rss_growth_bytes": 20549632,
+          "repetition": 3,
+          "retained_record_count_total": 11383,
+          "retained_record_counts": {
+            "action_events": 396,
+            "building": 168,
+            "building_dwelling": 168,
+            "building_zone": 1344,
+            "control_bridge": 170,
+            "internal_source": 233,
+            "internal_source_building": 168,
+            "internal_source_zone": 1344,
+            "interzone_airflow": 2352,
+            "interzone_thermal": 2352,
+            "logger_main": 168,
+            "logger_people": 168,
+            "logger_zones": 1344,
+            "window_airflow": 1008
+          },
+          "rss_after_initialization_bytes": 129568768,
+          "rss_after_loop_bytes": 149565440,
+          "rss_start_bytes": 129015808,
+          "seconds_per_timestep": 0.020235217261870275,
+          "simulated_hours_per_second": 49.41879234893736,
+          "simulation_loop_s": 3.3995164999942062,
+          "total_s": 3.410266999999294
+        }
+      ],
+      "simulated_hours": 168.0,
+      "summary": {
+        "initialization_s": {
+          "max": 0.01086619999841787,
+          "median": 0.010741999998572282,
+          "min": 0.009837300007347949,
+          "range": 0.0010288999910699204
+        },
+        "peak_rss_bytes": {
+          "max": 149565440.0,
+          "median": 149381120.0,
+          "min": 149098496.0,
+          "range": 466944.0
+        },
+        "peak_rss_growth_bytes": {
+          "max": 25276416.0,
+          "median": 22720512.0,
+          "min": 20549632.0,
+          "range": 4726784.0
+        },
+        "retained_record_count_total": {
+          "max": 11383.0,
+          "median": 11383.0,
+          "min": 11383.0,
+          "range": 0.0
+        },
+        "seconds_per_timestep": {
+          "max": 0.020235217261870275,
+          "median": 0.016905689880894942,
+          "min": 0.01522524583335672,
+          "range": 0.005009971428513555
+        },
+        "simulated_hours_per_second": {
+          "max": 65.68038447097634,
+          "median": 59.151682483546345,
+          "min": 49.41879234893736,
+          "range": 16.261592122038977
+        },
+        "simulation_loop_s": {
+          "max": 3.3995164999942062,
+          "median": 2.84015589999035,
+          "min": 2.557841300003929,
+          "range": 0.8416751999902772
+        },
+        "total_s": {
+          "max": 3.410266999999294,
+          "median": 2.8510295000014594,
+          "min": 2.5676900000107707,
+          "range": 0.8425769999885233
+        }
+      },
+      "timesteps": 168
+    }
+  },
+  "environment": {
+    "cpu": {
+      "logical_cores": 12,
+      "model": "13th Gen Intel(R) Core(TM) i7-1355U",
+      "physical_cores": 10
+    },
+    "operating_system": {
+      "machine": "AMD64",
+      "platform": "Windows-11-10.0.26200-SP0",
+      "release": "11",
+      "version": "10.0.26200"
+    },
+    "packages": {
+      "numpy": "2.4.6",
+      "pandas": "3.0.5",
+      "psutil": "7.2.2"
+    },
+    "python": {
+      "executable": "C:\\Works\\NexusEP\\NexusEP\\.venv\\Scripts\\python.exe",
+      "implementation": "CPython",
+      "version": "3.12.2"
+    },
+    "ram_bytes": 16849256448,
+    "repository": {
+      "branch": "main",
+      "commit": "7d2729173146536771935ffa92eabaa3c4000c53",
+      "dirty": true,
+      "dirty_status_sha256": "e4f2b059a39caba6368421d5cea99607e9d9925f211be736885df1d4e477e43f"
+    },
+    "thread_environment": {
+      "MKL_NUM_THREADS": null,
+      "NUMBA_NUM_THREADS": null,
+      "NUMEXPR_NUM_THREADS": null,
+      "OMP_NUM_THREADS": null,
+      "OPENBLAS_NUM_THREADS": null,
+      "VECLIB_MAXIMUM_THREADS": null
+    }
+  },
+  "import_initialization_smoke": {
+    "fresh_process_total_s": {
+      "max": 5.759151499994914,
+      "median": 4.213948499993421,
+      "min": 4.070227299991529,
+      "range": 1.6889242000033846
+    },
+    "module_import_s": {
+      "max": 5.009863500003121,
+      "median": 3.7622053000086453,
+      "min": 3.511776400002418,
+      "range": 1.4980871000007028
+    },
+    "samples": [
+      {
+        "fresh_process_total_s": 5.759151499994914,
+        "module_import_s": 5.009863500003121,
+        "repetition": 1
+      },
+      {
+        "fresh_process_total_s": 4.070227299991529,
+        "module_import_s": 3.511776400002418,
+        "repetition": 2
+      },
+      {
+        "fresh_process_total_s": 4.213948499993421,
+        "module_import_s": 3.7622053000086453,
+        "repetition": 3
+      }
+    ]
+  },
+  "measurement_policy": {
+    "annual_case_repetitions": 2,
+    "cold_vs_warm": "fresh-process imports reported separately; one unmeasured 24-step warm-up precedes every measured case group",
+    "output_size_proxies": "retained record counts and RSS growth; deterministic 24-hour and 720-hour serialized CSV sizes are in the object manifest",
+    "peak_memory": "process RSS sampled every 20 ms",
+    "reported_statistic": "median with min/max/range",
+    "small_case_repetitions": 3
+  },
+  "profiler": {
+    "artifacts": [
+      {
+        "bytes": 7182,
+        "path": "artifacts\\profiles\\phase1_6_object\\object_short_integration_profile.txt",
+        "sha256": "09382fdb297c9190fa64a9faf1a751ac8fd3aace60cc242245869c807647b22b"
+      },
+      {
+        "bytes": 113182,
+        "path": "artifacts\\profiles\\phase1_6_object\\object_short_integration_profile.csv",
+        "sha256": "550daaad03cc0f0a3f1e99119620ec090654c9d74b1dd36e8f700221437ef71c"
+      }
+    ],
+    "logs_enabled": false,
+    "profiled_loop_s": 16.632220100000268,
+    "scope_note": "cProfile is collected on the 168-step integration case; annual runs use unprofiled repetitions to avoid profiler distortion",
+    "timesteps": 168,
+    "top_functions": [
+      {
+        "cumulative_time_s": 16.630065600000002,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\simulation\\runner.py",
+        "function_name": "step",
+        "line_number": 1642,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.0035658
+      },
+      {
+        "cumulative_time_s": 16.620268,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\simulation\\runner.py",
+        "function_name": "_step_inner",
+        "line_number": 1651,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.0340222
+      },
+      {
+        "cumulative_time_s": 8.2633694,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\simulation\\execution.py",
+        "function_name": "execute_timestep",
+        "line_number": 1083,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.239906
+      },
+      {
+        "cumulative_time_s": 8.0118728,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\simulation\\runner.py",
+        "function_name": "_run_building_performance_if_enabled",
+        "line_number": 655,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.0188764
+      },
+      {
+        "cumulative_time_s": 6.3595465,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\building\\performance.py",
+        "function_name": "step",
+        "line_number": 442,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.0040448
+      },
+      {
+        "cumulative_time_s": 6.347937000000001,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\building\\performance.py",
+        "function_name": "_step_inner",
+        "line_number": 463,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.044662900000000005
+      },
+      {
+        "cumulative_time_s": 5.011563600000001,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\building\\performance.py",
+        "function_name": "_run_physics_engine",
+        "line_number": 1530,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.057323700000000005
+      },
+      {
+        "cumulative_time_s": 4.9542399,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\building\\physics\\engine.py",
+        "function_name": "run_building_physics_step",
+        "line_number": 378,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.10023480000000001
+      },
+      {
+        "cumulative_time_s": 4.266447,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\actions\\library.py",
+        "function_name": "get_available_actions",
+        "line_number": 280,
+        "primitive_calls": 7120,
+        "total_calls": 7120,
+        "total_time_s": 0.165547
+      },
+      {
+        "cumulative_time_s": 2.7967546000000003,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\actions\\library.py",
+        "function_name": "build_action_library",
+        "line_number": 61,
+        "primitive_calls": 7120,
+        "total_calls": 7120,
+        "total_time_s": 0.1849732
+      },
+      {
+        "cumulative_time_s": 2.5408313000000002,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\actions\\library.py",
+        "function_name": "build_action",
+        "line_number": 24,
+        "primitive_calls": 149520,
+        "total_calls": 149520,
+        "total_time_s": 1.9644882000000001
+      },
+      {
+        "cumulative_time_s": 1.623515,
+        "filename": "C:\\Users\\khajmoh18975\\AppData\\Local\\Programs\\Python\\Python312\\Lib\\dataclasses.py",
+        "function_name": "replace",
+        "line_number": 1531,
+        "primitive_calls": 77419,
+        "total_calls": 77419,
+        "total_time_s": 1.0330221000000002
+      },
+      {
+        "cumulative_time_s": 1.6197032,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\agents\\decision.py",
+        "function_name": "choose_action",
+        "line_number": 586,
+        "primitive_calls": 7120,
+        "total_calls": 7120,
+        "total_time_s": 0.0912391
+      },
+      {
+        "cumulative_time_s": 1.5476943,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\simulation\\execution.py",
+        "function_name": "start_action",
+        "line_number": 260,
+        "primitive_calls": 7120,
+        "total_calls": 7120,
+        "total_time_s": 0.15019090000000002
+      },
+      {
+        "cumulative_time_s": 1.4651033,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\agents\\decision.py",
+        "function_name": "score_action",
+        "line_number": 41,
+        "primitive_calls": 37416,
+        "total_calls": 37416,
+        "total_time_s": 0.4667066
+      },
+      {
+        "cumulative_time_s": 1.2785265000000001,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\actions\\library.py",
+        "function_name": "is_action_available",
+        "line_number": 168,
+        "primitive_calls": 149520,
+        "total_calls": 149520,
+        "total_time_s": 0.5621296
+      },
+      {
+        "cumulative_time_s": 0.9467367000000001,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\simulation\\runner.py",
+        "function_name": "_store_building_internal_source_outputs",
+        "line_number": 1074,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.0182509
+      },
+      {
+        "cumulative_time_s": 0.9235584000000001,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\building\\physics\\engine.py",
+        "function_name": "_make_engine_zone_records",
+        "line_number": 1444,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.2085788
+      },
+      {
+        "cumulative_time_s": 0.8878657000000001,
+        "filename": "~",
+        "function_name": "<method 'get' of 'dict' objects>",
+        "line_number": 0,
+        "primitive_calls": 2440919,
+        "total_calls": 2440919,
+        "total_time_s": 0.8878657000000001
+      },
+      {
+        "cumulative_time_s": 0.8651367000000001,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\building\\physics\\internal_sources.py",
+        "function_name": "make_building_internal_source_result",
+        "line_number": 3103,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.005655800000000001
+      },
+      {
+        "cumulative_time_s": 0.7715423,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\building\\physics\\internal_sources.py",
+        "function_name": "internal_source_records_from_chunk_records",
+        "line_number": 2635,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.0959716
+      },
+      {
+        "cumulative_time_s": 0.7693105,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\building\\performance.py",
+        "function_name": "_make_engine_adapter_payload",
+        "line_number": 1615,
+        "primitive_calls": 168,
+        "total_calls": 168,
+        "total_time_s": 0.026185600000000003
+      },
+      {
+        "cumulative_time_s": 0.7142183000000001,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\building\\physics\\internal_sources.py",
+        "function_name": "physics_bridge_inputs_by_zone",
+        "line_number": 1913,
+        "primitive_calls": 336,
+        "total_calls": 336,
+        "total_time_s": 0.11823520000000001
+      },
+      {
+        "cumulative_time_s": 0.5851878,
+        "filename": "~",
+        "function_name": "<built-in method builtins.getattr>",
+        "line_number": 0,
+        "primitive_calls": 1597391,
+        "total_calls": 1597391,
+        "total_time_s": 0.5851878
+      },
+      {
+        "cumulative_time_s": 0.5623845000000001,
+        "filename": "C:\\Works\\NexusEP\\NexusEP\\nexusep\\abbey\\agents\\states.py",
+        "function_name": "copy",
+        "line_number": 96,
+        "primitive_calls": 8982,
+        "total_calls": 8982,
+        "total_time_s": 0.014654
+      }
+    ]
+  },
+  "runner": "trusted object runner (AbbeySimulation)",
+  "scenario": {
+    "buildings": 1,
+    "config_snapshot": "artifacts\\baseline\\inputs\\abbey_config_phase_1_5.jsonc",
+    "config_snapshot_sha256": "c1c9d88f2578a1c8ae6cff4a1e9cf90c10905c7f4bde5e1c0be314ff9337aebf",
+    "configured_actions": 21,
+    "dt_minutes": 60,
+    "dwellings": 1,
+    "logging_definition": {
+      "off": "NullLogger suppresses main/person/zone records; building physics records remain enabled and retained",
+      "on": "SimulationLogger retains main/person/zone records"
+    },
+    "people": 1,
+    "physical_system_specs": 9,
+    "seed": 20260806,
+    "start_timestamp": "2026-01-01T00:00:00+01:00",
+    "timezone": "Europe/Rome",
+    "zones": 8
+  },
+  "schema_version": 1,
+  "warmup": {
+    "included_in_measured_repetitions": false,
+    "logs_enabled": false,
+    "timesteps": 24,
+    "total_s": 0.3845720000099391
+  }
+}

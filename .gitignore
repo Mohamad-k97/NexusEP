@@ -46,6 +46,26 @@ logs/
 .coverage
 htmlcov/
 
+# Profilers and benchmark by-products
+*.prof
+*.pstats
+profiling_outputs/
+nexusep/abbey/profiling_outputs/
+nexusep/abbey/profiling_outputs_phase_*/
+artifacts/profiles/*
+!artifacts/profiles/.gitkeep
+artifacts/benchmarks/*
+!artifacts/benchmarks/.gitkeep
+artifacts/test-temp/
+
+# Approved baseline manifests under artifacts/baseline remain versioned.
+# Generated reports belong under artifacts/, never under nexusep/.
+
+# Frozen local shadow experiments (protected; intentionally not moved)
+/fast_shadow_results.csv
+/polygon_shadow_results.csv
+/shadow_cache_*.npz
+
 # Data and outputs
 data/raw/
 data/processed/
