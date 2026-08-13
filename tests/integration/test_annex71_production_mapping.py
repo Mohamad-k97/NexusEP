@@ -174,7 +174,7 @@ def test_roof_window_uses_published_thirty_degree_tilt() -> None:
     )
 
 
-def test_published_component_model_exposes_cellar_fabric_and_fixed_blind() -> None:
+def test_published_component_model_exposes_cellar_fabric_and_dynamic_blind() -> None:
     timestamp = datetime(2018, 12, 20, 1, tzinfo=ZoneInfo("Europe/Berlin"))
     scenario, graph = build_canonical_scenario((_record(timestamp, 20.0),))
 
@@ -197,7 +197,7 @@ def test_published_component_model_exposes_cellar_fabric_and_fixed_blind() -> No
         for opening in openings
         if opening.opening_id == "window_west_living_type1"
     )
-    assert west_living.solar_shading_factor == pytest.approx(0.35)
+    assert west_living.solar_shading_factor == pytest.approx(1.0)
     assert any(
         connection["external_boundary_id"] == "cellar_air"
         for connection in graph["connections"]
@@ -241,6 +241,10 @@ def test_named_cellar_boundary_is_required_and_changes_the_solution() -> None:
         for zone in scenario.building.dwelling.zones
     )
     step = build_annex71_step_input(scenario, graph, base[1], 0, prior)
+    assert {
+        item.opening_id: item.shading_open_fraction
+        for item in step.opening_control_commands
+    }["window_west_living_type1"] == 0.0
     missing = step.model_copy(update={"external_boundary_states": ()})
     with pytest.raises(CanonicalStepContractError, match="external boundary state"):
         validate_step_input_for_scenario(missing, scenario, graph)

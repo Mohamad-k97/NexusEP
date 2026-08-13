@@ -1,0 +1,30 @@
+{
+  "protocol_version": "1.1.0",
+  "supersedes": "data/validation/governance/annex71_extended_holdout_v1.json",
+  "amended_on": "2026-08-13",
+  "amendment_status": "post_unsealing_target_independent_source_time_correction",
+  "validation_category": "predeclared_holdout_evaluation_not_pristine_blind",
+  "reason": "The official 10-minute workbook contains every timestamp from 02:00 through 02:50 on 31 March 2019 and then 03:00. Interpreting the Excel serials as Europe/Berlin civil time creates duplicate UTC instants. The source clock is fixed CET (UTC+1). This is demonstrable from source timestamps without examining target residuals.",
+  "unchanged_from_v1": [
+    "model and fabric policy",
+    "forcing mappings",
+    "opening and blind schedules",
+    "warm-up",
+    "all numerical acceptance thresholds",
+    "missing-data acceptance",
+    "required reporting",
+    "no post-hoc fitting"
+  ],
+  "corrected_fields": {
+    "time_zone": "Etc/GMT-1 fixed UTC+1/CET with no daylight-saving transition",
+    "primary_user3_holdout_start": "2019-03-22T10:30:00+01:00",
+    "primary_user3_holdout_end_exclusive": "2019-04-25T10:30:00+01:00",
+    "secondary_extended_diagnostics_start": "2019-04-25T10:30:00+01:00",
+    "secondary_extended_diagnostics_end_exclusive": "2019-06-18T07:00:00+01:00"
+  },
+  "source_quality_findings_before_scoring": [
+    "One conflicting duplicate N2 full1 timestamp occurs at 2019-03-18T18:10:00+01:00, before the scored period; the earlier row is dropped and the event is reported.",
+    "Outdoor CO2 is missing for four primary-period 10-minute rows. A labeled carry-forward permits thermal-only diagnostics, but the strict no-missing-input gate remains failed."
+  ],
+  "scientific_label": "The target archive was opened after v1 was committed and pushed. Because loader corrections were then required, results under v1.1 are a predeclared holdout evaluation with a documented post-unsealing source correction, not pristine blind-validation evidence."
+}

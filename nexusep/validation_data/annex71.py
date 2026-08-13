@@ -17,7 +17,7 @@ from dataclasses import asdict, dataclass
 from datetime import datetime, timedelta
 from itertools import pairwise
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from xml.etree import ElementTree
 from zoneinfo import ZoneInfo
 
@@ -44,7 +44,11 @@ from nexusep.schema.timestep import (
 SCENARIO_ID = "annex71_n2_four_airbody"
 BUILDING_ID = "annex71_n2"
 DWELLING_ID = "annex71_n2_dwelling"
-TIMEZONE = "Europe/Berlin"
+# The source Excel serials include 02:00--02:50 on the 2019 spring DST
+# transition.  They therefore use fixed Central European Time, not local civil
+# Europe/Berlin time.  Etc/GMT-1 is the IANA fixed-offset UTC+1 zone (the POSIX
+# sign is intentionally reversed).
+TIMEZONE = "Etc/GMT-1"
 DT_MINUTES = 60.0
 AIR_DENSITY_KG_M3 = 1.204
 AIR_HEAT_CAPACITY_J_KG_K = 1005.0
@@ -150,6 +154,11 @@ class Annex71Interval:
     cellar_temperature_c: float = 10.0
     child1_window_opening_fraction: float = 0.0
     kitchen_door_opening_fraction: float = 1.0
+    missing_source_fields: tuple[str, ...] = ()
+    source_quality_flags: tuple[str, ...] = ()
+    shading_open_fraction_by_opening: tuple[tuple[str, float], ...] = (
+        ("window_west_living_type1", 0.0),
+    )
 
     def zone(self, zone_id: str) -> Annex71ZoneObservation:
         return next(item for item in self.zones if item.zone_id == zone_id)
@@ -309,10 +318,21 @@ def _indexed(
 ) -> dict[float, Mapping[str, str | float | None]]:
     result = {}
     for row in rows:
-        value = row.get("DATE")
+        value = _date_value(row)
         if value is not None and value != "NA":
             result[round(float(value), 9)] = row
     return result
+
+
+def _date_value(
+    row: Mapping[str, str | float | None],
+) -> str | float | None:
+    """Read the documented timestamp column used by either source archive."""
+
+    for field in ("DATE", "as.character(index(datn2))"):
+        if field in row:
+            return row.get(field)
+    raise ValueError("Annex 71 workbook has no recognized timestamp column")
 
 
 def _weighted_room_value(
@@ -412,28 +432,34 @@ def _zone_observations(
 
 
 def load_annex71_intervals(
-    raw_directory: Path, *, resolution_minutes: int = 60
+    raw_directory: Path,
+    *,
+    resolution_minutes: int = 60,
+    experiment: Literal["main", "extended"] = "main",
+    missing_outdoor_co2_policy: Literal[
+        "error", "carry_forward_for_thermal_diagnostic"
+    ] = "error",
+    drop_duplicate_timestamps_before: datetime | None = None,
 ) -> tuple[Annex71Interval, ...]:
-    """Join the official N2 and weather workbooks by their Excel timestamps."""
+    """Join official N2 and weather workbooks by their source timestamps."""
 
     if resolution_minutes not in {10, 60}:
         raise ValueError("resolution_minutes must be 10 or 60")
     resolution = f"{resolution_minutes}min"
-
-    full1_path = (
-        raw_directory
-        / "Experiment1 - open"
-        / f"Twin_house_N2_exp1_full1_{resolution}.xlsx"
-    )
-    full2_path = (
-        raw_directory
-        / "Experiment1 - open"
-        / f"Twin_house_N2_exp1_full2_{resolution}.xlsx"
-    )
+    if experiment == "main":
+        open_directory = raw_directory / "Experiment1 - open"
+        prefix = "exp1"
+        weather_suffix = "xlsx"
+    else:
+        open_directory = raw_directory / "Experiment2 - open"
+        prefix = "exp2"
+        weather_suffix = "xlsm"
+    full1_path = open_directory / f"Twin_house_N2_{prefix}_full1_{resolution}.xlsx"
+    full2_path = open_directory / f"Twin_house_N2_{prefix}_full2_{resolution}.xlsx"
     weather_path = (
         raw_directory
         / "Weather Data"
-        / f"Twin_house_weather_exp1_{resolution}_compensated.xlsx"
+        / f"Twin_house_weather_{prefix}_{resolution}_compensated.{weather_suffix}"
     )
     for path in (full1_path, full2_path, weather_path):
         if not path.is_file():
@@ -442,8 +468,23 @@ def load_annex71_intervals(
     full2 = _indexed(read_first_worksheet(full2_path))
     weather = _indexed(read_first_worksheet(weather_path))
     result = []
+    last_outdoor_co2_ppm: float | None = None
     for row in full1:
-        serial = _finite(row.get("DATE"), "DATE")
+        serial = _finite(_date_value(row), "DATE")
+        timestamp = _timestamp(serial)
+        source_quality_flags: tuple[str, ...] = ()
+        if result and result[-1].timestamp == timestamp:
+            if (
+                drop_duplicate_timestamps_before is None
+                or timestamp >= drop_duplicate_timestamps_before
+            ):
+                raise ValueError(
+                    f"Annex 71 source contains duplicate timestamp {timestamp.isoformat()}"
+                )
+            result.pop()
+            source_quality_flags = (
+                "earlier conflicting duplicate source row dropped before scored period",
+            )
         key = round(serial, 9)
         if key not in full2 or key not in weather:
             raise ValueError(
@@ -461,15 +502,29 @@ def load_annex71_intervals(
             ),
             1.0,
         )
+        missing_source_fields: tuple[str, ...] = ()
+        try:
+            outdoor_co2_ppm = max(
+                0.0, _finite(weather_row.get("CO2"), "CO2")
+            )
+        except (TypeError, ValueError):
+            if (
+                missing_outdoor_co2_policy != "carry_forward_for_thermal_diagnostic"
+                or last_outdoor_co2_ppm is None
+            ):
+                raise
+            outdoor_co2_ppm = last_outdoor_co2_ppm
+            missing_source_fields = ("weather.CO2",)
+        last_outdoor_co2_ppm = outdoor_co2_ppm
         result.append(
             Annex71Interval(
-                timestamp=_timestamp(serial),
+                timestamp=timestamp,
                 outdoor_temperature_c=_finite(
                     weather_row.get("AmbientAirTemperature"), "AmbientAirTemperature"
                 ),
                 relative_humidity_fraction=outdoor_rh_fraction,
                 atmospheric_pressure_pa=pressure_hpa * 100.0,
-                outdoor_co2_ppm=max(0.0, _finite(weather_row.get("CO2"), "CO2")),
+                outdoor_co2_ppm=outdoor_co2_ppm,
                 wind_speed_m_s=max(
                     0.0, _finite(weather_row.get("WindSpeed"), "WindSpeed")
                 ),
@@ -511,6 +566,13 @@ def load_annex71_intervals(
                         0.0,
                     ),
                     1.0,
+                ),
+                missing_source_fields=missing_source_fields,
+                source_quality_flags=source_quality_flags,
+                shading_open_fraction_by_opening=(
+                    (("window_west_living_type1", 0.0),)
+                    if experiment == "main"
+                    else (("window_west_kitchen_type1", 0.0),)
                 ),
             )
         )
@@ -882,9 +944,7 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
                 name,
                 area,
                 solar_shading_factor=(
-                    0.35
-                    if name == "west_living_type1"
-                    else 1.0
+                    1.0
                 ),
                 openable_area_m2=(
                     1.54 * 0.143 + 2.0 * 0.5 * 1.23 * 0.143
@@ -1509,12 +1569,22 @@ def build_annex71_step_input(
             for surface in zone.surfaces
         )
         else (),
-        opening_control_commands=(
+        opening_control_commands=tuple(
             OpeningControlCommand(
-                opening_id="window_west_child1_type1",
-                opening_fraction=record.child1_window_opening_fraction,
-                shading_open_fraction=1.0,
-            ),
+                opening_id=opening_id,
+                opening_fraction=(
+                    record.child1_window_opening_fraction
+                    if opening_id == "window_west_child1_type1"
+                    else 0.0
+                ),
+                shading_open_fraction=shading_open_fraction,
+            )
+            for opening_id, shading_open_fraction in sorted(
+                {
+                    "window_west_child1_type1": 1.0,
+                    **dict(record.shading_open_fraction_by_opening),
+                }.items()
+            )
         ),
         interzone_opening_controls=(
             InterzoneOpeningControl(

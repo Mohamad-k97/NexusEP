@@ -31,7 +31,7 @@
     }
   ],
   "units": {
-    "timestamp": "source Excel serial interpreted as Europe/Berlin local civil time",
+    "timestamp": "source Excel serial interpreted as fixed Central European Time (UTC+1); the Extended archive contains the complete 02:00 hour at the spring DST transition",
     "room_air_temperature": "degree Celsius",
     "outdoor_air_temperature": "degree Celsius",
     "electrical_heating_and_internal_gain_power": "watt",
@@ -39,7 +39,7 @@
     "ventilation_supply_air_temperature": "degree Celsius",
     "ventilation_supply_volume_flow": "cubic metre per hour"
   },
-  "timezone": "Europe/Berlin",
+  "timezone": "Etc/GMT-1 (fixed UTC+1/CET, no daylight-saving shift)",
   "measurement_uncertainty": {
     "status": "reported",
     "description": "The official supplementary measurement-channel registry reports sensor and acquisition-system specifications. These values are retained as source metadata and are not yet propagated into weighted acceptance scores.",
@@ -59,6 +59,7 @@
     "The selected alignment maps each source row to the preceding hour before conversion to canonical interval-start timestamps. This is supported by a lag audit and the published experiment start, but the workbook label convention is not independently proven.",
     "The production path now represents the measured heater convective/radiative split and mechanical supply-air temperature explicitly.",
     "The official supplementary archive is checksum-registered and supplies plans, construction properties, a measurement-channel list, shading geometry, and supporting material.",
+    "A source audit found that the Extended Experiment retains 02:00 through 02:50 on 31 March 2019; fixed CET is required to avoid duplicate UTC instants.",
     "The source-determined 30-degree attic roof-window tilt is now mapped explicitly.",
     "Canonical v1 still lacks per-opening blind state, component-resolved construction topology, and a time-varying cellar boundary contract; reported channel uncertainty is not yet propagated into weighted scoring.",
     "Both registered empirical thermal results remain rejected; the registered energy-path audit is diagnostic and none may be used as evidence for a passing blind-validation claim."
