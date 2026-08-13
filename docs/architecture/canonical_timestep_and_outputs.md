@@ -17,7 +17,7 @@ The boundary separates four kinds of data:
 |---|---|---|
 | Immutable scenario data | loader/compiler | `CanonicalScenario` held by the adapter |
 | Mutable physical state | caller/run coordinator | `prior_zone_states` |
-| External timestep inputs | caller/run coordinator | weather, occupants, events, gains, controls, availability |
+| External timestep inputs | caller/run coordinator | weather, named boundary temperatures, occupants, events, gains, opening/zone controls, availability |
 | Derived intermediate values | backend | `DerivedStepValues`, never accepted by `SimulationStepInput` |
 
 Each adapter calls `validate_step_input_for_scenario` before encoding. The
@@ -25,6 +25,11 @@ validator requires exact zone, occupant, and system coverage, confirms the
 scenario/graph digest, and aligns the timestamp, timestep duration, timezone,
 weather row, seed, and graph version. Missing and invented entity IDs are both
 errors. Dict-like timestep aliases are not accepted.
+
+Named non-weather thermal boundaries, such as a measured cellar air node, are
+explicit `ExternalBoundaryState` rows. Coverage is exact: every boundary named
+by the graph must be supplied once and no boundary may be invented. Exterior
+weather surfaces continue to use the normalized weather state.
 
 Action events describe externally known semantic events. Their physical
 effects must be represented explicitly in `internal_gains`; an adapter must
@@ -36,6 +41,13 @@ temperature. Convective fractions default to `1.0` for backward compatibility;
 the complementary share is radiant and must enter the thermal mass path.
 Supply temperature applies only to mechanical outdoor air. Infiltration and
 window exchange remain coupled to outdoor dry-bulb temperature.
+
+`OpeningControlCommand` overrides the zone default for one exterior opening's
+opening fraction and shading state. `InterzoneOpeningControl` overrides the
+static opening fraction of one reciprocal interzone surface pair. Both use
+canonical IDs and are validated against the compiled graph; controlling both
+faces of the same pair is an error. Omission means the explicit static scenario
+or zone command applies, not an inferred backend default.
 
 ## Required output tables
 

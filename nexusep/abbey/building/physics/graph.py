@@ -201,6 +201,7 @@ class BoundaryConnection:
     connection_id: str
     zone_id: str
     boundary_id: str = OUTSIDE_NODE_ID
+    external_boundary_id: str = "outdoor_air"
     connection_type: str = "outside_boundary"
 
     area_m2: Optional[float] = None
@@ -214,6 +215,7 @@ class BoundaryConnection:
 
     # Window / facade / solar properties
     u_value_w_m2k: Optional[float] = None
+    thermal_bridge_conductance_w_k: float = 0.0
     window_u_value_w_m2k: Optional[float] = None
     glazing_transmittance: Optional[float] = None
     window_visible_transmittance: Optional[float] = None
@@ -250,6 +252,9 @@ class BoundaryConnection:
             raise ValueError(
                 "For now, BoundaryConnection.boundary_id must be 'outside'."
             )
+        if not str(self.external_boundary_id).strip():
+            raise ValueError("BoundaryConnection.external_boundary_id cannot be empty.")
+        self.external_boundary_id = str(self.external_boundary_id).strip()
 
         if self.connection_type not in VALID_BOUNDARY_CONNECTION_TYPES:
             raise ValueError(
@@ -304,6 +309,13 @@ class BoundaryConnection:
                         self.connection_id
                     )
                 )
+        self.thermal_bridge_conductance_w_k = float(
+            self.thermal_bridge_conductance_w_k
+        )
+        if self.thermal_bridge_conductance_w_k < 0.0:
+            raise ValueError(
+                "BoundaryConnection.thermal_bridge_conductance_w_k cannot be negative."
+            )
 
         if self.is_window:
             self._validate_window_inputs()

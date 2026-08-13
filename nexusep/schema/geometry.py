@@ -48,8 +48,12 @@ class Opening(CanonicalModel):
     thermal_transmittance_w_m2_k: Annotated[
         float, Field(ge=0.0, le=20.0, allow_inf_nan=False)
     ]
+    thermal_bridge_conductance_w_k: Annotated[
+        float, Field(ge=0.0, le=100_000.0, allow_inf_nan=False)
+    ] = 0.0
     solar_transmittance_fraction: Fraction
     visible_transmittance_fraction: Fraction
+    solar_shading_factor: Fraction = 1.0
 
     @model_validator(mode="after")
     def validate_openable_area(self) -> Opening:
@@ -67,15 +71,23 @@ class Surface(CanonicalModel):
     boundary_type: Literal["exterior", "interzone"]
     adjacent_zone_id: ExternalID | None
     paired_surface_id: ExternalID | None
+    external_boundary_id: ExternalID | None = None
     area_m2: Annotated[float, Field(gt=0.0, le=10_000.0, allow_inf_nan=False)]
     thermal_transmittance_w_m2_k: Annotated[
         float, Field(ge=0.0, le=20.0, allow_inf_nan=False)
     ]
+    thermal_bridge_conductance_w_k: Annotated[
+        float, Field(ge=0.0, le=100_000.0, allow_inf_nan=False)
+    ] = 0.0
     heat_capacity_j_k: Annotated[
         float, Field(ge=0.0, le=1_000_000_000_000.0, allow_inf_nan=False)
     ]
     azimuth_deg: Annotated[float, Field(ge=0.0, lt=360.0, allow_inf_nan=False)]
     tilt_deg: Annotated[float, Field(ge=0.0, le=180.0, allow_inf_nan=False)]
+    airflow_opening_area_m2: Annotated[
+        float, Field(ge=0.0, le=1_000.0, allow_inf_nan=False)
+    ] = 0.0
+    airflow_open_fraction: Fraction = 0.0
     openings: tuple[Opening, ...]
 
     @model_validator(mode="after")
@@ -85,10 +97,23 @@ class Surface(CanonicalModel):
                 raise ValueError(
                     "exterior surfaces cannot reference adjacent zones or pairs"
                 )
-        elif self.adjacent_zone_id is None or self.paired_surface_id is None:
-            raise ValueError(
-                "interzone surfaces require adjacent_zone_id and paired_surface_id"
-            )
+            if self.airflow_opening_area_m2 != 0.0 or self.airflow_open_fraction != 0.0:
+                raise ValueError(
+                    "exterior surface airflow openings belong to Opening records"
+                )
+        else:
+            if self.adjacent_zone_id is None or self.paired_surface_id is None:
+                raise ValueError(
+                    "interzone surfaces require adjacent_zone_id and paired_surface_id"
+                )
+            if self.external_boundary_id is not None:
+                raise ValueError("interzone surfaces cannot name an external boundary")
+            if self.airflow_opening_area_m2 > self.area_m2:
+                raise ValueError("airflow_opening_area_m2 cannot exceed surface area")
+            if self.airflow_opening_area_m2 == 0.0 and self.airflow_open_fraction != 0.0:
+                raise ValueError(
+                    "airflow_open_fraction requires a positive airflow opening area"
+                )
         if self.boundary_type == "interzone" and self.openings:
             raise ValueError("version 1 interzone surfaces cannot contain openings")
         if sum(opening.area_m2 for opening in self.openings) > self.area_m2:
@@ -163,6 +188,9 @@ class Zone(CanonicalModel):
     ]
     initial_relative_humidity_fraction: Fraction
     initial_co2_ppm: Annotated[float, Field(ge=0.0, le=100_000.0, allow_inf_nan=False)]
+    infiltration_air_changes_per_hour: Annotated[
+        float, Field(ge=0.0, le=20.0, allow_inf_nan=False)
+    ] = 0.0
     surfaces: tuple[Surface, ...]
     systems: tuple[System, ...]
 

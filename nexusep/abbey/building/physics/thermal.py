@@ -40,6 +40,7 @@ THERMAL_NODE_STRUCTURE = "two_node_air_mass"
 
 THERMAL_PATH_AIR_MASS = "air_mass"
 THERMAL_PATH_OUTSIDE = "outside"
+THERMAL_PATH_EXTERNAL_BOUNDARY = "external_boundary"
 THERMAL_PATH_INTERZONE = "interzone"
 THERMAL_PATH_VENTILATION = "ventilation"
 THERMAL_PATH_HVAC = "hvac_input"
@@ -4765,6 +4766,80 @@ def make_ventilation_heat_exchange_for_thermal(
         ),
     )
 
+
+def make_external_boundary_conductance_by_zone_from_physics_graph(
+    physics_graph: Any,
+) -> Dict[str, Dict[str, float]]:
+    """Aggregate opaque graph conductance by zone and named boundary.
+
+    Windows remain on the shared window-boundary path. This function replaces
+    the historical assumption that every opaque construction sees outdoor air.
+    """
+
+    if physics_graph is None or not hasattr(physics_graph, "boundary_connections"):
+        raise TypeError("physics_graph must provide boundary_connections")
+    result: Dict[str, Dict[str, float]] = {}
+    for connection in physics_graph.boundary_connections.values():
+        if bool(_get_attr_or_default(connection, "is_window", False)):
+            continue
+        zone_id = str(_required_attr(connection, "zone_id"))
+        boundary_id = str(
+            _get_attr_or_default(connection, "external_boundary_id", "outdoor_air")
+        )
+        area_m2 = _non_negative_float(
+            _get_attr_or_default(connection, "area_m2", 0.0),
+            "area_m2",
+            zone_id,
+        )
+        u_value_w_m2k = _non_negative_float(
+            _get_attr_or_default(connection, "u_value_w_m2k", 0.0),
+            "u_value_w_m2k",
+            zone_id,
+        )
+        by_boundary = result.setdefault(zone_id, {})
+        by_boundary[boundary_id] = (
+            by_boundary.get(boundary_id, 0.0)
+            + area_m2 * u_value_w_m2k
+            + _non_negative_float(
+                _get_attr_or_default(
+                    connection, "thermal_bridge_conductance_w_k", 0.0
+                ),
+                "thermal_bridge_conductance_w_k",
+                zone_id,
+            )
+        )
+    return result
+
+
+def add_interzone_airflow_to_thermal_network(
+    interzone_network: Optional[BuildingInterzoneThermalNetwork],
+    airflow_network: Any,
+) -> Optional[BuildingInterzoneThermalNetwork]:
+    """Add conservative symmetric air-mixing conductance to thermal links."""
+
+    if interzone_network is None or airflow_network is None:
+        return interzone_network
+    airflow_links = getattr(airflow_network, "interzone_airflow_links", None)
+    if airflow_links is None:
+        return interzone_network
+    updated = interzone_network.copy()
+    for link_id, link in updated.links.items():
+        airflow_link = airflow_links.get(link.connection_id) or airflow_links.get(
+            link_id
+        )
+        if airflow_link is None:
+            continue
+        mixing_flow_m3_h = _non_negative_float(
+            _get_attr_or_default(airflow_link, "mixing_flow_m3_h", 0.0),
+            "mixing_flow_m3_h",
+            link_id,
+        )
+        link.h_w_k += ventilation_conductance_from_airflow_m3_h(
+            mixing_flow_m3_h
+        )
+        link.source = link.source + " + BuildingAirflowNetwork"
+    return updated
+
 def step_building_thermal_state_semi_implicit(
     thermal_state: BuildingThermalState,
     building_parameters: BuildingThermalParameters,
@@ -4773,6 +4848,10 @@ def step_building_thermal_state_semi_implicit(
     interzone_network: Optional[BuildingInterzoneThermalNetwork] = None,
     ventilation_exchange: Optional[BuildingVentilationHeatExchange] = None,
     additional_outside_conductance_by_zone_w_k: Optional[Dict[str, float]] = None,
+    external_boundary_conductance_by_zone_w_k: Optional[
+        Dict[str, Dict[str, float]]
+    ] = None,
+    external_boundary_temperatures_c: Optional[Dict[str, float]] = None,
     dt_minutes: float = DEFAULT_THERMAL_DT_MINUTES,
 ) -> BuildingSemiImplicitThermalStepResult:
     """
@@ -4802,6 +4881,8 @@ def step_building_thermal_state_semi_implicit(
         
     if additional_outside_conductance_by_zone_w_k is None:
         additional_outside_conductance_by_zone_w_k = {}
+    if external_boundary_temperatures_c is None:
+        external_boundary_temperatures_c = {}
 
     outdoor_temperature_c = float(
         _get_attr_or_default(
@@ -4856,9 +4937,56 @@ def step_building_thermal_state_semi_implicit(
             "additional_outside_h_w_k",
             zone_id,
         )
-        envelope_h_w_k = (
-            zone_parameters.h_external_w_k + additional_outside_h_w_k
+        boundary_conductances = None
+        if external_boundary_conductance_by_zone_w_k is not None:
+            boundary_conductances = external_boundary_conductance_by_zone_w_k.get(
+                zone_id, {}
+            )
+        if boundary_conductances is None:
+            boundary_conductances = {"outdoor_air": zone_parameters.h_external_w_k}
+        boundary_conductances = {
+            str(boundary_id): _non_negative_float(
+                conductance_w_k, "external_boundary_conductance_w_k", zone_id
+            )
+            for boundary_id, conductance_w_k in boundary_conductances.items()
+        }
+        boundary_conductances["outdoor_air"] = (
+            boundary_conductances.get("outdoor_air", 0.0)
+            + additional_outside_h_w_k
         )
+        envelope_h_w_k = sum(boundary_conductances.values())
+        boundary_rhs_w = 0.0
+        boundary_targets = []
+        for boundary_id, conductance_w_k in sorted(boundary_conductances.items()):
+            if boundary_id == "outdoor_air":
+                boundary_temperature_c = outdoor_temperature_c
+                target_type = THERMAL_PATH_OUTSIDE
+            else:
+                if boundary_id not in external_boundary_temperatures_c:
+                    raise ValueError(
+                        "missing temperature for external boundary "
+                        + boundary_id
+                        + " in zone "
+                        + zone_id
+                    )
+                boundary_temperature_c = float(
+                    external_boundary_temperatures_c[boundary_id]
+                )
+                if not np.isfinite(boundary_temperature_c):
+                    raise ValueError(
+                        "external boundary temperature must be finite for "
+                        + boundary_id
+                    )
+                target_type = THERMAL_PATH_EXTERNAL_BOUNDARY
+            boundary_rhs_w += conductance_w_k * boundary_temperature_c
+            boundary_targets.append(
+                ThermalTemperatureTarget(
+                    target_id="boundary:" + boundary_id,
+                    target_type=target_type,
+                    temperature_c=boundary_temperature_c,
+                    h_w_k=conductance_w_k,
+                )
+            )
         outside_h_w_k = envelope_h_w_k + ventilation_h_w_k
         h_air_mass_w_k = zone_parameters.h_air_mass_w_k
         c_air_over_dt = zone_parameters.c_air_j_k / dt_seconds
@@ -4873,7 +5001,7 @@ def step_building_thermal_state_semi_implicit(
 
         rhs[air_index] = (
             c_air_over_dt * zone_state.air_temperature_c
-            + envelope_h_w_k * outdoor_temperature_c
+            + boundary_rhs_w
             + ventilation_h_w_k * ventilation_temperature_c
             + zone_gains.convective_gain_w()
         )
@@ -4889,18 +5017,12 @@ def step_building_thermal_state_semi_implicit(
                 h_w_k=h_air_mass_w_k,
             ),
             ThermalTemperatureTarget(
-                target_id="outside_envelope_plus_windows",
-                target_type=THERMAL_PATH_OUTSIDE,
-                temperature_c=outdoor_temperature_c,
-                h_w_k=envelope_h_w_k,
-            ),
-            ThermalTemperatureTarget(
                 target_id="outside_ventilation",
                 target_type=THERMAL_PATH_VENTILATION,
                 temperature_c=ventilation_temperature_c,
                 h_w_k=ventilation_h_w_k,
             ),
-        ]
+        ] + boundary_targets
 
     if interzone_network is not None:
         for link in interzone_network.links.values():

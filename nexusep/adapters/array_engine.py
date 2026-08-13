@@ -135,18 +135,22 @@ class ArrayEngineAdapter:
                 if zone.zone_id in item["owner_zone_ids"]
             ]
             exterior_ua = sum(
-                float(
-                    item["gross_area_m2"]
-                    if item["connection_type"] == "opening"
-                    else item["net_opaque_area_m2"]
+                (
+                    float(
+                        item["gross_area_m2"]
+                        if item["connection_type"] == "opening"
+                        else item["net_opaque_area_m2"]
+                    )
+                    * float(item["thermal_transmittance_w_m2_k"])
+                    + float(item.get("thermal_bridge_conductance_w_k", 0.0))
                 )
-                * float(item["thermal_transmittance_w_m2_k"])
                 for item in owned_connections
                 if item["boundary_type"] == "exterior"
             )
             internal_ua = sum(
                 float(item["gross_area_m2"])
                 * float(item["thermal_transmittance_w_m2_k"])
+                + float(item.get("thermal_bridge_conductance_w_k", 0.0))
                 for item in owned_connections
                 if item["boundary_type"] == "interzone"
             )
@@ -187,7 +191,11 @@ class ArrayEngineAdapter:
                     "solar_gain_W": 0.0,
                     "outdoor_airflow_m3_s": 0.0,
                     "interzone_airflow_m3_s": 0.0,
-                    "infiltration_airflow_m3_s": 0.0,
+                    "infiltration_airflow_m3_s": (
+                        zone.volume_m3
+                        * zone.infiltration_air_changes_per_hour
+                        / 3600.0
+                    ),
                     "heat_capacity_J_K": zone_heat_capacity_j_k,
                     "ua_envelope_W_K": exterior_ua,
                     "ua_internal_W_K": internal_ua,
@@ -243,11 +251,6 @@ class ArrayEngineAdapter:
             zone_path = f"/building/dwelling/zones/{zone.zone_id}"
             defaults.extend(
                 (
-                    AppliedDefault(
-                        target_path=f"{zone_path}/array_engine/infiltration_airflow_m3_s",
-                        value=0.0,
-                        reason="canonical v1 has no infiltration input; zero prevents hidden airflow",
-                    ),
                     AppliedDefault(
                         target_path=f"{zone_path}/array_engine/max_window_flow_m3_s",
                         value=0.0,
@@ -634,12 +637,27 @@ class ArrayEngineAdapter:
                 solar_transmittance_fraction=float(
                     connection["solar_transmittance_fraction"]
                 ),
-                unshaded_fraction=controls[zone_id].shading_open_fraction,
+                unshaded_fraction=(
+                    controls[zone_id].shading_open_fraction
+                    * float(connection.get("solar_shading_factor", 1.0))
+                ),
             )
         return gains
 
     def run_step(self, step_input: SimulationStepInput, *, include_debug: bool = False):
         validate_step_input_for_scenario(step_input, self.scenario, self.compiled_graph)
+        if step_input.external_boundary_states:
+            raise BackendAdapterError(
+                "array adapter cannot yet represent named non-weather thermal boundaries"
+            )
+        if step_input.opening_control_commands:
+            raise BackendAdapterError(
+                "array adapter cannot yet represent per-opening controls"
+            )
+        if step_input.interzone_opening_controls:
+            raise BackendAdapterError(
+                "array adapter cannot yet represent dynamic interzone openings"
+            )
         if any(
             item.heating_convective_fraction != 1.0
             or item.cooling_convective_fraction != 1.0

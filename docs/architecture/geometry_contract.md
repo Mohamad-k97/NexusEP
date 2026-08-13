@@ -12,6 +12,9 @@ solid model. The required tier contains:
 - thermal transmittance and heat capacity required by the selected model;
 - opening identity, owner surface/zone, area, openable area, and connected
   boundary/zone;
+- explicit exterior boundary identity, surface/opening thermal-bridge
+  conductance, static solar-shading factor, infiltration rate, and interzone
+  airflow-opening area/fraction where those paths are enabled;
 - azimuth and tilt when solar gains or daylight are enabled; and
 - explicit enabled features, orientation convention, applied defaults, and
   derived-value provenance in the loaded scenario.
@@ -54,4 +57,3 @@ An explicit empty `defaults_applied` list means no defaults were used. The
 compiler also records provenance for graph-derived values such as net opaque
 area and orientation inherited by an opening. Missing optional geometry means
 “not supplied”; it is never a signal to select different physics.
-

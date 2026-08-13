@@ -6,6 +6,11 @@ from collections import defaultdict
 from typing import Any, Literal, cast
 
 from nexusep.abbey.building.model import BuildingModel, DwellingModel, ZoneModel
+from nexusep.abbey.building.physics.airflow import (
+    BuildingAirflowControlInputs,
+    DoorOpeningInput,
+    WindowOpeningInput,
+)
 from nexusep.abbey.building.physics.engine import (
     BuildingPhysicsStepInput,
     run_building_physics_step,
@@ -21,6 +26,7 @@ from nexusep.abbey.building.physics.internal_sources import (
 )
 from nexusep.abbey.building.physics.solar import calculate_solar_position
 from nexusep.abbey.building.physics.weather import WeatherState as ObjectWeatherState
+from nexusep.abbey.building.physics.windows import make_window_operation_inputs
 from nexusep.abbey.building.systems import (
     ZoneControlCommand as ObjectZoneControlCommand,
 )
@@ -164,11 +170,6 @@ class ObjectEngineAdapter:
             defaults.extend(
                 (
                     AppliedDefault(
-                        target_path=f"{zone_path}/object_engine/default_infiltration_ach",
-                        value=0.0,
-                        reason="canonical v1 has no infiltration input; zero prevents hidden airflow",
-                    ),
-                    AppliedDefault(
                         target_path=f"{zone_path}/object_engine/ventilation_fan_power_w",
                         value=0.0,
                         reason="canonical v1 has no fan-power field; electrical fan power is explicitly zero",
@@ -229,7 +230,7 @@ class ObjectEngineAdapter:
                 initial_air_temperature_c=zone.initial_air_temperature_c,
                 initial_mass_temperature_c=zone.initial_mean_radiant_temperature_c,
                 air_volume_m3=zone.volume_m3,
-                default_infiltration_ach=0.0,
+                default_infiltration_ach=zone.infiltration_air_changes_per_hour,
                 mechanical_ventilation_available=ventilation is not None,
                 mechanical_ventilation_flow_m3_h=(
                     _required_float(
@@ -293,26 +294,42 @@ class ObjectEngineAdapter:
         for raw in connections:
             connection = dict(raw)
             if connection["boundary_type"] == "interzone":
+                airflow_opening_area_m2 = float(
+                    connection.get("airflow_opening_area_m2", 0.0)
+                )
                 zone_connections[connection["connection_id"]] = ZoneConnection(
                     connection_id=connection["connection_id"],
                     from_zone_id=connection["source_node_id"],
                     to_zone_id=connection["target_node_id"],
                     connection_type="internal_wall",
                     area_m2=connection["gross_area_m2"],
-                    is_openable=False,
-                    open_fraction=0.0,
-                    allow_duplicate=False,
-                    max_opening_area_m2=None,
+                    is_openable=airflow_opening_area_m2 > 0.0,
+                    open_fraction=float(connection.get("airflow_open_fraction", 0.0)),
+                    allow_duplicate=True,
+                    max_opening_area_m2=(
+                        airflow_opening_area_m2
+                        if airflow_opening_area_m2 > 0.0
+                        else None
+                    ),
                     discharge_coefficient=0.6,
                     base_airflow_m3_h=0.0,
                     partition_sound_reduction_db=35.0,
                     door_sound_reduction_db=20.0,
-                    u_value_w_m2k=connection["thermal_transmittance_w_m2_k"],
+                    u_value_w_m2k=(
+                        connection["thermal_transmittance_w_m2_k"]
+                        + float(
+                            connection.get("thermal_bridge_conductance_w_k", 0.0)
+                        )
+                        / float(connection["gross_area_m2"])
+                    ),
                 )
             elif connection["connection_type"] == "surface":
                 boundary_connections[connection["connection_id"]] = BoundaryConnection(
                     connection_id=connection["connection_id"],
                     zone_id=connection["source_node_id"],
+                    external_boundary_id=connection.get(
+                        "external_boundary_id", "outdoor_air"
+                    ),
                     connection_type="external_wall",
                     area_m2=connection["net_opaque_area_m2"],
                     orientation_deg=connection["azimuth_deg"],
@@ -320,13 +337,19 @@ class ObjectEngineAdapter:
                     is_window=False,
                     is_openable=False,
                     open_fraction=0.0,
-                    allow_duplicate=False,
+                    allow_duplicate=True,
                     u_value_w_m2k=connection["thermal_transmittance_w_m2_k"],
+                    thermal_bridge_conductance_w_k=connection.get(
+                        "thermal_bridge_conductance_w_k", 0.0
+                    ),
                 )
             else:
                 boundary_connections[connection["connection_id"]] = BoundaryConnection(
                     connection_id=connection["connection_id"],
                     zone_id=connection["source_node_id"],
+                    external_boundary_id=connection.get(
+                        "external_boundary_id", "outdoor_air"
+                    ),
                     connection_type="window",
                     area_m2=connection["gross_area_m2"],
                     orientation_deg=connection["azimuth_deg"],
@@ -334,7 +357,7 @@ class ObjectEngineAdapter:
                     is_window=True,
                     is_openable=bool(connection["openable_area_m2"]),
                     open_fraction=0.0,
-                    allow_duplicate=False,
+                    allow_duplicate=True,
                     window_u_value_w_m2k=connection["thermal_transmittance_w_m2_k"],
                     glazing_transmittance=connection["solar_transmittance_fraction"],
                     window_visible_transmittance=connection[
@@ -344,10 +367,10 @@ class ObjectEngineAdapter:
                         "solar_transmittance_fraction"
                     ],
                     frame_fraction=0.0,
-                    shading_factor=1.0,
+                    shading_factor=connection.get("solar_shading_factor", 1.0),
                     curtain_open=True,
-                    curtain_solar_reduction_factor=0.0,
-                    curtain_daylight_reduction_factor=0.0,
+                    curtain_solar_reduction_factor=0.35,
+                    curtain_daylight_reduction_factor=0.35,
                     outside_noise_transmission_factor=0.1,
                     window_sound_reduction_db=25.0,
                     max_opening_area_m2=connection["openable_area_m2"],
@@ -586,11 +609,113 @@ class ObjectEngineAdapter:
             )
             self.building_model.set_zone_state(prior.zone_id, state)
 
+    def _opening_inputs(self, step_input: SimulationStepInput):
+        """Resolve complete window state, then apply explicit per-opening overrides."""
+
+        zone_commands = {item.zone_id: item for item in step_input.control_commands}
+        overrides = {
+            item.opening_id: item for item in step_input.opening_control_commands
+        }
+        is_open_by_window: dict[str, bool] = {}
+        opening_fraction_by_window: dict[str, float] = {}
+        curtain_open_by_window: dict[str, bool] = {}
+        zone_id_by_window: dict[str, str] = {}
+        airflow_window_openings: dict[str, WindowOpeningInput] = {}
+        for connection in cast(
+            list[dict[str, Any]], self.compiled_graph["connections"]
+        ):
+            if connection["connection_type"] != "opening":
+                continue
+            opening_id = str(connection["opening_ids"][0])
+            native_id = str(connection["connection_id"])
+            zone_id = str(connection["source_node_id"])
+            zone_command = zone_commands[zone_id]
+            override = overrides.get(opening_id)
+            opening_fraction = (
+                override.opening_fraction
+                if override is not None
+                else zone_command.window_opening_fraction
+            )
+            shading_open_fraction = (
+                override.shading_open_fraction
+                if override is not None
+                else zone_command.shading_open_fraction
+            )
+            if shading_open_fraction not in {0.0, 1.0}:
+                raise BackendAdapterError(
+                    "object engine cannot represent fractional per-opening shading; "
+                    "use 0.0 or 1.0"
+                )
+            zone_id_by_window[native_id] = zone_id
+            is_open_by_window[native_id] = opening_fraction > 0.0
+            opening_fraction_by_window[native_id] = opening_fraction
+            curtain_open_by_window[native_id] = shading_open_fraction == 1.0
+            airflow_window_openings[native_id] = WindowOpeningInput(
+                boundary_connection_id=native_id,
+                zone_id=zone_id,
+                opening_fraction=opening_fraction,
+                source="canonical_opening_control",
+            )
+        return (
+            make_window_operation_inputs(
+                is_open_by_window=is_open_by_window,
+                opening_fraction_by_window=opening_fraction_by_window,
+                curtain_open_by_window=curtain_open_by_window,
+                zone_id_by_window=zone_id_by_window,
+            ),
+            airflow_window_openings,
+        )
+
+    def _airflow_controls(
+        self,
+        step_input: SimulationStepInput,
+        airflow_window_openings: dict[str, WindowOpeningInput],
+    ) -> BuildingAirflowControlInputs:
+        controls_by_surface = {
+            item.surface_id: item
+            for item in step_input.interzone_opening_controls
+        }
+        door_openings: dict[str, DoorOpeningInput] = {}
+        for connection in cast(
+            list[dict[str, Any]], self.compiled_graph["connections"]
+        ):
+            if connection["boundary_type"] != "interzone":
+                continue
+            command = next(
+                (
+                    controls_by_surface[surface_id]
+                    for surface_id in connection["surface_ids"]
+                    if surface_id in controls_by_surface
+                ),
+                None,
+            )
+            if command is None:
+                continue
+            connection_id = str(connection["connection_id"])
+            door_openings[connection_id] = DoorOpeningInput(
+                zone_connection_id=connection_id,
+                zone_a_id=str(connection["source_node_id"]),
+                zone_b_id=str(connection["target_node_id"]),
+                opening_fraction=command.opening_fraction,
+                source="canonical_interzone_opening_control",
+            )
+        return BuildingAirflowControlInputs(
+            window_openings=airflow_window_openings,
+            door_openings=door_openings,
+            source="canonical_object_adapter",
+        )
+
     def run_step(self, step_input: SimulationStepInput, *, include_debug: bool = False):
         validate_step_input_for_scenario(step_input, self.scenario, self.compiled_graph)
         self._apply_prior_state(step_input)
         commands = self._control_commands(step_input)
         specs = self._system_specs(step_input)
+        window_operation_inputs, airflow_window_openings = self._opening_inputs(
+            step_input
+        )
+        airflow_control_inputs = self._airflow_controls(
+            step_input, airflow_window_openings
+        )
         weather = step_input.weather
         solar_position = calculate_solar_position(
             weather.timestamp,
@@ -624,6 +749,10 @@ class ObjectEngineAdapter:
             dt_minutes=step_input.dt_minutes,
             physics_graph=self.physics_graph,
             weather_state=object_weather,
+            external_boundary_temperatures_c={
+                item.boundary_id: item.temperature_c
+                for item in step_input.external_boundary_states
+            },
             zone_control_commands=commands,
             zone_system_specs=specs,
             people={},
@@ -632,6 +761,8 @@ class ObjectEngineAdapter:
                 zone_id: zone_id for zone_id in self.building_model.all_zone_ids()
             },
             chunk_records=[],
+            window_operation_inputs=window_operation_inputs,
+            airflow_control_inputs=airflow_control_inputs,
             internal_source_result=self._internal_sources(step_input),
             previous_air_state=None,
             previous_moisture_state=None,
@@ -653,6 +784,20 @@ class ObjectEngineAdapter:
                 item.model_dump(mode="json")
                 for item in sorted(
                     step_input.occupant_states, key=lambda value: value.occupant_id
+                )
+            ],
+            "opening_controls": [
+                item.model_dump(mode="json")
+                for item in sorted(
+                    step_input.opening_control_commands,
+                    key=lambda value: value.opening_id,
+                )
+            ],
+            "interzone_opening_controls": [
+                item.model_dump(mode="json")
+                for item in sorted(
+                    step_input.interzone_opening_controls,
+                    key=lambda value: value.surface_id,
                 )
             ],
             "graph_sha256": self.compiled_graph["graph_sha256"],
@@ -762,6 +907,12 @@ class ObjectEngineAdapter:
                         for item in step_input.action_events
                     ],
                     "step_trace": encoded_trace,
+                    "window_operation_inputs": (
+                        native_result.window_operation_inputs.to_dict()
+                    ),
+                    "airflow_control_inputs": (
+                        native_result.airflow_control_inputs.to_dict()
+                    ),
                     "next_prior_zone_states": [
                         {
                             "zone_id": zone_id,

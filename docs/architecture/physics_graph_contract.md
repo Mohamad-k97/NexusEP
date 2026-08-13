@@ -13,6 +13,8 @@ The compiled graph contains:
 - one surface connection per exterior surface;
 - one surface connection per reciprocal interzone surface pair;
 - one opening connection per opening;
+- explicit named exterior-boundary IDs plus copied thermal-bridge, shading,
+  and airflow-opening properties on their owning connections;
 - systems attached to their owner zones;
 - the deterministic external-ID registry and canonical time axis; and
 - provenance for copied, inherited, and derived graph properties.
@@ -42,7 +44,9 @@ Compilation fails unless:
 - all connection IDs and node IDs are unique;
 - every interzone surface names one reciprocal paired surface and both sides
   agree on zones, area, thermal properties, and opposing orientation;
-- exterior surfaces and openings target only the exterior node;
+- exterior surfaces and openings target the reserved exterior graph node while
+  retaining their explicit physical boundary ID (`outdoor_air` or a named
+  prescribed boundary such as `cellar_air`);
 - total opening area does not exceed owner-surface area;
 - connection directionality is valid for its type; and
 - node, connection, system, and registry ordering is deterministic.

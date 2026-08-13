@@ -12,10 +12,11 @@ Important:
     Later Phase 10 subphases fill each step with real module calls.
 """
 
-from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional
 import copy
 from contextlib import contextmanager
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+
 
 @contextmanager
 def _measure_if_available(timer, name):
@@ -106,6 +107,7 @@ class BuildingPhysicsStepInput:
 
     physics_graph: Any = None
     weather_state: Any = None
+    external_boundary_temperatures_c: Dict[str, float] = field(default_factory=dict)
 
     zone_control_commands: Dict[str, Any] = field(default_factory=dict)
     zone_system_specs: Dict[str, Any] = field(default_factory=dict)
@@ -114,6 +116,8 @@ class BuildingPhysicsStepInput:
     locations: Dict[str, Any] = field(default_factory=dict)
     role_to_zone_id: Dict[str, str] = field(default_factory=dict)
     chunk_records: List[Any] = field(default_factory=list)
+    window_operation_inputs: Any = None
+    airflow_control_inputs: Any = None
 
     window_boundary_result: Any = None
     lighting_power_result: Any = None
@@ -145,6 +149,13 @@ class BuildingPhysicsStepInput:
         if self.zone_system_specs is None:
             self.zone_system_specs = {}
 
+        if self.external_boundary_temperatures_c is None:
+            self.external_boundary_temperatures_c = {}
+        self.external_boundary_temperatures_c = {
+            str(boundary_id): float(temperature_c)
+            for boundary_id, temperature_c in self.external_boundary_temperatures_c.items()
+        }
+
         if self.people is None:
             self.people = {}
 
@@ -172,11 +183,16 @@ class BuildingPhysicsStepInput:
             "zone_count": len(self.zone_ids()),
             "has_physics_graph": self.physics_graph is not None,
             "has_weather_state": self.weather_state is not None,
+            "external_boundary_temperature_count": len(
+                self.external_boundary_temperatures_c
+            ),
             "zone_control_command_count": len(self.zone_control_commands),
             "zone_system_spec_count": len(self.zone_system_specs),
             "people_count": len(self.people),
             "location_count": len(self.locations),
             "chunk_record_count": len(self.chunk_records),
+            "has_window_operation_inputs": self.window_operation_inputs is not None,
+            "has_airflow_control_inputs": self.airflow_control_inputs is not None,
             "has_window_boundary_result": self.window_boundary_result is not None,
             "has_lighting_power_result": self.lighting_power_result is not None,
             "has_internal_source_result": self.internal_source_result is not None,
@@ -513,7 +529,7 @@ def run_building_physics_step(
             window_boundary_result = step_input.window_boundary_result
 
             if physics_graph is not None:
-                window_operation_inputs = (
+                window_operation_inputs = step_input.window_operation_inputs or (
                     _make_window_operation_inputs_from_zone_commands(
                         physics_graph=physics_graph,
                         zone_control_commands=zone_control_commands,
@@ -550,8 +566,8 @@ def run_building_physics_step(
 
             if physics_graph is not None:
                 from nexusep.abbey.building.physics.daylight import (
-                    estimate_building_indoor_daylight,
                     calculate_building_lighting_from_controls,
+                    estimate_building_indoor_daylight,
                     make_building_light_state_from_daylight_and_lighting,
                 )
 
@@ -664,6 +680,33 @@ def run_building_physics_step(
                 )
             )
 
+            if step_input.airflow_control_inputs is not None:
+                from nexusep.abbey.building.physics.airflow import (
+                    BuildingAirflowControlInputs,
+                )
+
+                supplied = step_input.airflow_control_inputs
+                if not isinstance(supplied, BuildingAirflowControlInputs):
+                    raise TypeError(
+                        "BuildingPhysicsStepInput.airflow_control_inputs must be "
+                        "BuildingAirflowControlInputs."
+                    )
+                airflow_control_inputs = airflow_control_inputs.copy(
+                    window_openings={
+                        **airflow_control_inputs.window_openings,
+                        **supplied.window_openings,
+                    },
+                    door_openings={
+                        **airflow_control_inputs.door_openings,
+                        **supplied.door_openings,
+                    },
+                    mechanical_ventilation_by_zone={
+                        **airflow_control_inputs.mechanical_ventilation_by_zone,
+                        **supplied.mechanical_ventilation_by_zone,
+                    },
+                    source="canonical_step_controls_merged_with_internal_sources",
+                )
+
             physics_inputs["airflow_control_inputs"] = airflow_control_inputs
 
             thermal_gains = _add_hvac_command_gains_to_thermal_gains(
@@ -743,8 +786,8 @@ def run_building_physics_step(
             if airflow_network is not None and moisture_source_inputs is not None:
                 from nexusep.abbey.building.physics.moisture import (
                     make_building_moisture_parameters,
-                    make_outdoor_moisture_boundary_from_weather_state,
                     make_building_moisture_transport_result,
+                    make_outdoor_moisture_boundary_from_weather_state,
                     step_building_moisture_state,
                 )
 
@@ -805,11 +848,13 @@ def run_building_physics_step(
         # ------------------------------------------------------------
         with _measure_if_available(timer, "engine.thermal"):
             from nexusep.abbey.building.physics.thermal import (
-                make_building_thermal_parameters,
-                make_ventilation_heat_exchange_for_thermal,
-                make_interzone_thermal_network_from_physics_graph,
-                calculate_interzone_heat_flow_records,
+                add_interzone_airflow_to_thermal_network,
                 aggregate_interzone_heat_gains_by_zone_w,
+                calculate_interzone_heat_flow_records,
+                make_building_thermal_parameters,
+                make_external_boundary_conductance_by_zone_from_physics_graph,
+                make_interzone_thermal_network_from_physics_graph,
+                make_ventilation_heat_exchange_for_thermal,
                 step_building_thermal_state_semi_implicit,
             )
 
@@ -847,6 +892,10 @@ def run_building_physics_step(
                         physics_graph=physics_graph,
                     )
                 )
+                interzone_thermal_network = add_interzone_airflow_to_thermal_network(
+                    interzone_network=interzone_thermal_network,
+                    airflow_network=airflow_network,
+                )
 
                 interzone_thermal_flow_records = calculate_interzone_heat_flow_records(
                     interzone_network=interzone_thermal_network,
@@ -860,6 +909,14 @@ def run_building_physics_step(
                 )
 
             additional_outside_conductance_by_zone_w_k = {}
+            external_boundary_conductance_by_zone_w_k = None
+
+            if physics_graph is not None:
+                external_boundary_conductance_by_zone_w_k = (
+                    make_external_boundary_conductance_by_zone_from_physics_graph(
+                        physics_graph
+                    )
+                )
 
             if window_boundary_result is not None and hasattr(
                 window_boundary_result,
@@ -877,6 +934,12 @@ def run_building_physics_step(
                 interzone_network=interzone_thermal_network,
                 ventilation_exchange=thermal_ventilation_exchange,
                 additional_outside_conductance_by_zone_w_k=additional_outside_conductance_by_zone_w_k,
+                external_boundary_conductance_by_zone_w_k=(
+                    external_boundary_conductance_by_zone_w_k
+                ),
+                external_boundary_temperatures_c=(
+                    step_input.external_boundary_temperatures_c
+                ),
                 dt_minutes=dt_minutes,
             )
 
@@ -2852,16 +2915,15 @@ def _add_hvac_command_gains_to_thermal_gains(
         cooling = negative sensible gain
     """
 
-    from nexusep.abbey.building.systems import (
-        hvac_thermal_gain_w_from_zone_control_command,
-    )
-
     from nexusep.abbey.building.physics.thermal import (
         GAIN_SOURCE_HVAC,
         BuildingThermalGains,
         ThermalGainSplit,
         ZoneThermalGains,
         ZoneThermalGainSource,
+    )
+    from nexusep.abbey.building.systems import (
+        hvac_thermal_gain_w_from_zone_control_command,
     )
 
     hvac_gains_by_zone_w = {}

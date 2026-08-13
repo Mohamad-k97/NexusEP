@@ -1,0 +1,76 @@
+{
+  "protocol_version": "1.0.0",
+  "frozen_on": "2026-08-13",
+  "freeze_status": "sealed_before_target_acquisition",
+  "validation_category": "blind_validation",
+  "source": {
+    "source_id": "iea-ebc-annex71-twin-houses-2020",
+    "official_landing_page": "https://fordatis.fraunhofer.de/handle/fordatis/161.2?locale=en",
+    "expected_archive_name": "04_Data_Extended_Experiment.zip",
+    "acquisition_status_at_freeze": "not_downloaded",
+    "target_house": "N2"
+  },
+  "sealing_rule": "No Extended Experiment temperature target, plot, aggregate, or residual may be opened before the implementation and this protocol are committed. Acquisition metadata and archive paths may be amended without viewing target values; numerical thresholds, periods, forcing mappings, and model parameters may not.",
+  "model_policy": {
+    "engine": "object",
+    "adapter": "canonical ObjectEngineAdapter",
+    "fabric_model": "published_components",
+    "fitted_parameters": [],
+    "forbidden_after_unsealing": [
+      "parameter fitting",
+      "fabric or topology changes based on target residuals",
+      "sensor selection based on favorable error",
+      "threshold changes",
+      "warm-up changes",
+      "target-dependent preprocessing"
+    ],
+    "implementation_commit": "must be the commit that adds this protocol and the published-component boundary implementation"
+  },
+  "fixed_preprocessing": {
+    "source_resolution_minutes": 10,
+    "source_row_semantics": "row T is the interval mean forcing over (T-10min, T] and the measured state at T; canonical timestamp is T-10min",
+    "initial_state": "seed every published N2 air body from the immediately preceding measured record",
+    "weather": "use the official Extended Experiment N2-aligned weather channels without interpolation",
+    "cellar_boundary": "arithmetic mean of the two registered N2 cellar air-temperature channels",
+    "heater": "measured electrical heater power with the published 0.70 convective and 0.30 radiative split",
+    "internal_gains": "measured room internal-gain power aggregated by the published four-air-body map",
+    "mechanical_ventilation": "measured supply volume flow and supply temperature",
+    "openings": "measured Child-1 window position and kitchen/living door position through per-opening canonical controls",
+    "shading": "published phase schedule; west kitchen blind closed, other declared blinds open unless the official schedule explicitly states otherwise",
+    "missing_values": "reject the scored interval; do not interpolate target temperatures or actuator states",
+    "time_zone": "Europe/Berlin local civil time with explicit UTC offset"
+  },
+  "periods": {
+    "primary_user3_holdout": {
+      "start": "2019-03-22T10:30:00+01:00",
+      "end_exclusive": "2019-04-25T10:30:00+02:00",
+      "warmup_hours": 24,
+      "purpose": "primary untouched empirical score"
+    },
+    "secondary_extended_diagnostics": {
+      "start": "2019-04-25T10:30:00+02:00",
+      "end_exclusive": "2019-06-18T07:00:00+02:00",
+      "purpose": "phase-stratified diagnostic only; cannot rescue a failed primary score"
+    }
+  },
+  "acceptance": {
+    "pooled_temperature_rmse_c_max": 1.0,
+    "pooled_absolute_temperature_bias_c_max": 0.5,
+    "per_air_body_temperature_rmse_c_max": 1.5,
+    "maximum_thermal_balance_residual_w": 1e-7,
+    "fallback_permitted": false,
+    "missing_scored_intervals_permitted": 0
+  },
+  "required_reporting": [
+    "runtime and timesteps per second",
+    "peak traced memory",
+    "pooled and per-air-body bias, MAE, RMSE, maximum absolute error, and correlation",
+    "error by experimental phase and day/night period",
+    "thermal balance residual",
+    "all missing or rejected source rows",
+    "source archive SHA-256 and byte size",
+    "implementation commit and dirty-state marker",
+    "one immutable pass/fail decision using the predeclared criteria"
+  ],
+  "amendment_rule": "After target acquisition, corrections are allowed only for independently demonstrable software defects. Every correction requires a new protocol version and the original blind result remains published; the corrected run is labeled post-unsealing, never retroactively blind."
+}

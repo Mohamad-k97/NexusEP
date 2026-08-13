@@ -650,10 +650,13 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
             for field in (
                 "area_m2",
                 "thermal_transmittance_w_m2_k",
+                "thermal_bridge_conductance_w_k",
                 "heat_capacity_j_k",
                 "tilt_deg",
+                "airflow_opening_area_m2",
+                "airflow_open_fraction",
             ):
-                if not _close(surface[field], pair[field]):
+                if not _close(surface.get(field, 0.0), pair.get(field, 0.0)):
                     raise CanonicalContractError(
                         f"Interzone pair {surface_id!r}/{pair_id!r} disagrees on {field}."
                     )
@@ -682,11 +685,21 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
                         surface["thermal_transmittance_w_m2_k"]
                     ),
                     "heat_capacity_j_k": float(surface["heat_capacity_j_k"]),
+                    "thermal_bridge_conductance_w_k": float(
+                        surface.get("thermal_bridge_conductance_w_k", 0.0)
+                    ),
                     "azimuth_deg": None,
                     "tilt_deg": None,
                     "openable_area_m2": None,
                     "solar_transmittance_fraction": None,
                     "visible_transmittance_fraction": None,
+                    "external_boundary_id": None,
+                    "airflow_opening_area_m2": float(
+                        surface.get("airflow_opening_area_m2", 0.0)
+                    ),
+                    "airflow_open_fraction": float(
+                        surface.get("airflow_open_fraction", 0.0)
+                    ),
                     "provenance": {
                         "connection_id": _graph_provenance(
                             "derived",
@@ -711,6 +724,10 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
             continue
 
         opening_items = sorted(surface["openings"], key=lambda item: item["opening_id"])
+        if opening_items and (surface.get("external_boundary_id") or "outdoor_air") != "outdoor_air":
+            raise CanonicalContractError(
+                "Version 1 openings can only connect to the outdoor_air boundary."
+            )
         opening_area = sum(float(item["area_m2"]) for item in opening_items)
         connections.append(
             {
@@ -729,11 +746,18 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
                     surface["thermal_transmittance_w_m2_k"]
                 ),
                 "heat_capacity_j_k": float(surface["heat_capacity_j_k"]),
+                "thermal_bridge_conductance_w_k": float(
+                    surface.get("thermal_bridge_conductance_w_k", 0.0)
+                ),
                 "azimuth_deg": float(surface["azimuth_deg"]),
                 "tilt_deg": float(surface["tilt_deg"]),
                 "openable_area_m2": None,
                 "solar_transmittance_fraction": None,
                 "visible_transmittance_fraction": None,
+                "external_boundary_id": surface.get("external_boundary_id")
+                or "outdoor_air",
+                "airflow_opening_area_m2": 0.0,
+                "airflow_open_fraction": 0.0,
                 "provenance": {
                     "net_opaque_area_m2": _graph_provenance(
                         "derived",
@@ -767,6 +791,9 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
                         opening["thermal_transmittance_w_m2_k"]
                     ),
                     "heat_capacity_j_k": None,
+                    "thermal_bridge_conductance_w_k": float(
+                        opening.get("thermal_bridge_conductance_w_k", 0.0)
+                    ),
                     "azimuth_deg": float(surface["azimuth_deg"]),
                     "tilt_deg": float(surface["tilt_deg"]),
                     "openable_area_m2": float(opening["openable_area_m2"]),
@@ -776,6 +803,13 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
                     "visible_transmittance_fraction": float(
                         opening["visible_transmittance_fraction"]
                     ),
+                    "solar_shading_factor": float(
+                        opening.get("solar_shading_factor", 1.0)
+                    ),
+                    "external_boundary_id": surface.get("external_boundary_id")
+                    or "outdoor_air",
+                    "airflow_opening_area_m2": 0.0,
+                    "airflow_open_fraction": 0.0,
                     "provenance": {
                         "azimuth_deg": _graph_provenance(
                             "derived",

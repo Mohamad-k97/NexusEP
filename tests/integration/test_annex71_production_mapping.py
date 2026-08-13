@@ -5,14 +5,21 @@ Validation category: verification of preprocessing and execution semantics.
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pytest
 
+from nexusep.schema.timestep import (
+    CanonicalStepContractError,
+    PriorZonePhysicalState,
+    validate_step_input_for_scenario,
+)
 from nexusep.validation_data.annex71 import (
     Annex71Interval,
     Annex71ZoneObservation,
+    build_annex71_step_input,
     build_canonical_scenario,
     run_object_scenario,
     zone_capacity_fractions,
@@ -147,7 +154,7 @@ def test_roof_window_uses_published_thirty_degree_tilt() -> None:
     roof_surface = next(
         surface
         for surface in attic.surfaces
-        if surface.boundary_type == "exterior" and surface.azimuth_deg == 180.0
+        if surface.surface_id == "attic_south_roof"
     )
     roof_connection = next(
         connection
@@ -163,4 +170,119 @@ def test_roof_window_uses_published_thirty_degree_tilt() -> None:
         surface.tilt_deg == pytest.approx(90.0)
         for surface in attic.surfaces
         if surface is not roof_surface
+        and surface.surface_id not in {"attic_north_roof"}
     )
+
+
+def test_published_component_model_exposes_cellar_fabric_and_fixed_blind() -> None:
+    timestamp = datetime(2018, 12, 20, 1, tzinfo=ZoneInfo("Europe/Berlin"))
+    scenario, graph = build_canonical_scenario((_record(timestamp, 20.0),))
+
+    surfaces = [
+        surface
+        for zone in scenario.building.dwelling.zones
+        for surface in zone.surfaces
+    ]
+    openings = [opening for surface in surfaces for opening in surface.openings]
+    assert sum(surface.heat_capacity_j_k for surface in surfaces) == pytest.approx(
+        155_011_213.4944031
+    )
+    assert {
+        surface.external_boundary_id
+        for surface in surfaces
+        if surface.surface_id.endswith("floor_to_cellar")
+    } == {"cellar_air"}
+    west_living = next(
+        opening
+        for opening in openings
+        if opening.opening_id == "window_west_living_type1"
+    )
+    assert west_living.solar_shading_factor == pytest.approx(0.35)
+    assert any(
+        connection["external_boundary_id"] == "cellar_air"
+        for connection in graph["connections"]
+    )
+    assert sum(
+        float(connection["thermal_bridge_conductance_w_k"])
+        for connection in graph["connections"]
+        if connection["connection_type"] == "surface"
+    ) > 50.0
+
+
+def test_named_cellar_boundary_is_required_and_changes_the_solution() -> None:
+    start = datetime(2018, 12, 20, 0, tzinfo=ZoneInfo("Europe/Berlin"))
+    base = tuple(
+        replace(
+            _record(start + timedelta(hours=index), 10.0),
+            outdoor_temperature_c=0.0,
+            cellar_temperature_c=20.0,
+        )
+        for index in range(3)
+    )
+    cold_cellar = tuple(replace(item, cellar_temperature_c=0.0) for item in base)
+
+    warm_result = run_object_scenario(base)
+    cold_result = run_object_scenario(cold_cellar)
+    assert all(
+        warm_result.simulated_temperature_c[zone_id][-1]
+        > cold_result.simulated_temperature_c[zone_id][-1]
+        for zone_id in ("ground_airbody", "kitchen_airbody", "sleeping_airbody")
+    )
+
+    scenario, graph = build_canonical_scenario(base[1:], initial_record=base[0])
+    prior = tuple(
+        PriorZonePhysicalState(
+            zone_id=zone.zone_id,
+            air_temperature_c=zone.initial_air_temperature_c,
+            mean_radiant_temperature_c=zone.initial_mean_radiant_temperature_c,
+            relative_humidity_fraction=zone.initial_relative_humidity_fraction,
+            co2_ppm=zone.initial_co2_ppm,
+        )
+        for zone in scenario.building.dwelling.zones
+    )
+    step = build_annex71_step_input(scenario, graph, base[1], 0, prior)
+    missing = step.model_copy(update={"external_boundary_states": ()})
+    with pytest.raises(CanonicalStepContractError, match="external boundary state"):
+        validate_step_input_for_scenario(missing, scenario, graph)
+
+
+def test_measured_window_and_door_positions_reach_native_controls() -> None:
+    end = datetime(2018, 12, 20, 1, tzinfo=ZoneInfo("Europe/Berlin"))
+    initial = _record(end - timedelta(hours=1), 20.0)
+    operated = replace(
+        _record(end, 20.0),
+        child1_window_opening_fraction=0.6,
+        kitchen_door_opening_fraction=0.0,
+    )
+    scenario, graph = build_canonical_scenario(
+        (operated,), initial_record=initial
+    )
+    prior = tuple(
+        PriorZonePhysicalState(
+            zone_id=zone.zone_id,
+            air_temperature_c=zone.initial_air_temperature_c,
+            mean_radiant_temperature_c=zone.initial_mean_radiant_temperature_c,
+            relative_humidity_fraction=zone.initial_relative_humidity_fraction,
+            co2_ppm=zone.initial_co2_ppm,
+        )
+        for zone in scenario.building.dwelling.zones
+    )
+    step = build_annex71_step_input(scenario, graph, operated, 0, prior)
+
+    from nexusep.adapters.object_engine import ObjectEngineAdapter
+
+    result = ObjectEngineAdapter(scenario, graph).run_step(step, include_debug=True)
+    assert result.debug is not None
+    native = result.debug.engine_fields
+    window_id = "opening:window_west_child1_type1"
+    assert native["window_operation_inputs"]["opening_fraction_by_window"][
+        window_id
+    ] == pytest.approx(0.6)
+    door_controls = native["airflow_control_inputs"]["door_openings"]
+    kitchen_connection = next(
+        connection["connection_id"]
+        for connection in graph["connections"]
+        if connection["boundary_type"] == "interzone"
+        and "ground_airbody_to_kitchen_airbody" in connection["surface_ids"]
+    )
+    assert door_controls[kitchen_connection]["opening_fraction"] == 0.0

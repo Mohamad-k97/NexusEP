@@ -205,7 +205,9 @@ def main() -> int:
             base,
             total_effective_capacity_j_k=float(values["total_effective_capacity_j_k"]),
         )
-        run = run_object_scenario(calibration_records, parameters)
+        run = run_object_scenario(
+            calibration_records, parameters, fabric_model="legacy_effective"
+        )
         return {
             zone_id: run.simulated_temperature_c[zone_id][24:] for zone_id in ZONE_ORDER
         }
@@ -237,7 +239,9 @@ def main() -> int:
 
     def objective(capacity: float) -> float:
         parameters = replace(base, total_effective_capacity_j_k=float(capacity))
-        run = run_object_scenario(calibration_records, parameters)
+        run = run_object_scenario(
+            calibration_records, parameters, fabric_model="legacy_effective"
+        )
         rmse = float(temperature_metrics(run, warmup_timesteps=24)["pooled"]["rmse_c"])
         evaluations.append({"capacity_j_k": float(capacity), "pooled_rmse_c": rmse})
         print(f"capacity={capacity:.3f} J/K calibration_rmse={rmse:.6f} C", flush=True)
@@ -263,8 +267,12 @@ def main() -> int:
         objective(replay_capacity)
         fit_mode = "replay_of_recorded_failed_fit"
     fitted = replace(base, total_effective_capacity_j_k=float(fit.x))
-    calibration_run = run_object_scenario(calibration_records, fitted)
-    transfer_run = run_object_scenario(transfer_records, fitted)
+    calibration_run = run_object_scenario(
+        calibration_records, fitted, fabric_model="legacy_effective"
+    )
+    transfer_run = run_object_scenario(
+        transfer_records, fitted, fabric_model="legacy_effective"
+    )
     calibration_metrics = temperature_metrics(calibration_run, warmup_timesteps=24)
     transfer_metrics = temperature_metrics(transfer_run, warmup_timesteps=24)
     pooled = transfer_metrics["pooled"]

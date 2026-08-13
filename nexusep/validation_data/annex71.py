@@ -30,8 +30,11 @@ from nexusep.schema.scenario import CanonicalScenario, ScenarioV1
 from nexusep.schema.timestep import (
     CanonicalGraphReference,
     DeterministicRunContext,
+    ExternalBoundaryState,
     InternalGain,
+    InterzoneOpeningControl,
     OccupantStepState,
+    OpeningControlCommand,
     PriorZonePhysicalState,
     SimulationStepInput,
     SystemAvailability,
@@ -144,6 +147,9 @@ class Annex71Interval:
     global_horizontal_radiation_w_m2: float
     rain: bool
     zones: tuple[Annex71ZoneObservation, ...]
+    cellar_temperature_c: float = 10.0
+    child1_window_opening_fraction: float = 0.0
+    kitchen_door_opening_fraction: float = 1.0
 
     def zone(self, zone_id: str) -> Annex71ZoneObservation:
         return next(item for item in self.zones if item.zone_id == zone_id)
@@ -405,19 +411,29 @@ def _zone_observations(
     return tuple(sorted(observations, key=lambda item: item.zone_id))
 
 
-def load_annex71_intervals(raw_directory: Path) -> tuple[Annex71Interval, ...]:
+def load_annex71_intervals(
+    raw_directory: Path, *, resolution_minutes: int = 60
+) -> tuple[Annex71Interval, ...]:
     """Join the official N2 and weather workbooks by their Excel timestamps."""
 
+    if resolution_minutes not in {10, 60}:
+        raise ValueError("resolution_minutes must be 10 or 60")
+    resolution = f"{resolution_minutes}min"
+
     full1_path = (
-        raw_directory / "Experiment1 - open" / "Twin_house_N2_exp1_full1_60min.xlsx"
+        raw_directory
+        / "Experiment1 - open"
+        / f"Twin_house_N2_exp1_full1_{resolution}.xlsx"
     )
     full2_path = (
-        raw_directory / "Experiment1 - open" / "Twin_house_N2_exp1_full2_60min.xlsx"
+        raw_directory
+        / "Experiment1 - open"
+        / f"Twin_house_N2_exp1_full2_{resolution}.xlsx"
     )
     weather_path = (
         raw_directory
         / "Weather Data"
-        / "Twin_house_weather_exp1_60min_compensated.xlsx"
+        / f"Twin_house_weather_exp1_{resolution}_compensated.xlsx"
     )
     for path in (full1_path, full2_path, weather_path):
         if not path.is_file():
@@ -475,11 +491,34 @@ def load_annex71_intervals(raw_directory: Path) -> tuple[Annex71Interval, ...]:
                     full2[key],
                     outdoor_relative_humidity_fraction=outdoor_rh_fraction,
                 ),
+                cellar_temperature_c=(
+                    _finite(row.get("n2_cellar_285_AT"), "n2_cellar_285_AT")
+                    + _finite(row.get("n2_cellar_285_AT2"), "n2_cellar_285_AT2")
+                )
+                / 2.0,
+                child1_window_opening_fraction=min(
+                    max(
+                        _optional_finite(row.get("n2_aroom_child1_win_pos")),
+                        0.0,
+                    ),
+                    1.0,
+                ),
+                kitchen_door_opening_fraction=min(
+                    max(
+                        _optional_finite(
+                            row.get("n2_aroom_kitchen_door_pos"), 1.0
+                        ),
+                        0.0,
+                    ),
+                    1.0,
+                ),
             )
         )
     for previous, current in pairwise(result):
-        if current.timestamp - previous.timestamp != timedelta(hours=1):
-            raise ValueError("Annex 71 hourly series is not contiguous")
+        if current.timestamp - previous.timestamp != timedelta(
+            minutes=resolution_minutes
+        ):
+            raise ValueError("Annex 71 series is not contiguous")
     return tuple(result)
 
 
@@ -496,7 +535,12 @@ def select_interval(
         raise ValueError("selected Annex 71 interval is empty")
     if (
         selected[0].timestamp != start
-        or selected[-1].timestamp + timedelta(hours=1) != end_exclusive
+        or (
+            len(selected) > 1
+            and selected[-1].timestamp
+            + (selected[1].timestamp - selected[0].timestamp)
+            != end_exclusive
+        )
     ):
         raise ValueError(
             "selected Annex 71 interval does not exactly cover requested bounds"
@@ -571,6 +615,10 @@ def _surface(
     tilt_deg: float = 90.0,
     adjacent_zone_id: str | None = None,
     paired_surface_id: str | None = None,
+    external_boundary_id: str | None = "outdoor_air",
+    airflow_opening_area_m2: float = 0.0,
+    airflow_open_fraction: float = 0.0,
+    thermal_bridge_conductance_w_k: float = 0.0,
     openings: Sequence[dict[str, Any]] = (),
 ) -> dict[str, Any]:
     return {
@@ -582,16 +630,30 @@ def _surface(
         "boundary_type": "interzone" if adjacent_zone_id else "exterior",
         "adjacent_zone_id": adjacent_zone_id,
         "paired_surface_id": paired_surface_id,
+        "external_boundary_id": (
+            None if adjacent_zone_id is not None else external_boundary_id
+        ),
         "area_m2": area_m2,
         "thermal_transmittance_w_m2_k": u_value,
+        "thermal_bridge_conductance_w_k": thermal_bridge_conductance_w_k,
         "heat_capacity_j_k": capacity_j_k,
         "azimuth_deg": azimuth_deg,
         "tilt_deg": tilt_deg,
+        "airflow_opening_area_m2": airflow_opening_area_m2,
+        "airflow_open_fraction": airflow_open_fraction,
         "openings": list(openings),
     }
 
 
-def _opening(zone_id: str, surface_id: str, name: str, area: float) -> dict[str, Any]:
+def _opening(
+    zone_id: str,
+    surface_id: str,
+    name: str,
+    area: float,
+    *,
+    solar_shading_factor: float = 1.0,
+    openable_area_m2: float = 0.0,
+) -> dict[str, Any]:
     return {
         "scenario_id": SCENARIO_ID,
         "building_id": BUILDING_ID,
@@ -603,14 +665,15 @@ def _opening(zone_id: str, surface_id: str, name: str, area: float) -> dict[str,
         "boundary_type": "exterior",
         "adjacent_zone_id": None,
         "area_m2": area,
-        "openable_area_m2": 0.0,
+        "openable_area_m2": openable_area_m2,
         "thermal_transmittance_w_m2_k": 1.20,
         "solar_transmittance_fraction": 0.543,
         "visible_transmittance_fraction": 0.803,
+        "solar_shading_factor": solar_shading_factor,
     }
 
 
-def _zone_surfaces(
+def _legacy_zone_surfaces(
     zone_id: str,
     parameters: Annex71ModelParameters,
     *,
@@ -690,6 +753,378 @@ def _zone_surfaces(
     return result
 
 
+# Published construction properties from 01_Constructions_TwinHouses.xlsx.
+# Heat capacities are the layer sums d * density * specific heat. They are not
+# inferred from the measured temperature residuals.
+PUBLISHED_CONSTRUCTIONS: dict[str, tuple[float, float]] = {
+    "west_wall": (0.21815746238272007, 308_864.0),
+    "east_wall": (0.22219695605625317, 303_712.0),
+    "north_south_wall": (0.21450076607416457, 328_920.0),
+    "knee_wall": (0.2897535502770171, 820_920.0),
+    "floor_to_cellar": (0.2944664091863765, 663_846.4),
+    "roof": (0.216, 50_186.0),
+    "ceiling": (0.4101385952367645, 577_700.0),
+    "internal_partition": (1.20, 200_000.0),
+    "front_door": (0.94, 0.0),
+}
+
+GROUND_HEIGHT_M = 2.60
+GROUND_CEILING_AREA_M2 = 81.69
+TRAP_DOOR_AREA_M2 = 0.57 * 1.39
+INTERNAL_DOOR_AREA_M2 = 0.935 * 1.95
+ROOF_PLANE_AREA_M2 = 10.24 * (10.296 / 2.0) / math.cos(math.radians(30.0))
+ATTIC_GABLE_AREA_M2 = 10.296 * 0.35 + 0.5 * 10.296 * (2.91 - 0.35)
+ATTIC_KNEE_AREA_M2 = 10.24 * 0.35
+GROUND_EDGE_PSI_W_M_K = {0.0: 0.210, 90.0: 0.214, 180.0: 0.210, 270.0: 0.210}
+ROOF_THERMAL_BRIDGE_CONDUCTANCE_W_K = (
+    0.006 * 10.24
+    + 0.188 * 2.0 * (10.296 / 2.0) / math.cos(math.radians(30.0))
+    + 0.186 * 2.0 * (10.296 / 2.0) / math.cos(math.radians(30.0))
+    + 0.165 * 2.0 * 10.24
+)
+CELLAR_THERMAL_BRIDGE_CONDUCTANCE_W_K = (
+    0.177 * 10.296 + 0.176 * (10.296 + 2.0 * 10.24) + 4.0 * 0.656
+)
+GROUND_ATTIC_THERMAL_BRIDGE_CONDUCTANCE_W_K = (
+    0.696 * 10.296 + 0.699 * (10.296 + 2.0 * 10.24) + 4.0 * 0.643
+)
+
+WINDOW_INSTALLATION_BRIDGE_W_K = {
+    "north_sleeping_type1": 2.0 * 1.23 * 0.037 + 1.54 * (0.039 + 0.034),
+    "south_dining_type1": 2.0 * 1.23 * 0.037 + 1.54 * (0.039 + 0.034),
+    "south_living_type2": 2.0 * 1.11 * 0.037 + 2.37 * (0.039 + 0.034),
+    "south_living_type3": 2.0 * 1.54 * 0.037 + 3.34 * (0.039 + 0.034),
+    "west_living_type1": 2.0 * 1.23 * 0.038 + 1.54 * (0.040 + 0.035),
+    "west_kitchen_type1": 2.0 * 1.23 * 0.038 + 1.54 * (0.040 + 0.035),
+    "west_child1_type1": 2.0 * 1.23 * 0.038 + 1.54 * (0.040 + 0.035),
+    "east_bath_type1": 2.0 * 1.23 * 0.029 + 1.54 * (0.032 + 0.027),
+    "east_child2_type5": 2.0 * 1.23 * 0.029 + 2.44 * (0.032 + 0.027),
+    "south_child1_roof_type4": 0.0,
+}
+
+
+def _published_exterior_surface(
+    zone_id: str,
+    surface_id: str,
+    *,
+    gross_area_m2: float,
+    construction: str,
+    azimuth_deg: float,
+    tilt_deg: float = 90.0,
+    openings: Sequence[dict[str, Any]] = (),
+    external_boundary_id: str = "outdoor_air",
+    thermal_bridge_conductance_w_k: float = 0.0,
+) -> dict[str, Any]:
+    u_value, areal_capacity_j_m2_k = PUBLISHED_CONSTRUCTIONS[construction]
+    opaque_area_m2 = gross_area_m2 - sum(float(item["area_m2"]) for item in openings)
+    if opaque_area_m2 <= 0.0:
+        raise ValueError(f"published surface {surface_id} has no opaque area")
+    return _surface(
+        zone_id,
+        surface_id,
+        area_m2=gross_area_m2,
+        u_value=u_value,
+        capacity_j_k=opaque_area_m2 * areal_capacity_j_m2_k,
+        azimuth_deg=azimuth_deg,
+        tilt_deg=tilt_deg,
+        openings=openings,
+        external_boundary_id=external_boundary_id,
+        thermal_bridge_conductance_w_k=thermal_bridge_conductance_w_k,
+    )
+
+
+def _published_interzone_surface(
+    zone_id: str,
+    other_zone_id: str,
+    *,
+    solid_area_m2: float,
+    construction: str,
+    azimuth_deg: float,
+    airflow_opening_area_m2: float = 0.0,
+    airflow_open_fraction: float = 0.0,
+    thermal_bridge_conductance_w_k: float = 0.0,
+) -> dict[str, Any]:
+    u_value, areal_capacity_j_m2_k = PUBLISHED_CONSTRUCTIONS[construction]
+    return _surface(
+        zone_id,
+        f"{zone_id}_to_{other_zone_id}",
+        area_m2=solid_area_m2,
+        u_value=u_value,
+        capacity_j_k=0.5 * solid_area_m2 * areal_capacity_j_m2_k,
+        azimuth_deg=azimuth_deg,
+        adjacent_zone_id=other_zone_id,
+        paired_surface_id=f"{other_zone_id}_to_{zone_id}",
+        airflow_opening_area_m2=airflow_opening_area_m2,
+        airflow_open_fraction=airflow_open_fraction,
+        thermal_bridge_conductance_w_k=thermal_bridge_conductance_w_k,
+    )
+
+
+def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
+    """Return plan-derived fabric without residual-derived conductances."""
+
+    result: list[dict[str, Any]] = []
+
+    def add_wall(
+        surface_id: str,
+        gross_area_m2: float,
+        construction: str,
+        azimuth_deg: float,
+        windows: Sequence[tuple[str, float, float]] = (),
+        tilt_deg: float = 90.0,
+        edge_length_m: float = 0.0,
+        extra_thermal_bridge_w_k: float = 0.0,
+    ) -> None:
+        openings = [
+            _opening(
+                zone_id,
+                surface_id,
+                name,
+                area,
+                solar_shading_factor=(
+                    0.35
+                    if name == "west_living_type1"
+                    else 1.0
+                ),
+                openable_area_m2=(
+                    1.54 * 0.143 + 2.0 * 0.5 * 1.23 * 0.143
+                    if name == "west_child1_type1"
+                    else 0.0
+                ),
+            )
+            for name, area, _orientation in windows
+        ]
+        result.append(
+            _published_exterior_surface(
+                zone_id,
+                surface_id,
+                gross_area_m2=gross_area_m2,
+                construction=construction,
+                azimuth_deg=azimuth_deg,
+                tilt_deg=tilt_deg,
+                openings=openings,
+                thermal_bridge_conductance_w_k=(
+                    edge_length_m * GROUND_EDGE_PSI_W_M_K.get(azimuth_deg, 0.0)
+                    + sum(
+                        WINDOW_INSTALLATION_BRIDGE_W_K[name]
+                        for name, _area, _orientation in windows
+                    )
+                    + extra_thermal_bridge_w_k
+                ),
+            )
+        )
+
+    windows_by_orientation = {
+        orientation: tuple(item for item in WINDOWS[zone_id] if item[2] == orientation)
+        for orientation in {item[2] for item in WINDOWS[zone_id]}
+    }
+    if zone_id == "ground_airbody":
+        add_wall(
+            "ground_north_wall",
+            2.4325 * GROUND_HEIGHT_M - 2.0,
+            "north_south_wall",
+            0.0,
+            edge_length_m=2.4325,
+        )
+        add_wall(
+            "ground_south_wall",
+            10.24 * GROUND_HEIGHT_M,
+            "north_south_wall",
+            180.0,
+            windows_by_orientation[180.0],
+            edge_length_m=10.24,
+        )
+        add_wall(
+            "ground_west_wall",
+            7.068 * GROUND_HEIGHT_M,
+            "west_wall",
+            270.0,
+            windows_by_orientation[270.0],
+            edge_length_m=7.068,
+        )
+        add_wall(
+            "ground_east_wall",
+            6.8755 * GROUND_HEIGHT_M,
+            "east_wall",
+            90.0,
+            windows_by_orientation[90.0],
+            edge_length_m=6.8755,
+        )
+        result.append(
+            _published_exterior_surface(
+                zone_id,
+                "ground_front_door",
+                gross_area_m2=2.0,
+                construction="front_door",
+                azimuth_deg=0.0,
+            )
+        )
+    elif zone_id == "kitchen_airbody":
+        add_wall(
+            "kitchen_north_wall",
+            3.3755 * GROUND_HEIGHT_M,
+            "north_south_wall",
+            0.0,
+            edge_length_m=3.3755,
+        )
+        add_wall(
+            "kitchen_west_wall",
+            3.228 * GROUND_HEIGHT_M,
+            "west_wall",
+            270.0,
+            windows_by_orientation[270.0],
+            edge_length_m=3.228,
+        )
+    elif zone_id == "sleeping_airbody":
+        add_wall(
+            "sleeping_north_wall",
+            4.432 * GROUND_HEIGHT_M,
+            "north_south_wall",
+            0.0,
+            windows_by_orientation[0.0],
+            edge_length_m=4.432,
+        )
+        add_wall(
+            "sleeping_east_wall",
+            3.4205 * GROUND_HEIGHT_M,
+            "east_wall",
+            90.0,
+            edge_length_m=3.4205,
+        )
+    else:
+        add_wall(
+            "attic_west_gable",
+            ATTIC_GABLE_AREA_M2,
+            "west_wall",
+            270.0,
+            windows_by_orientation[270.0],
+        )
+        add_wall(
+            "attic_east_gable",
+            ATTIC_GABLE_AREA_M2,
+            "east_wall",
+            90.0,
+            windows_by_orientation[90.0],
+        )
+        add_wall(
+            "attic_north_knee",
+            ATTIC_KNEE_AREA_M2,
+            "knee_wall",
+            0.0,
+        )
+        add_wall(
+            "attic_south_knee",
+            ATTIC_KNEE_AREA_M2,
+            "knee_wall",
+            180.0,
+        )
+        add_wall(
+            "attic_north_roof",
+            ROOF_PLANE_AREA_M2,
+            "roof",
+            0.0,
+            tilt_deg=30.0,
+            extra_thermal_bridge_w_k=0.5
+            * ROOF_THERMAL_BRIDGE_CONDUCTANCE_W_K,
+        )
+        roof_windows = windows_by_orientation[180.0]
+        roof_openings = [
+            _opening(zone_id, "attic_south_roof", name, area)
+            for name, area, _orientation in roof_windows
+        ]
+        result.append(
+            _published_exterior_surface(
+                zone_id,
+                "attic_south_roof",
+                gross_area_m2=ROOF_PLANE_AREA_M2,
+                construction="roof",
+                azimuth_deg=180.0,
+                tilt_deg=30.0,
+                openings=roof_openings,
+                thermal_bridge_conductance_w_k=(
+                    0.5 * ROOF_THERMAL_BRIDGE_CONDUCTANCE_W_K
+                ),
+            )
+        )
+
+    if zone_id != "attic_airbody":
+        floor_area_m2 = sum(ZONE_ROOM_AREAS_M2[zone_id].values())
+        result.append(
+            _published_exterior_surface(
+                zone_id,
+                f"{zone_id}_floor_to_cellar",
+                gross_area_m2=floor_area_m2,
+                construction="floor_to_cellar",
+                azimuth_deg=0.0,
+                tilt_deg=180.0,
+                external_boundary_id="cellar_air",
+                thermal_bridge_conductance_w_k=(
+                    CELLAR_THERMAL_BRIDGE_CONDUCTANCE_W_K
+                    * floor_area_m2
+                    / GROUND_CEILING_AREA_M2
+                ),
+            )
+        )
+
+    partition_specs = {
+        "kitchen_airbody": (
+            (2.835 + 2.625) * GROUND_HEIGHT_M - INTERNAL_DOOR_AREA_M2,
+            INTERNAL_DOOR_AREA_M2,
+            1.0,
+        ),
+        "sleeping_airbody": (
+            (3.885 + 2.88) * GROUND_HEIGHT_M - INTERNAL_DOOR_AREA_M2,
+            INTERNAL_DOOR_AREA_M2,
+            0.0,
+        ),
+        "attic_airbody": (
+            GROUND_CEILING_AREA_M2 - TRAP_DOOR_AREA_M2,
+            TRAP_DOOR_AREA_M2,
+            1.0,
+        ),
+    }
+    if zone_id == "ground_airbody":
+        for other_zone_id in ("attic_airbody", "kitchen_airbody", "sleeping_airbody"):
+            solid_area, opening_area, opening_fraction = partition_specs[other_zone_id]
+            result.append(
+                _published_interzone_surface(
+                    zone_id,
+                    other_zone_id,
+                    solid_area_m2=solid_area,
+                    construction=(
+                        "ceiling" if other_zone_id == "attic_airbody" else "internal_partition"
+                    ),
+                    azimuth_deg=180.0,
+                    airflow_opening_area_m2=opening_area,
+                    airflow_open_fraction=opening_fraction,
+                    thermal_bridge_conductance_w_k=(
+                        GROUND_ATTIC_THERMAL_BRIDGE_CONDUCTANCE_W_K
+                        if other_zone_id == "attic_airbody"
+                        else 0.0
+                    ),
+                )
+            )
+    else:
+        solid_area, opening_area, opening_fraction = partition_specs[zone_id]
+        result.append(
+            _published_interzone_surface(
+                zone_id,
+                "ground_airbody",
+                solid_area_m2=solid_area,
+                construction=("ceiling" if zone_id == "attic_airbody" else "internal_partition"),
+                azimuth_deg=0.0,
+                airflow_opening_area_m2=opening_area,
+                airflow_open_fraction=opening_fraction,
+                thermal_bridge_conductance_w_k=(
+                    GROUND_ATTIC_THERMAL_BRIDGE_CONDUCTANCE_W_K
+                    if zone_id == "attic_airbody"
+                    else 0.0
+                ),
+            )
+        )
+    return result
+
+
 def zone_capacity_fractions(basis: str = "air_volume") -> dict[str, float]:
     """Return deterministic zone weights for structural capacity diagnostics."""
 
@@ -754,12 +1189,15 @@ def _weather_state(
     timestep_index: int,
     *,
     canonical_interval_start: datetime | None = None,
+    dt_minutes: float = DT_MINUTES,
 ) -> dict[str, Any]:
-    # The selected alignment maps row T to (T - 1 hour, T]. This matches the
+    # The selected alignment maps row T to (T - dt, T]. This matches the
     # published experiment start and the observed forcing/state lag, while the
     # canonical contract timestamps the start. Treat this as a documented
     # preprocessing decision, not an independently proven workbook convention.
-    timestamp = canonical_interval_start or record.timestamp - timedelta(hours=1)
+    timestamp = canonical_interval_start or record.timestamp - timedelta(
+        minutes=dt_minutes
+    )
     position = calculate_solar_position(
         timestamp,
         latitude_deg=47.874,
@@ -800,12 +1238,20 @@ def build_canonical_scenario(
     *,
     initial_record: Annex71Interval | None = None,
     capacity_allocation_basis: str = "air_volume",
+    fabric_model: str = "published_components",
+    dt_minutes: float = DT_MINUTES,
 ) -> tuple[CanonicalScenario, dict[str, object]]:
     """Build and compile the traceable four-air-body canonical scenario."""
 
     if not records:
         raise ValueError("records cannot be empty")
     parameters = parameters or Annex71ModelParameters()
+    if fabric_model not in {"published_components", "legacy_effective"}:
+        raise ValueError(
+            "fabric_model must be 'published_components' or 'legacy_effective'"
+        )
+    if not 0.0 < dt_minutes <= 60.0:
+        raise ValueError("dt_minutes must be in (0, 60]")
     maximum_heating = {
         zone_id: max(item.zone(zone_id).heating_power_w for item in records) + 1.0
         for zone_id in ZONE_VOLUMES_M3
@@ -818,7 +1264,7 @@ def build_canonical_scenario(
         for zone_id in ZONE_VOLUMES_M3
     }
     first = initial_record or records[0]
-    canonical_start = records[0].timestamp - timedelta(hours=1)
+    canonical_start = records[0].timestamp - timedelta(minutes=dt_minutes)
     zones = []
     for zone_id, volume_m3 in ZONE_VOLUMES_M3.items():
         observation = first.zone(zone_id)
@@ -836,10 +1282,17 @@ def build_canonical_scenario(
                 "initial_mean_radiant_temperature_c": observation.air_temperature_c,
                 "initial_relative_humidity_fraction": observation.relative_humidity_fraction,
                 "initial_co2_ppm": first.outdoor_co2_ppm,
-                "surfaces": _zone_surfaces(
-                    zone_id,
-                    parameters,
-                    capacity_allocation_basis=capacity_allocation_basis,
+                "infiltration_air_changes_per_hour": (
+                    0.061 if fabric_model == "published_components" else 0.0
+                ),
+                "surfaces": (
+                    _published_component_surfaces(zone_id)
+                    if fabric_model == "published_components"
+                    else _legacy_zone_surfaces(
+                        zone_id,
+                        parameters,
+                        capacity_allocation_basis=capacity_allocation_basis,
+                    )
                 ),
                 "systems": _zone_systems(
                     zone_id, maximum_heating[zone_id], maximum_ventilation[zone_id]
@@ -890,7 +1343,7 @@ def build_canonical_scenario(
             "start_datetime": canonical_start,
             "timezone": TIMEZONE,
             "n_timesteps": end,
-            "dt_minutes": DT_MINUTES,
+            "dt_minutes": dt_minutes,
         },
         "geometry_configuration": {
             "geometry_tier": "thermal_topology_v1",
@@ -912,7 +1365,11 @@ def build_canonical_scenario(
                         "/annex71/coheating_htc",
                         "/annex71/window_schedule",
                     ],
-                    "rule": "measured whole-house HTC allocated by air-body volume after explicit window UA",
+                    "rule": (
+                        "published component dimensions, U-values, and layer heat capacities"
+                        if fabric_model == "published_components"
+                        else "legacy measured whole-house HTC allocation retained for forensic replay"
+                    ),
                 },
             ],
         },
@@ -947,7 +1404,9 @@ def build_canonical_scenario(
             _weather_state(
                 record,
                 index,
-                canonical_interval_start=canonical_start + timedelta(hours=index),
+                canonical_interval_start=canonical_start
+                + timedelta(minutes=dt_minutes * index),
+                dt_minutes=dt_minutes,
             )
             for index, record in enumerate(records)
         ],
@@ -1023,7 +1482,7 @@ def build_annex71_step_input(
         scenario_id=scenario.scenario_id,
         timestep_index=index,
         timestamp=scenario.weather_series[index].timestamp,
-        dt_minutes=DT_MINUTES,
+        dt_minutes=scenario.simulation_period.dt_minutes,
         weather=scenario.weather_series[index],
         prior_zone_states=prior,
         occupant_states=tuple(
@@ -1038,6 +1497,31 @@ def build_annex71_step_input(
         ),
         action_events=(),
         internal_gains=tuple(gains),
+        external_boundary_states=(
+            ExternalBoundaryState(
+                boundary_id="cellar_air",
+                temperature_c=record.cellar_temperature_c,
+            ),
+        )
+        if any(
+            surface.external_boundary_id == "cellar_air"
+            for zone in scenario.building.dwelling.zones
+            for surface in zone.surfaces
+        )
+        else (),
+        opening_control_commands=(
+            OpeningControlCommand(
+                opening_id="window_west_child1_type1",
+                opening_fraction=record.child1_window_opening_fraction,
+                shading_open_fraction=1.0,
+            ),
+        ),
+        interzone_opening_controls=(
+            InterzoneOpeningControl(
+                surface_id="ground_airbody_to_kitchen_airbody",
+                opening_fraction=record.kitchen_door_opening_fraction,
+            ),
+        ),
         control_commands=tuple(commands),
         system_availability=tuple(
             SystemAvailability(
@@ -1063,11 +1547,22 @@ def build_annex71_step_input(
 def run_object_scenario(
     records: Sequence[Annex71Interval],
     parameters: Annex71ModelParameters | None = None,
+    *,
+    fabric_model: str = "published_components",
 ) -> Annex71RunResult:
     """Execute all intervals through the canonical object-engine adapter."""
 
     if len(records) < 2:
         raise ValueError("at least two observations are required for interval scoring")
+    dt = records[1].timestamp - records[0].timestamp
+    if any(
+        current.timestamp - previous.timestamp != dt
+        for previous, current in pairwise(records)
+    ):
+        raise ValueError("Annex 71 run records must have a fixed timestep")
+    dt_minutes = dt.total_seconds() / 60.0
+    if not 0.0 < dt_minutes <= 60.0:
+        raise ValueError("Annex 71 run timestep must be in (0, 60] minutes")
     parameters = parameters or Annex71ModelParameters()
     # Row T contains the mean forcing over (T-1h, T] and the measured state at
     # T.  Seed the model from the preceding observation, then use rows 1..N as
@@ -1079,6 +1574,8 @@ def run_object_scenario(
         forcing_records,
         parameters,
         initial_record=initial_record,
+        fabric_model=fabric_model,
+        dt_minutes=dt_minutes,
     )
     adapter = ObjectEngineAdapter(scenario, graph)
     prior = tuple(

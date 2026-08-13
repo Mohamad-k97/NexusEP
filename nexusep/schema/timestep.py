@@ -79,6 +79,35 @@ class InternalGain(CanonicalModel):
     moisture_generation_kg_s: NonnegativeFloat
 
 
+class ExternalBoundaryState(CanonicalModel):
+    """Temperature prescribed for a named non-weather exterior boundary."""
+
+    boundary_id: ExternalID
+    temperature_c: Annotated[
+        float, Field(ge=-100.0, le=100.0, allow_inf_nan=False)
+    ]
+
+
+class OpeningControlCommand(CanonicalModel):
+    """Dynamic state for one canonical exterior opening.
+
+    Zone-level controls remain useful defaults.  This command is the explicit
+    override for experiments and controllers that operate individual windows
+    or blinds.
+    """
+
+    opening_id: ExternalID
+    opening_fraction: Fraction
+    shading_open_fraction: Fraction = 1.0
+
+
+class InterzoneOpeningControl(CanonicalModel):
+    """Dynamic opening fraction for one canonical interzone surface pair."""
+
+    surface_id: ExternalID
+    opening_fraction: Fraction
+
+
 class ZoneControlCommand(CanonicalModel):
     zone_id: ExternalID
     heating_on: bool
@@ -142,6 +171,9 @@ class SimulationStepInput(CanonicalModel):
     occupant_states: tuple[OccupantStepState, ...]
     action_events: tuple[ActionEvent, ...]
     internal_gains: tuple[InternalGain, ...]
+    external_boundary_states: tuple[ExternalBoundaryState, ...] = ()
+    opening_control_commands: tuple[OpeningControlCommand, ...] = ()
+    interzone_opening_controls: tuple[InterzoneOpeningControl, ...] = ()
     control_commands: Annotated[tuple[ZoneControlCommand, ...], Field(min_length=1)]
     system_availability: Annotated[tuple[SystemAvailability, ...], Field(min_length=1)]
     graph: CanonicalGraphReference
@@ -164,6 +196,13 @@ class SimulationStepInput(CanonicalModel):
             ("occupant_states", self.occupant_states, "occupant_id"),
             ("action_events", self.action_events, "event_id"),
             ("internal_gains", self.internal_gains, "source_id"),
+            ("external_boundary_states", self.external_boundary_states, "boundary_id"),
+            ("opening_control_commands", self.opening_control_commands, "opening_id"),
+            (
+                "interzone_opening_controls",
+                self.interzone_opening_controls,
+                "surface_id",
+            ),
             ("control_commands", self.control_commands, "zone_id"),
             ("system_availability", self.system_availability, "system_id"),
         ):
@@ -236,6 +275,24 @@ def validate_step_input_for_scenario(
     expected_systems = {
         system.system_id for zone in dwelling.zones for system in zone.systems
     }
+    expected_external_boundaries = {
+        str(connection.get("external_boundary_id"))
+        for connection in compiled_graph["connections"]
+        if connection.get("boundary_type") == "exterior"
+        and connection.get("external_boundary_id") not in {None, "outdoor_air"}
+    }
+    connections = [dict(item) for item in compiled_graph["connections"]]
+    opening_connections = {
+        str(connection["opening_ids"][0]): connection
+        for connection in connections
+        if connection.get("connection_type") == "opening"
+    }
+    interzone_connections_by_surface = {
+        str(surface_id): connection
+        for connection in connections
+        if connection.get("boundary_type") == "interzone"
+        for surface_id in connection.get("surface_ids", [])
+    }
 
     def require_exact(label: str, supplied: set[str], expected: set[str]) -> None:
         if supplied != expected:
@@ -264,6 +321,11 @@ def validate_step_input_for_scenario(
         {item.system_id for item in step_input.system_availability},
         expected_systems,
     )
+    require_exact(
+        "external boundary state",
+        {item.boundary_id for item in step_input.external_boundary_states},
+        expected_external_boundaries,
+    )
 
     for occupant_state in step_input.occupant_states:
         if occupant_state.dwelling_id != dwelling.dwelling_id:
@@ -283,6 +345,37 @@ def validate_step_input_for_scenario(
     for gain in step_input.internal_gains:
         if gain.zone_id not in expected_zones:
             raise CanonicalStepContractError("internal gain references an unknown zone")
+    for command in step_input.opening_control_commands:
+        connection = opening_connections.get(command.opening_id)
+        if connection is None:
+            raise CanonicalStepContractError(
+                f"opening control references unknown opening {command.opening_id!r}"
+            )
+        if (
+            command.opening_fraction > 0.0
+            and float(connection.get("openable_area_m2", 0.0)) <= 0.0
+        ):
+            raise CanonicalStepContractError(
+                f"opening {command.opening_id!r} is not declared openable"
+            )
+    controlled_interzone_connections: set[str] = set()
+    for command in step_input.interzone_opening_controls:
+        connection = interzone_connections_by_surface.get(command.surface_id)
+        if connection is None:
+            raise CanonicalStepContractError(
+                f"interzone control references unknown surface {command.surface_id!r}"
+            )
+        if float(connection.get("airflow_opening_area_m2", 0.0)) <= 0.0:
+            raise CanonicalStepContractError(
+                f"interzone surface {command.surface_id!r} has no airflow opening"
+            )
+        connection_id = str(connection["connection_id"])
+        if connection_id in controlled_interzone_connections:
+            raise CanonicalStepContractError(
+                "both faces of one interzone opening were controlled; provide one "
+                "canonical surface ID per connection"
+            )
+        controlled_interzone_connections.add(connection_id)
 
     availability = {item.system_id: item for item in step_input.system_availability}
     controls = {item.zone_id: item for item in step_input.control_commands}
@@ -335,8 +428,11 @@ __all__ = [
     "CanonicalStepContractError",
     "DerivedStepValues",
     "DeterministicRunContext",
+    "ExternalBoundaryState",
     "InternalGain",
+    "InterzoneOpeningControl",
     "OccupantStepState",
+    "OpeningControlCommand",
     "PriorZonePhysicalState",
     "SimulationStepInput",
     "SystemAvailability",

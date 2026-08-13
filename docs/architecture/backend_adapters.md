@@ -21,10 +21,12 @@ Legacy zone records are retained only in optional debug output. Required rows
 are translated from the native result and carry the original IDs. Object-only
 compatibility values are emitted as `AppliedDefault` records.
 
-Canonical v1 does not yet contain infiltration, ventilation fan power, or
-detailed acoustic parameters. The adapter sets infiltration and fan electrical
-power to zero so omitted data cannot silently add physics. Surface heat
-capacity and U-values remain the canonical inputs. CO2 mass generation is
+Canonical v1 contains explicit zone infiltration, named thermal-boundary,
+surface thermal-bridge, static shading, and interzone-opening fields. The
+object adapter maps them without hidden conductance allocation and accepts
+validated per-opening/per-door controls. Ventilation fan electrical power and
+detailed acoustic parameters remain absent, so fan power is explicitly zero.
+Surface heat capacity and U-values remain the canonical inputs. CO2 mass generation is
 converted to the legacy volume rate using `1.842 kg/m3` at the adapter boundary.
 
 ## Array engine
@@ -54,6 +56,9 @@ Current experimental limitations are explicit errors or warnings:
 - non-default heating/cooling convective fractions and mechanical supply-air
   temperature are rejected because the array kernel cannot represent those
   paths yet;
+- named non-weather thermal boundaries, per-opening controls, and dynamic
+  interzone openings are rejected because the current array kernel has no
+  equivalent inputs;
 - canonical pressure is encoded and consumed by array psychrometric conversions;
 - compiled surface topology is consumed deterministically and reduced to
   explicit envelope/interzone UA and capacity coefficients before execution;
