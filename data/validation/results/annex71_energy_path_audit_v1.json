@@ -13,7 +13,7 @@
   "analysis_code": [
     {
       "path": "scripts/validation_data/run_annex71_energy_path_audit.py",
-      "sha256": "7f08877a32dafcc77bacc729dd07b0b75292490a7a93b184df0984c03fefbcde",
+      "sha256": "d78d072365fed8e64d39ef8f41c10e508607e870af12ab6071cd141c161c03ec",
       "command": "uv run python scripts/validation_data/run_annex71_energy_path_audit.py"
     }
   ],
@@ -22,8 +22,8 @@
     {
       "file_id": "annex71-energy-path-audit",
       "path": "data/validation/fixtures/annex71-twin-houses/energy-path-audit-v1.json",
-      "sha256": "282417a1b7724d53d72a31ffc1dd82c703d8cfb347f116f097f8eda8bfd744d2",
-      "byte_size": 30916
+      "sha256": "90f6a936f5ea00c029d940eafda0415d3efc50eba6bc8ed03dbd38864a095bac",
+      "byte_size": 30910
     }
   ],
   "numerical_tolerances": {
@@ -34,7 +34,8 @@
   "known_deviations": [
     "This is a post-hoc observation-constrained energy-path audit, not calibration, blind validation, or new acceptance evidence.",
     "Measured air temperature constrains every interval while unmeasured mean radiant and mass temperature is conditionally estimated.",
-    "The residual changes sign and has large zone-dependent tails, so it does not support adding one fitted constant conductance.",
+    "Frozen cross-period diagnostics reject one-hour source shifts, alternate heater splits, initial mass-temperature offsets, and floor-area capacity allocation as material explanations.",
+    "The remaining structural gaps are component-resolved fabric topology, per-opening blind state, and a time-varying cellar boundary; none is replaced by a fitted correction.",
     "The production empirical result remains rejected and additional calibration is not authorized by this audit."
   ]
 }

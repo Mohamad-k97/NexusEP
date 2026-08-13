@@ -16,18 +16,18 @@ Sensitivity gate: **pass**.
 
 ## Results
 
-Calibration pooled RMSE: 2.003 degC; bias: 1.669 degC.
+Calibration pooled RMSE: 1.994 degC; bias: 1.659 degC.
 
 Later-period diagnostic pooled RMSE: 1.685 degC; bias: 1.162 degC.
 
 | Air body | Bias (degC) | MAE (degC) | RMSE (degC) | Correlation |
 |---|---:|---:|---:|---:|
-| attic_airbody | 0.667 | 1.070 | 1.549 | 0.511 |
+| attic_airbody | 0.668 | 1.076 | 1.552 | 0.509 |
 | ground_airbody | 1.106 | 1.263 | 1.475 | 0.638 |
-| kitchen_airbody | 1.556 | 1.629 | 1.854 | 0.769 |
-| sleeping_airbody | 1.320 | 1.443 | 1.828 | 0.257 |
+| kitchen_airbody | 1.555 | 1.629 | 1.854 | 0.769 |
+| sleeping_airbody | 1.319 | 1.443 | 1.828 | 0.257 |
 
-Thermal conservation residual: 1.824e-10 W.
+Thermal conservation residual: 1.696e-10 W.
 
 Numerical diagnostic decision: **failed**.
 Scientific gate decision: **rejected as validation evidence** because the later target period is not sealed.
@@ -35,7 +35,10 @@ Scientific gate decision: **rejected as validation evidence** because the later 
 ## Scientific limits
 
 - The measured electric heater's documented 70/30 convective/radiative split is represented explicitly by the typed control contract.
+- The source-determined 30-degree attic roof-window tilt is represented explicitly.
 - The ground-floor west blind is not represented because canonical v1 has no per-opening blind state; this is a structural solar-gain limitation.
+- The ground floor still uses the common outdoor boundary because canonical v1 cannot yet carry the measured time-varying cellar temperature; substituting outdoor temperature for the cellar is not treated as valid.
+- Opaque fabric remains a conductance-preserving reduction rather than component-resolved wall, roof, ceiling, floor, and thermal-bridge topology.
 - Measured supply-air temperature enters the air node through the typed mechanical-ventilation heat path; it is not approximated as an internal gain.
 - The result does not close the temporal-transfer or blind-validation gates.
 

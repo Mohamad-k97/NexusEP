@@ -1,0 +1,1347 @@
+{
+  "artifact_version": "1.0.0",
+  "created_on": "2026-08-13",
+  "validation_category": "diagnostic_verification_and_empirical_residual_analysis",
+  "claim_limit": "Post-hoc structural diagnosis only. These counterfactuals cannot pass the empirical or blind-validation gates, change frozen acceptance thresholds, or authorize parameter fitting.",
+  "protocol": "data/validation/governance/annex71_structural_diagnostics_v1.json",
+  "parameters": {
+    "total_effective_capacity_j_k": 149549685.09780443,
+    "ground_envelope_conductance_w_k": 42.63589708249608,
+    "kitchen_envelope_conductance_w_k": 12.011631849732803,
+    "sleeping_envelope_conductance_w_k": 8.408778494071905,
+    "attic_envelope_conductance_w_k": 43.943692573699224,
+    "ground_kitchen_exchange_w_k": 200.0,
+    "ground_sleeping_exchange_w_k": 45.0,
+    "ground_attic_exchange_w_k": 42.8706
+  },
+  "representation_audit": {
+    "graph_sha256": "ac8302d3cef60b09ada5465d6c29b69d7f9a0367de316fbe08b377c3df35ef13",
+    "published_specification": {
+      "source_documents": [
+        "01_Experimental_specification_BESmodVAL_annex71_final_v1_0.pdf",
+        "02_Additional Documents/Geometry/Plans_TwinHouses.pdf",
+        "02_Additional Documents/Materials and Constructions/01_Constructions_TwinHouses.xlsx",
+        "02_Additional Documents/Instrumentation/Measurement Channel List.xlsx"
+      ],
+      "supplementary_archive_sha256": "08e7d39cd5e3eb06821f60cc0f809926d3d8badd48798ce66dbb33f08bce5da9",
+      "component_u_values_w_m2_k": {
+        "west_wall": 0.218157,
+        "east_wall": 0.222197,
+        "south_wall_range": [
+          0.214501,
+          0.289754
+        ],
+        "north_wall_range": [
+          0.214501,
+          0.289754
+        ],
+        "ceiling": 0.410139,
+        "floor": 0.294466,
+        "roof": 0.216,
+        "window": 1.2
+      },
+      "roof_tilt_deg": 30.0,
+      "heater_convective_fraction": 0.7,
+      "internal_load_delivery": "same electric convectors as room heating",
+      "sensitivity_topics": [
+        "heater radiative-convective split",
+        "cellar temperature",
+        "infiltration",
+        "operable window",
+        "internal heat-gain measurement uncertainty",
+        "stratification and exhaust-air temperature"
+      ]
+    },
+    "canonical_mapping": {
+      "exterior_surface_count": 8,
+      "opening_count": 8,
+      "unique_opaque_u_values_w_m2_k": [
+        0.24
+      ],
+      "unique_exterior_tilts_deg": [
+        30.0,
+        90.0
+      ],
+      "attic_south_opening_tilt_deg": 30.0,
+      "attic_south_source_name": "south_child1_roof_type4",
+      "cellar_boundary_present": false,
+      "per_opening_blind_state_present": false,
+      "capacity_allocation_basis": "air_volume",
+      "capacity_fractions": {
+        "ground_airbody": 0.4503638610462722,
+        "kitchen_airbody": 0.05310998215021283,
+        "sleeping_airbody": 0.0798846629136345,
+        "attic_airbody": 0.4166414938898806
+      }
+    },
+    "classified_gaps": {
+      "component_fabric_topology": "missing",
+      "roof_window_tilt": "corrected_from_official_dimensioned_plan",
+      "cellar_boundary": "missing",
+      "ground_west_blind": "unsupported_by_zone_level_shading_command",
+      "internal_gain_split": "supported_70_30_same_convector_delivery"
+    }
+  },
+  "diagnostics": {
+    "source_timing": {
+      "baseline": {
+        "calibration": {
+          "graph_sha256": "b23f9b6c96a4cccf1351d28985634389cba36d1f1ac1104f3250eb29caeac0ee",
+          "whole_building": {
+            "one_step_temperature_rmse_c": 0.7079472394855736,
+            "unexplained_gain_bias_w": -108.14532962929648,
+            "unexplained_gain_mae_w": 258.32988842582097
+          },
+          "by_zone": {
+            "attic_airbody": {
+              "one_step_temperature_rmse_c": 0.8442958277992861,
+              "unexplained_gain_bias_w": -87.9695415847045,
+              "unexplained_gain_mae_w": 454.7247065758459
+            },
+            "ground_airbody": {
+              "one_step_temperature_rmse_c": 0.5664349015475734,
+              "unexplained_gain_bias_w": -215.10203401049986,
+              "unexplained_gain_mae_w": 375.504847732272
+            },
+            "kitchen_airbody": {
+              "one_step_temperature_rmse_c": 0.8648400638241094,
+              "unexplained_gain_bias_w": -103.11532046014707,
+              "unexplained_gain_mae_w": 140.65124565026278
+            },
+            "sleeping_airbody": {
+              "one_step_temperature_rmse_c": 0.47236098172393065,
+              "unexplained_gain_bias_w": -26.39442246183449,
+              "unexplained_gain_mae_w": 62.438753744903046
+            }
+          }
+        },
+        "later_period": {
+          "graph_sha256": "65066096480e01263d83c2024da28e16a52d879338e845a69d7e2ea95f5b86cf",
+          "whole_building": {
+            "one_step_temperature_rmse_c": 0.8349769536482379,
+            "unexplained_gain_bias_w": -101.05692344092564,
+            "unexplained_gain_mae_w": 302.9640784708788
+          },
+          "by_zone": {
+            "attic_airbody": {
+              "one_step_temperature_rmse_c": 0.9923844200145383,
+              "unexplained_gain_bias_w": -152.6144297999076,
+              "unexplained_gain_mae_w": 543.3844722657628
+            },
+            "ground_airbody": {
+              "one_step_temperature_rmse_c": 0.6560754230113844,
+              "unexplained_gain_bias_w": -90.10276046973804,
+              "unexplained_gain_mae_w": 438.97268349764636
+            },
+            "kitchen_airbody": {
+              "one_step_temperature_rmse_c": 0.8565834595653014,
+              "unexplained_gain_bias_w": -122.12441857340035,
+              "unexplained_gain_mae_w": 143.11402359980286
+            },
+            "sleeping_airbody": {
+              "one_step_temperature_rmse_c": 0.7998431293239613,
+              "unexplained_gain_bias_w": -39.38608492065662,
+              "unexplained_gain_mae_w": 86.3851345203033
+            }
+          }
+        }
+      },
+      "candidates": [
+        {
+          "source_kind": "heating",
+          "row_offset_hours": -1,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "b23f9b6c96a4cccf1351d28985634389cba36d1f1ac1104f3250eb29caeac0ee",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7738369593329586,
+                "unexplained_gain_bias_w": -107.71903953211874,
+                "unexplained_gain_mae_w": 269.4527160731745
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.805061876392225,
+                  "unexplained_gain_bias_w": -87.25657123349234,
+                  "unexplained_gain_mae_w": 451.2887830657817
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6256459982862174,
+                  "unexplained_gain_bias_w": -213.56462062096446,
+                  "unexplained_gain_mae_w": 391.1895480544344
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 1.0281642694696156,
+                  "unexplained_gain_bias_w": -103.50626479544688,
+                  "unexplained_gain_mae_w": 164.23728855318507
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.5464570006075502,
+                  "unexplained_gain_bias_w": -26.548701478571285,
+                  "unexplained_gain_mae_w": 71.0952446192966
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "65066096480e01263d83c2024da28e16a52d879338e845a69d7e2ea95f5b86cf",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.874001761860065,
+                "unexplained_gain_bias_w": -98.64814310791486,
+                "unexplained_gain_mae_w": 301.23922321951875
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.9067758599857204,
+                  "unexplained_gain_bias_w": -147.46607054044537,
+                  "unexplained_gain_mae_w": 503.5958047013607
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.681001043831524,
+                  "unexplained_gain_bias_w": -86.28674324923371,
+                  "unexplained_gain_mae_w": 434.2518725572828
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 1.037384298843997,
+                  "unexplained_gain_bias_w": -121.44588252397254,
+                  "unexplained_gain_mae_w": 173.84762167316237
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.8326735575827245,
+                  "unexplained_gain_bias_w": -39.39387611800781,
+                  "unexplained_gain_mae_w": 93.26159394626919
+                }
+              }
+            }
+          },
+          "whole_building_mae_improvement_fraction": {
+            "calibration": -0.04305668118827613,
+            "later_period": 0.005693266541913975
+          },
+          "material": false
+        },
+        {
+          "source_kind": "heating",
+          "row_offset_hours": 1,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "b23f9b6c96a4cccf1351d28985634389cba36d1f1ac1104f3250eb29caeac0ee",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.9620295128043482,
+                "unexplained_gain_bias_w": -109.06705381845967,
+                "unexplained_gain_mae_w": 317.28940442511777
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 1.231699585737792,
+                  "unexplained_gain_bias_w": -89.19832423329422,
+                  "unexplained_gain_mae_w": 587.8658970835364
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.7721404859940437,
+                  "unexplained_gain_bias_w": -217.78843483346827,
+                  "unexplained_gain_mae_w": 449.40511786026946
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 1.1058620899609255,
+                  "unexplained_gain_bias_w": -103.00538966627639,
+                  "unexplained_gain_mae_w": 160.886895091852
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.604803581665795,
+                  "unexplained_gain_bias_w": -26.276066540799793,
+                  "unexplained_gain_mae_w": 70.99970766481312
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "65066096480e01263d83c2024da28e16a52d879338e845a69d7e2ea95f5b86cf",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 1.0989866323170778,
+                "unexplained_gain_bias_w": -103.2388507568724,
+                "unexplained_gain_mae_w": 375.35133524652133
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 1.3812600644370265,
+                  "unexplained_gain_bias_w": -157.88603314180315,
+                  "unexplained_gain_mae_w": 697.3176361822277
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.8862057520596143,
+                  "unexplained_gain_bias_w": -93.24035865817731,
+                  "unexplained_gain_mae_w": 540.2848086083764
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 1.159155851806911,
+                  "unexplained_gain_bias_w": -122.45043499955558,
+                  "unexplained_gain_mae_w": 167.5090165320476
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.8911813410727342,
+                  "unexplained_gain_bias_w": -39.37857622795352,
+                  "unexplained_gain_mae_w": 96.29387966343383
+                }
+              }
+            }
+          },
+          "whole_building_mae_improvement_fraction": {
+            "calibration": -0.22823342803489396,
+            "later_period": -0.23893016340747625
+          },
+          "material": false
+        },
+        {
+          "source_kind": "internal",
+          "row_offset_hours": -1,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "b23f9b6c96a4cccf1351d28985634389cba36d1f1ac1104f3250eb29caeac0ee",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7273966792157645,
+                "unexplained_gain_bias_w": -107.65001753500022,
+                "unexplained_gain_mae_w": 263.1422865923525
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8481408631972229,
+                  "unexplained_gain_bias_w": -87.6589097719173,
+                  "unexplained_gain_mae_w": 457.36122181366807
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.5638618747751205,
+                  "unexplained_gain_bias_w": -214.4234104242368,
+                  "unexplained_gain_mae_w": 371.6828949592764
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.9111314261359917,
+                  "unexplained_gain_bias_w": -102.34226367992429,
+                  "unexplained_gain_mae_w": 158.46677146174378
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.4989790600757073,
+                  "unexplained_gain_bias_w": -26.175486263922554,
+                  "unexplained_gain_mae_w": 65.05825813472158
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "65066096480e01263d83c2024da28e16a52d879338e845a69d7e2ea95f5b86cf",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8482946066079202,
+                "unexplained_gain_bias_w": -101.03301523485956,
+                "unexplained_gain_mae_w": 308.0948249336127
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.9937430690327393,
+                  "unexplained_gain_bias_w": -152.61304065610307,
+                  "unexplained_gain_mae_w": 545.6522292476295
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6503083890253165,
+                  "unexplained_gain_bias_w": -90.12211492287865,
+                  "unexplained_gain_mae_w": 432.78792619545976
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8982581365367248,
+                  "unexplained_gain_bias_w": -122.05967550875832,
+                  "unexplained_gain_mae_w": 161.62441417399566
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.8130934696937396,
+                  "unexplained_gain_bias_w": -39.337229851698226,
+                  "unexplained_gain_mae_w": 92.31473011736573
+                }
+              }
+            }
+          },
+          "whole_building_mae_improvement_fraction": {
+            "calibration": -0.018628886482538763,
+            "later_period": -0.016935164355555993
+          },
+          "material": false
+        },
+        {
+          "source_kind": "internal",
+          "row_offset_hours": 1,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "b23f9b6c96a4cccf1351d28985634389cba36d1f1ac1104f3250eb29caeac0ee",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7724970953613852,
+                "unexplained_gain_bias_w": -108.6134242041444,
+                "unexplained_gain_mae_w": 268.6664913799016
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8425506941824549,
+                  "unexplained_gain_bias_w": -88.31089682154237,
+                  "unexplained_gain_mae_w": 452.5529003147584
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6045227695827079,
+                  "unexplained_gain_bias_w": -215.6103304814618,
+                  "unexplained_gain_mae_w": 385.6409600201719
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 1.016546066391818,
+                  "unexplained_gain_bias_w": -103.8320570790679,
+                  "unexplained_gain_mae_w": 162.2292191831412
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.5275430722312121,
+                  "unexplained_gain_bias_w": -26.70041243450553,
+                  "unexplained_gain_mae_w": 74.24288600153476
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "65066096480e01263d83c2024da28e16a52d879338e845a69d7e2ea95f5b86cf",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8995636688331725,
+                "unexplained_gain_bias_w": -101.24143942866723,
+                "unexplained_gain_mae_w": 314.5379267569573
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.9928455527195033,
+                  "unexplained_gain_bias_w": -152.58799606566967,
+                  "unexplained_gain_mae_w": 541.3321136326911
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6885758135905606,
+                  "unexplained_gain_bias_w": -90.63998003472226,
+                  "unexplained_gain_mae_w": 446.02785299677214
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 1.0317356929937542,
+                  "unexplained_gain_bias_w": -122.24679458144024,
+                  "unexplained_gain_mae_w": 172.08149540648094
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.8440981544372016,
+                  "unexplained_gain_bias_w": -39.490987032836806,
+                  "unexplained_gain_mae_w": 98.71024499188523
+                }
+              }
+            }
+          },
+          "whole_building_mae_improvement_fraction": {
+            "calibration": -0.040013190177367895,
+            "later_period": -0.038202048059605115
+          },
+          "material": false
+        },
+        {
+          "source_kind": "solar",
+          "row_offset_hours": -1,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "b23f9b6c96a4cccf1351d28985634389cba36d1f1ac1104f3250eb29caeac0ee",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7309580201695963,
+                "unexplained_gain_bias_w": -116.02626556929789,
+                "unexplained_gain_mae_w": 264.7218327177108
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8467285631151357,
+                  "unexplained_gain_bias_w": -90.47262802803547,
+                  "unexplained_gain_mae_w": 455.3033765743195
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6043672002693448,
+                  "unexplained_gain_bias_w": -234.45399007479915,
+                  "unexplained_gain_mae_w": 394.7226539830869
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.9088390256342491,
+                  "unexplained_gain_bias_w": -112.74651421567611,
+                  "unexplained_gain_mae_w": 146.1936233670483
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.4785406588042273,
+                  "unexplained_gain_bias_w": -26.431929958680794,
+                  "unexplained_gain_mae_w": 62.667676946388475
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "65066096480e01263d83c2024da28e16a52d879338e845a69d7e2ea95f5b86cf",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8546267994414065,
+                "unexplained_gain_bias_w": -101.876928871409,
+                "unexplained_gain_mae_w": 308.0247944924561
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.9900940208520334,
+                  "unexplained_gain_bias_w": -147.20218408130955,
+                  "unexplained_gain_mae_w": 543.9674304151897
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6934273290050764,
+                  "unexplained_gain_bias_w": -89.25247891289786,
+                  "unexplained_gain_mae_w": 451.0243069602674
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.9018804238023966,
+                  "unexplained_gain_bias_w": -131.68354036511985,
+                  "unexplained_gain_mae_w": 150.48791269993967
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.8043829533983156,
+                  "unexplained_gain_bias_w": -39.369512126308734,
+                  "unexplained_gain_mae_w": 86.61952789442772
+                }
+              }
+            }
+          },
+          "whole_building_mae_improvement_fraction": {
+            "calibration": -0.024743340117708755,
+            "later_period": -0.016704013383764114
+          },
+          "material": false
+        },
+        {
+          "source_kind": "solar",
+          "row_offset_hours": 1,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "b23f9b6c96a4cccf1351d28985634389cba36d1f1ac1104f3250eb29caeac0ee",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7060744181863011,
+                "unexplained_gain_bias_w": -107.64252087191818,
+                "unexplained_gain_mae_w": 258.35764244311946
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8440209679492429,
+                  "unexplained_gain_bias_w": -91.37428786058368,
+                  "unexplained_gain_mae_w": 454.14975297421284
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.5712820662949275,
+                  "unexplained_gain_bias_w": -212.99420455902222,
+                  "unexplained_gain_mae_w": 378.2963748956482
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.856492125328869,
+                  "unexplained_gain_bias_w": -99.85222588458117,
+                  "unexplained_gain_mae_w": 138.84908091617714
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.4710105961758745,
+                  "unexplained_gain_bias_w": -26.34936518348574,
+                  "unexplained_gain_mae_w": 62.13536098643959
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "65066096480e01263d83c2024da28e16a52d879338e845a69d7e2ea95f5b86cf",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8363070249257157,
+                "unexplained_gain_bias_w": -107.06431945865742,
+                "unexplained_gain_mae_w": 304.0699392412452
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.995262179370448,
+                  "unexplained_gain_bias_w": -166.46546468027313,
+                  "unexplained_gain_mae_w": 539.3621988187548
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6678861530040798,
+                  "unexplained_gain_bias_w": -105.1319088034766,
+                  "unexplained_gain_mae_w": 451.01985344838647
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.851004845322611,
+                  "unexplained_gain_bias_w": -117.25471498248103,
+                  "unexplained_gain_mae_w": 140.07618212633383
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.7980036302787369,
+                  "unexplained_gain_bias_w": -39.40518936839893,
+                  "unexplained_gain_mae_w": 85.82152257150587
+                }
+              }
+            }
+          },
+          "whole_building_mae_improvement_fraction": {
+            "calibration": -0.00010743633834867268,
+            "later_period": -0.0036501382472400984
+          },
+          "material": false
+        }
+      ],
+      "supported_candidates": []
+    },
+    "heater_distribution": {
+      "published_baseline_convective_fraction": 0.7,
+      "candidates": [
+        {
+          "convective_fraction": 0.5,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "c5aa8b3cf6771d20aa0efb485c73682b743264ab3432236ecc28c6b7b0fe460d",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7077702514351336,
+                "unexplained_gain_bias_w": -103.15822545413866,
+                "unexplained_gain_mae_w": 253.96459644411993
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.9158392035974178,
+                  "unexplained_gain_bias_w": -78.6191749091829,
+                  "unexplained_gain_mae_w": 511.14239066967394
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.4649045652462063,
+                  "unexplained_gain_bias_w": -204.46628885899017,
+                  "unexplained_gain_mae_w": 296.25112750803305
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8145380660278907,
+                  "unexplained_gain_bias_w": -103.04842494260292,
+                  "unexplained_gain_mae_w": 140.38972344548
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.534214332103731,
+                  "unexplained_gain_bias_w": -26.499013105778623,
+                  "unexplained_gain_mae_w": 68.07514415329285
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "d2bb1d950846ab3e8b313793c95e6d6cfd2db0ee9fb32933dd5a03353be2dc52",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7842741076477439,
+                "unexplained_gain_bias_w": -102.11321514244277,
+                "unexplained_gain_mae_w": 283.58983412211234
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 1.0023736180029907,
+                  "unexplained_gain_bias_w": -151.0228376265996,
+                  "unexplained_gain_mae_w": 573.9434798193696
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.5222788926801766,
+                  "unexplained_gain_bias_w": -95.40299063246223,
+                  "unexplained_gain_mae_w": 332.68264835667713
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.7964377854403,
+                  "unexplained_gain_bias_w": -121.66900693279727,
+                  "unexplained_gain_mae_w": 142.35416330496315
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.7406093746516941,
+                  "unexplained_gain_bias_w": -40.358025377911964,
+                  "unexplained_gain_mae_w": 85.3790450074393
+                }
+              }
+            }
+          },
+          "whole_building_mae_improvement_fraction": {
+            "calibration": 0.01652170889646066,
+            "later_period": 0.06301299565886329
+          },
+          "material": false
+        },
+        {
+          "convective_fraction": 0.7,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "c5aa8b3cf6771d20aa0efb485c73682b743264ab3432236ecc28c6b7b0fe460d",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.707093755060872,
+                "unexplained_gain_bias_w": -107.69909116051956,
+                "unexplained_gain_mae_w": 258.23101408690155
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8438612749127073,
+                  "unexplained_gain_bias_w": -87.90289171598731,
+                  "unexplained_gain_mae_w": 454.99803901492
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.5657197210880248,
+                  "unexplained_gain_bias_w": -213.82448550973606,
+                  "unexplained_gain_mae_w": 375.34717200840606
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8633494584061983,
+                  "unexplained_gain_bias_w": -102.73469486703915,
+                  "unexplained_gain_mae_w": 140.241659476939
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.4716072225155695,
+                  "unexplained_gain_bias_w": -26.334292549315705,
+                  "unexplained_gain_mae_w": 62.337185847341296
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "d2bb1d950846ab3e8b313793c95e6d6cfd2db0ee9fb32933dd5a03353be2dc52",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8351609866917282,
+                "unexplained_gain_bias_w": -105.50700882681289,
+                "unexplained_gain_mae_w": 302.66143800097296
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.9923192120090105,
+                  "unexplained_gain_bias_w": -164.84450934044042,
+                  "unexplained_gain_mae_w": 541.0507564902051
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6575698047484597,
+                  "unexplained_gain_bias_w": -94.7805408609718,
+                  "unexplained_gain_mae_w": 440.6240918316709
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.857716333471699,
+                  "unexplained_gain_bias_w": -122.21278405676433,
+                  "unexplained_gain_mae_w": 142.94755416982136
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.7982497851076179,
+                  "unexplained_gain_bias_w": -40.19020104907502,
+                  "unexplained_gain_mae_w": 86.02334951219436
+                }
+              }
+            }
+          },
+          "whole_building_mae_improvement_fraction": {
+            "calibration": 0.0,
+            "later_period": 0.0
+          },
+          "material": false
+        },
+        {
+          "convective_fraction": 0.9,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "c5aa8b3cf6771d20aa0efb485c73682b743264ab3432236ecc28c6b7b0fe460d",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7654708120306962,
+                "unexplained_gain_bias_w": -112.23995686690044,
+                "unexplained_gain_mae_w": 281.18867653131355
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8406581985017547,
+                  "unexplained_gain_bias_w": -97.1866085227912,
+                  "unexplained_gain_mae_w": 425.17003604576223
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.7192323015687322,
+                  "unexplained_gain_bias_w": -223.18268216048335,
+                  "unexplained_gain_mae_w": 498.9077864002706
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.9665140939458379,
+                  "unexplained_gain_bias_w": -102.42096479147536,
+                  "unexplained_gain_mae_w": 141.89649982984525
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.43084968627088327,
+                  "unexplained_gain_bias_w": -26.169571992851836,
+                  "unexplained_gain_mae_w": 58.78038384937622
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "d2bb1d950846ab3e8b313793c95e6d6cfd2db0ee9fb32933dd5a03353be2dc52",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.9437820060868828,
+                "unexplained_gain_bias_w": -108.90080251118383,
+                "unexplained_gain_mae_w": 339.1177945784493
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 1.0512039191143048,
+                  "unexplained_gain_bias_w": -178.66618105427918,
+                  "unexplained_gain_mae_w": 535.4256461055026
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.8366552596454045,
+                  "unexplained_gain_bias_w": -94.15809108948746,
+                  "unexplained_gain_mae_w": 586.140379722925
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.9820066166558632,
+                  "unexplained_gain_bias_w": -122.75656118073125,
+                  "unexplained_gain_mae_w": 145.8411447518238
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.8908081734268238,
+                  "unexplained_gain_bias_w": -40.022376720237446,
+                  "unexplained_gain_mae_w": 89.06400773354605
+                }
+              }
+            }
+          },
+          "whole_building_mae_improvement_fraction": {
+            "calibration": -0.0889035831950307,
+            "later_period": -0.12045259818450726
+          },
+          "material": false
+        }
+      ],
+      "material_candidates": []
+    },
+    "initial_mass_state": {
+      "candidates": [
+        {
+          "scope": "all_zones",
+          "offset_c": -2.0,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "c5aa8b3cf6771d20aa0efb485c73682b743264ab3432236ecc28c6b7b0fe460d",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7152230555004226,
+                "unexplained_gain_bias_w": -89.30748476223425,
+                "unexplained_gain_mae_w": 260.019790973253
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8548497561281664,
+                  "unexplained_gain_bias_w": -56.06220946128813,
+                  "unexplained_gain_mae_w": 467.9110038063771
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.5719337520966613,
+                  "unexplained_gain_bias_w": -180.91257387189287,
+                  "unexplained_gain_mae_w": 367.49040445113826
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8768458143464533,
+                  "unexplained_gain_bias_w": -99.4693236497455,
+                  "unexplained_gain_mae_w": 142.138635097225
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.4684454845558841,
+                  "unexplained_gain_bias_w": -20.785832066010553,
+                  "unexplained_gain_mae_w": 62.53912053827177
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "d2bb1d950846ab3e8b313793c95e6d6cfd2db0ee9fb32933dd5a03353be2dc52",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8428160906732809,
+                "unexplained_gain_bias_w": -87.83242364668094,
+                "unexplained_gain_mae_w": 307.4611362325398
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 1.0045582440121352,
+                  "unexplained_gain_bias_w": -134.24517791913163,
+                  "unexplained_gain_mae_w": 553.6939985867974
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6721206670103727,
+                  "unexplained_gain_bias_w": -63.15174412898589,
+                  "unexplained_gain_mae_w": 446.59192237270344
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8542470858872377,
+                  "unexplained_gain_bias_w": -119.07471775841981,
+                  "unexplained_gain_mae_w": 142.2016802300329
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.8066810462686705,
+                  "unexplained_gain_bias_w": -34.85805478018646,
+                  "unexplained_gain_mae_w": 87.35694374062552
+                }
+              }
+            }
+          }
+        },
+        {
+          "scope": "all_zones",
+          "offset_c": 0.0,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "c5aa8b3cf6771d20aa0efb485c73682b743264ab3432236ecc28c6b7b0fe460d",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.707093755060872,
+                "unexplained_gain_bias_w": -107.69909116051956,
+                "unexplained_gain_mae_w": 258.23101408690155
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8438612749127073,
+                  "unexplained_gain_bias_w": -87.90289171598731,
+                  "unexplained_gain_mae_w": 454.99803901492
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.5657197210880248,
+                  "unexplained_gain_bias_w": -213.82448550973606,
+                  "unexplained_gain_mae_w": 375.34717200840606
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8633494584061983,
+                  "unexplained_gain_bias_w": -102.73469486703915,
+                  "unexplained_gain_mae_w": 140.241659476939
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.4716072225155695,
+                  "unexplained_gain_bias_w": -26.334292549315705,
+                  "unexplained_gain_mae_w": 62.337185847341296
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "d2bb1d950846ab3e8b313793c95e6d6cfd2db0ee9fb32933dd5a03353be2dc52",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8351609866917282,
+                "unexplained_gain_bias_w": -105.50700882681289,
+                "unexplained_gain_mae_w": 302.66143800097296
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.9923192120090105,
+                  "unexplained_gain_bias_w": -164.84450934044042,
+                  "unexplained_gain_mae_w": 541.0507564902051
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6575698047484597,
+                  "unexplained_gain_bias_w": -94.7805408609718,
+                  "unexplained_gain_mae_w": 440.6240918316709
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.857716333471699,
+                  "unexplained_gain_bias_w": -122.21278405676433,
+                  "unexplained_gain_mae_w": 142.94755416982136
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.7982497851076179,
+                  "unexplained_gain_bias_w": -40.19020104907502,
+                  "unexplained_gain_mae_w": 86.02334951219436
+                }
+              }
+            }
+          }
+        },
+        {
+          "scope": "all_zones",
+          "offset_c": 2.0,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "c5aa8b3cf6771d20aa0efb485c73682b743264ab3432236ecc28c6b7b0fe460d",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7200257900167034,
+                "unexplained_gain_bias_w": -126.09069755880566,
+                "unexplained_gain_mae_w": 264.4625892966752
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8532729936739601,
+                  "unexplained_gain_bias_w": -119.74357397068633,
+                  "unexplained_gain_mae_w": 458.8231917458934
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.5858415211349047,
+                  "unexplained_gain_bias_w": -246.7363971475827,
+                  "unexplained_gain_mae_w": 392.76979507006985
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.864643042971893,
+                  "unexplained_gain_bias_w": -106.00006608433307,
+                  "unexplained_gain_mae_w": 139.4118198706143
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.5048325185425713,
+                  "unexplained_gain_bias_w": -31.882753032620528,
+                  "unexplained_gain_mae_w": 66.84555050012342
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "d2bb1d950846ab3e8b313793c95e6d6cfd2db0ee9fb32933dd5a03353be2dc52",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8446420668418547,
+                "unexplained_gain_bias_w": -123.18159400694485,
+                "unexplained_gain_mae_w": 302.3838561769571
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.9966475984649924,
+                  "unexplained_gain_bias_w": -195.4438407617477,
+                  "unexplained_gain_mae_w": 535.9874683255603
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6648884264687602,
+                  "unexplained_gain_bias_w": -126.4093375929602,
+                  "unexplained_gain_mae_w": 442.6507610280246
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8753936051383963,
+                  "unexplained_gain_bias_w": -125.3508503551087,
+                  "unexplained_gain_mae_w": 144.8939049799088
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.8074551784589542,
+                  "unexplained_gain_bias_w": -45.522347317962804,
+                  "unexplained_gain_mae_w": 86.003290374335
+                }
+              }
+            }
+          }
+        },
+        {
+          "scope": "attic_only",
+          "offset_c": -2.0,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "c5aa8b3cf6771d20aa0efb485c73682b743264ab3432236ecc28c6b7b0fe460d",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7099978907766703,
+                "unexplained_gain_bias_w": -99.73892059684476,
+                "unexplained_gain_mae_w": 261.45925528476585
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8537663661937606,
+                  "unexplained_gain_bias_w": -56.06220946128813,
+                  "unexplained_gain_mae_w": 467.9110038063771
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.5653508394400033,
+                  "unexplained_gain_bias_w": -213.82448550973606,
+                  "unexplained_gain_mae_w": 375.34717200840606
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8635178864623931,
+                  "unexplained_gain_bias_w": -102.73469486703915,
+                  "unexplained_gain_mae_w": 140.241659476939
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.4713664176514801,
+                  "unexplained_gain_bias_w": -26.334292549315705,
+                  "unexplained_gain_mae_w": 62.337185847341296
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "d2bb1d950846ab3e8b313793c95e6d6cfd2db0ee9fb32933dd5a03353be2dc52",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8384155495350114,
+                "unexplained_gain_bias_w": -97.8571759714857,
+                "unexplained_gain_mae_w": 305.822248525121
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 1.0034976125611819,
+                  "unexplained_gain_bias_w": -134.24517791913163,
+                  "unexplained_gain_mae_w": 553.6939985867974
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6577208098894808,
+                  "unexplained_gain_bias_w": -94.7805408609718,
+                  "unexplained_gain_mae_w": 440.6240918316709
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8573041294160444,
+                  "unexplained_gain_bias_w": -122.21278405676433,
+                  "unexplained_gain_mae_w": 142.94755416982136
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.798240591749701,
+                  "unexplained_gain_bias_w": -40.19020104907502,
+                  "unexplained_gain_mae_w": 86.02334951219436
+                }
+              }
+            }
+          }
+        },
+        {
+          "scope": "attic_only",
+          "offset_c": 0.0,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "c5aa8b3cf6771d20aa0efb485c73682b743264ab3432236ecc28c6b7b0fe460d",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.707093755060872,
+                "unexplained_gain_bias_w": -107.69909116051956,
+                "unexplained_gain_mae_w": 258.23101408690155
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.8438612749127073,
+                  "unexplained_gain_bias_w": -87.90289171598731,
+                  "unexplained_gain_mae_w": 454.99803901492
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.5657197210880248,
+                  "unexplained_gain_bias_w": -213.82448550973606,
+                  "unexplained_gain_mae_w": 375.34717200840606
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8633494584061983,
+                  "unexplained_gain_bias_w": -102.73469486703915,
+                  "unexplained_gain_mae_w": 140.241659476939
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.4716072225155695,
+                  "unexplained_gain_bias_w": -26.334292549315705,
+                  "unexplained_gain_mae_w": 62.337185847341296
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "d2bb1d950846ab3e8b313793c95e6d6cfd2db0ee9fb32933dd5a03353be2dc52",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8351609866917282,
+                "unexplained_gain_bias_w": -105.50700882681289,
+                "unexplained_gain_mae_w": 302.66143800097296
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.9923192120090105,
+                  "unexplained_gain_bias_w": -164.84450934044042,
+                  "unexplained_gain_mae_w": 541.0507564902051
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6575698047484597,
+                  "unexplained_gain_bias_w": -94.7805408609718,
+                  "unexplained_gain_mae_w": 440.6240918316709
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.857716333471699,
+                  "unexplained_gain_bias_w": -122.21278405676433,
+                  "unexplained_gain_mae_w": 142.94755416982136
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.7982497851076179,
+                  "unexplained_gain_bias_w": -40.19020104907502,
+                  "unexplained_gain_mae_w": 86.02334951219436
+                }
+              }
+            }
+          }
+        },
+        {
+          "scope": "attic_only",
+          "offset_c": 2.0,
+          "metrics": {
+            "calibration": {
+              "graph_sha256": "c5aa8b3cf6771d20aa0efb485c73682b743264ab3432236ecc28c6b7b0fe460d",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.7096964573016467,
+                "unexplained_gain_bias_w": -115.65926172419431,
+                "unexplained_gain_mae_w": 259.18730226964493
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.852289913767967,
+                  "unexplained_gain_bias_w": -119.74357397068633,
+                  "unexplained_gain_mae_w": 458.8231917458934
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.5661482451424346,
+                  "unexplained_gain_bias_w": -213.82448550973606,
+                  "unexplained_gain_mae_w": 375.34717200840606
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8631974224926016,
+                  "unexplained_gain_bias_w": -102.73469486703915,
+                  "unexplained_gain_mae_w": 140.241659476939
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.4718522260620312,
+                  "unexplained_gain_bias_w": -26.334292549315705,
+                  "unexplained_gain_mae_w": 62.337185847341296
+                }
+              }
+            },
+            "later_period": {
+              "graph_sha256": "d2bb1d950846ab3e8b313793c95e6d6cfd2db0ee9fb32933dd5a03353be2dc52",
+              "whole_building": {
+                "one_step_temperature_rmse_c": 0.8363565348986297,
+                "unexplained_gain_bias_w": -113.15684168213971,
+                "unexplained_gain_mae_w": 301.3956159598117
+              },
+              "by_zone": {
+                "attic_airbody": {
+                  "one_step_temperature_rmse_c": 0.9960283006389666,
+                  "unexplained_gain_bias_w": -195.4438407617477,
+                  "unexplained_gain_mae_w": 535.9874683255603
+                },
+                "ground_airbody": {
+                  "one_step_temperature_rmse_c": 0.6574679252568995,
+                  "unexplained_gain_bias_w": -94.7805408609718,
+                  "unexplained_gain_mae_w": 440.6240918316709
+                },
+                "kitchen_airbody": {
+                  "one_step_temperature_rmse_c": 0.8581440909305879,
+                  "unexplained_gain_bias_w": -122.21278405676433,
+                  "unexplained_gain_mae_w": 142.94755416982136
+                },
+                "sleeping_airbody": {
+                  "one_step_temperature_rmse_c": 0.798261413733701,
+                  "unexplained_gain_bias_w": -40.19020104907502,
+                  "unexplained_gain_mae_w": 86.02334951219436
+                }
+              }
+            }
+          }
+        }
+      ],
+      "relative_spans": [
+        {
+          "scope": "all_zones",
+          "period": "calibration",
+          "target": "whole_building",
+          "relative_span": 0.024131784603055373
+        },
+        {
+          "scope": "all_zones",
+          "period": "calibration",
+          "target": "attic_airbody",
+          "relative_span": 0.028380264713698426
+        },
+        {
+          "scope": "all_zones",
+          "period": "later_period",
+          "target": "whole_building",
+          "relative_span": 0.016775444169951838
+        },
+        {
+          "scope": "all_zones",
+          "period": "later_period",
+          "target": "attic_airbody",
+          "relative_span": 0.03272619074797969
+        },
+        {
+          "scope": "attic_only",
+          "period": "calibration",
+          "target": "whole_building",
+          "relative_span": 0.012501369013630192
+        },
+        {
+          "scope": "attic_only",
+          "period": "calibration",
+          "target": "attic_airbody",
+          "relative_span": 0.028380264713698426
+        },
+        {
+          "scope": "attic_only",
+          "period": "later_period",
+          "target": "whole_building",
+          "relative_span": 0.014625690654701217
+        },
+        {
+          "scope": "attic_only",
+          "period": "later_period",
+          "target": "attic_airbody",
+          "relative_span": 0.03272619074797969
+        }
+      ],
+      "maximum_relative_span": 0.03272619074797969
+    },
+    "capacity_allocation": {
+      "baseline_basis": "air_volume",
+      "alternative_basis": "floor_area",
+      "baseline_capacity_fractions": {
+        "ground_airbody": 0.4503638610462722,
+        "kitchen_airbody": 0.05310998215021283,
+        "sleeping_airbody": 0.0798846629136345,
+        "attic_airbody": 0.4166414938898806
+      },
+      "alternative_capacity_fractions": {
+        "ground_airbody": 0.38059025891725506,
+        "kitchen_airbody": 0.04490313235560384,
+        "sleeping_airbody": 0.06753575955096867,
+        "attic_airbody": 0.5069708491761724
+      },
+      "alternative_metrics": {
+        "calibration": {
+          "graph_sha256": "96bbee525369d1708e77e77feaaf88175286c4201f0590e21c60c947528856cc",
+          "whole_building": {
+            "one_step_temperature_rmse_c": 0.7138631248519817,
+            "unexplained_gain_bias_w": -108.2878899718492,
+            "unexplained_gain_mae_w": 261.8582494545017
+          },
+          "by_zone": {
+            "attic_airbody": {
+              "one_step_temperature_rmse_c": 0.87088422241444,
+              "unexplained_gain_bias_w": -88.53709980844533,
+              "unexplained_gain_mae_w": 471.6407767557175
+            },
+            "ground_airbody": {
+              "one_step_temperature_rmse_c": 0.5570035438861834,
+              "unexplained_gain_bias_w": -215.09528488091993,
+              "unexplained_gain_mae_w": 373.1566097082883
+            },
+            "kitchen_airbody": {
+              "one_step_temperature_rmse_c": 0.8658416023865311,
+              "unexplained_gain_bias_w": -103.1163377962146,
+              "unexplained_gain_mae_w": 140.50676658420116
+            },
+            "sleeping_airbody": {
+              "one_step_temperature_rmse_c": 0.4690717289693513,
+              "unexplained_gain_bias_w": -26.402837401816907,
+              "unexplained_gain_mae_w": 62.12884476979992
+            }
+          }
+        },
+        "later_period": {
+          "graph_sha256": "818f3b7fda7d4faa3235ef0023feabd110a0fd1a70aa36f8d2dde57076a476ef",
+          "whole_building": {
+            "one_step_temperature_rmse_c": 0.841052198723114,
+            "unexplained_gain_bias_w": -106.15724337655863,
+            "unexplained_gain_mae_w": 305.84555432702354
+          },
+          "by_zone": {
+            "attic_airbody": {
+              "one_step_temperature_rmse_c": 1.0060473338516938,
+              "unexplained_gain_bias_w": -155.751542311006,
+              "unexplained_gain_mae_w": 555.195080206979
+            },
+            "ground_airbody": {
+              "one_step_temperature_rmse_c": 0.6503039678297244,
+              "unexplained_gain_bias_w": -104.50094759511398,
+              "unexplained_gain_mae_w": 438.893708956745
+            },
+            "kitchen_airbody": {
+              "one_step_temperature_rmse_c": 0.8666089783334658,
+              "unexplained_gain_bias_w": -123.34359724776786,
+              "unexplained_gain_mae_w": 143.46209639651525
+            },
+            "sleeping_airbody": {
+              "one_step_temperature_rmse_c": 0.8021456189835982,
+              "unexplained_gain_bias_w": -41.03288635234671,
+              "unexplained_gain_mae_w": 85.83133174785483
+            }
+          }
+        }
+      },
+      "whole_building_mae_improvement_fraction": {
+        "calibration": -0.01404647455080458,
+        "later_period": -0.010520389868894812
+      },
+      "attic_mae_improvement_fraction": {
+        "calibration": -0.0365776032284214,
+        "later_period": -0.026142323150101645
+      },
+      "minimum_required_improvement": 0.1,
+      "minimum_observed_improvement": -0.0365776032284214
+    }
+  },
+  "decision": {
+    "source_timing_shift_supported": false,
+    "alternative_heater_split_material": false,
+    "initial_mass_state_material": false,
+    "floor_area_capacity_allocation_supported": false,
+    "source_determined_roof_tilt_applied": true,
+    "component_fabric_mapping_required": true,
+    "cellar_boundary_contract_required": true,
+    "production_mutation_authorized": false,
+    "additional_calibration_authorized": false,
+    "validation_status_changed": false
+  }
+}

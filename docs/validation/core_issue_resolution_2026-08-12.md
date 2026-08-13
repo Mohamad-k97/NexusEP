@@ -38,20 +38,24 @@ larger tolerance.
 The Annex 71 diagnostic remains **blocked and rejected with alternative**.
 The former one-room helper rejection remains available for provenance. Its
 replacement maps four official air bodies and measured forcing through the
-canonical object adapter, conserves heat to 1.83e-10 W, and uses no fallback.
+canonical object adapter, conserves heat to 1.70e-10 W, and uses no fallback.
 After the two energy-path repairs, calibration RMSE improves from 2.172 to
-2.003 degC and the later diagnostic RMSE improves from 1.858 to 1.685 degC.
+1.994 degC and the later diagnostic RMSE improves from 1.858 to 1.685 degC.
 Both still fail the frozen thresholds; capacity reaches 1.4955e8 J/K near the frozen upper bound. The
 later targets were inspected while fixing the mapper, so they are no longer
 unseen. This is negative evidence for the present reduced-order
 parameterization, not a blind-validation pass.
 
 The observation-constrained audit reports 0.835 degC later-period one-step
-RMSE but 302.9 W unexplained-gain MAE. Residuals change sign, vary strongly by
+RMSE but 302.7 W unexplained-gain MAE. Residuals change sign, vary strongly by
 zone, and have the largest tails in the attic. That evidence rejects the idea
 of adding one fitted constant conductance and does not authorize more
-calibration. Source timing/distribution, the unmeasured mass state, and
-two-node coupling must be investigated separately.
+calibration. A frozen cross-period structural diagnostic rejects one-hour
+source shifts, alternate heater splits, +/-2 degC initial mass states, and
+floor-area capacity allocation as material explanations. The official
+supplement instead exposed a real 30-degree roof-window tilt error, which is
+now corrected without fitting, plus unresolved component-fabric, cellar,
+and per-opening blind contracts.
 
 The old ATUS aggregate alternative remains **blocked and rejected with
 alternative**. It was not tuned away. A separate official-microdata
@@ -79,6 +83,7 @@ passes 1,725 respondent-isolated holdouts: sleep-fraction quantile MAE
 uv run python -m nexusep.parity.harness --output artifacts/baseline/phase_2_16_initial_parity.json
 uv run python scripts/validation_data/run_annex71_production_transfer.py
 uv run python scripts/validation_data/run_annex71_energy_path_audit.py
+uv run python scripts/validation_data/run_annex71_structural_diagnostics.py
 uv run python scripts/validation_data/run_atus_population_validation.py
 uv run pytest -q
 ```

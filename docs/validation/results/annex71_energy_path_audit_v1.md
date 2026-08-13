@@ -12,23 +12,23 @@ Positive unexplained gain means the model is missing heat; negative means the re
 
 ## Results
 
-Calibration one-step RMSE: 0.708 degC; unexplained-gain bias: -108.3 W.
+Calibration one-step RMSE: 0.707 degC; unexplained-gain bias: -107.7 W.
 
-Later-period one-step RMSE: 0.835 degC; unexplained-gain bias: -105.4 W; MAE: 302.9 W.
+Later-period one-step RMSE: 0.835 degC; unexplained-gain bias: -105.5 W; MAE: 302.7 W.
 
 | Air body | One-step RMSE (degC) | Residual bias (W) | Residual MAE (W) | P05 (W) | P95 (W) |
 |---|---:|---:|---:|---:|---:|
-| attic_airbody | 0.993 | -164.6 | 542.0 | -1519.0 | 617.6 |
-| ground_airbody | 0.657 | -94.8 | 440.6 | -1013.0 | 943.6 |
+| attic_airbody | 0.992 | -164.8 | 541.1 | -1515.9 | 613.3 |
+| ground_airbody | 0.658 | -94.8 | 440.6 | -1013.0 | 943.6 |
 | kitchen_airbody | 0.858 | -122.2 | 142.9 | -395.9 | 84.5 |
 | sleeping_airbody | 0.798 | -40.2 | 86.0 | -181.5 | 94.7 |
 
 ## Diagnosis
 
 - Explicit ventilation supply temperature and heater radiant split improve the free-running later-period RMSE, but do not remove the rejection.
-- The remaining residual changes sign and has large tails, especially in the attic. A single missing constant conductance cannot explain it.
-- Residual correlation with heating/internal gains and interzone exchange shows that source timing/distribution and the two-node coupling require separate investigation before any new parameter is calibrated.
-- Mean radiant temperature is not measured. The conditional mass state is the largest unavoidable uncertainty in this audit.
+- The source-determined 30-degree roof tilt is now mapped. It changes the residual only slightly and does not remove the rejection.
+- Frozen cross-period tests reject one-hour heating, internal-gain, and solar shifts; alternate heater splits; +/-2 degC initial mass states; and floor-area capacity allocation as material explanations.
+- The remaining structural gaps are component-resolved fabric topology, the ground-floor cellar boundary, and per-opening blind state. A single fitted conductance or another aggregate correction is not justified.
 
 No empirical correction factor is applied to production physics.
 

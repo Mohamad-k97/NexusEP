@@ -131,9 +131,19 @@ def _write_report(payload: dict[str, object], path: Path) -> None:
                     "- The measured electric heater's documented 70/30 convective/radiative "
                     "split is represented explicitly by the typed control contract."
                 ),
+                "- The source-determined 30-degree attic roof-window tilt is represented explicitly.",
                 (
                     "- The ground-floor west blind is not represented because canonical v1 has "
                     "no per-opening blind state; this is a structural solar-gain limitation."
+                ),
+                (
+                    "- The ground floor still uses the common outdoor boundary because canonical "
+                    "v1 cannot yet carry the measured time-varying cellar temperature; "
+                    "substituting outdoor temperature for the cellar is not treated as valid."
+                ),
+                (
+                    "- Opaque fabric remains a conductance-preserving reduction rather than "
+                    "component-resolved wall, roof, ceiling, floor, and thermal-bridge topology."
                 ),
                 (
                     "- Measured supply-air temperature enters the air node through the typed "

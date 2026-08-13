@@ -1,0 +1,41 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "annex71-structural-diagnostics-v1",
+  "title": "Annex 71 source timing, fabric, and mass-state diagnostics",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-13",
+  "targeted_models": [
+    "THERMAL-1"
+  ],
+  "source_ids": [
+    "iea-ebc-annex71-twin-houses-2020"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_annex71_structural_diagnostics.py",
+      "sha256": "cc2cda2ad43c65bd538b29e7abeaeff88a5c02e46c03e218e34e47331cb3ab1c",
+      "command": "uv run python scripts/validation_data/run_annex71_structural_diagnostics.py"
+    }
+  ],
+  "report_path": "docs/validation/results/annex71_structural_diagnostics_v1.md",
+  "result_artifacts": [
+    {
+      "file_id": "annex71-structural-diagnostics-result",
+      "path": "data/validation/fixtures/annex71-twin-houses/structural-diagnostics-v1.json",
+      "sha256": "a541ef398b59000ee0e62a6f107e11f4ebfb7433530d57fb875aeb98106a0424",
+      "byte_size": 59722
+    }
+  ],
+  "numerical_tolerances": {
+    "material_cross_period_improvement": "at least 10 percent lower unexplained-gain MAE in both periods",
+    "initial_mass_state_materiality": "at least 10 percent post-warmup MAE span",
+    "roof_tilt": "exact 30 degrees from the official dimensioned plan"
+  },
+  "known_deviations": [
+    "This is post-hoc diagnosis and cannot pass blind or untouched validation gates.",
+    "No tested one-hour source shift, heater split, initial mass-temperature offset, or floor-area capacity allocation satisfies the frozen cross-period materiality rule.",
+    "The source-determined 30-degree roof tilt is applied without fitting; its effect is small and does not change the empirical rejection.",
+    "Component-resolved fabric topology, per-opening blind state, and a time-varying cellar boundary remain unsupported on the canonical path.",
+    "No counterfactual correction or additional calibration is authorized by this result."
+  ]
+}

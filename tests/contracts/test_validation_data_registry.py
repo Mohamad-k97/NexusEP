@@ -152,6 +152,7 @@ def test_repository_registry_indexes_only_retrieved_or_explicitly_gated_sources(
         "data/validation/results/atus_aggregate_sleep_alternative_v1.json",
         "data/validation/results/annex71_production_transfer_v1.json",
         "data/validation/results/annex71_energy_path_audit_v1.json",
+        "data/validation/results/annex71_structural_diagnostics_v1.json",
         "data/validation/results/atus_population_holdout_v1.json",
     }
 

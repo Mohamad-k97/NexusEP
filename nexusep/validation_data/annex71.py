@@ -91,6 +91,7 @@ WINDOWS: dict[str, tuple[tuple[str, float, float], ...]] = {
         ("east_child2_type5", 3.00, 90.0),
     ),
 }
+OPENING_TILT_DEG = {"south_child1_roof_type4": 30.0}
 
 # Physical interior-face areas used by the two-node air/mass coupling.  The
 # ground/attic value is their published separating floor; the two sealed-room
@@ -567,6 +568,7 @@ def _surface(
     u_value: float,
     capacity_j_k: float,
     azimuth_deg: float,
+    tilt_deg: float = 90.0,
     adjacent_zone_id: str | None = None,
     paired_surface_id: str | None = None,
     openings: Sequence[dict[str, Any]] = (),
@@ -584,7 +586,7 @@ def _surface(
         "thermal_transmittance_w_m2_k": u_value,
         "heat_capacity_j_k": capacity_j_k,
         "azimuth_deg": azimuth_deg,
-        "tilt_deg": 90.0,
+        "tilt_deg": tilt_deg,
         "openings": list(openings),
     }
 
@@ -611,9 +613,10 @@ def _opening(zone_id: str, surface_id: str, name: str, area: float) -> dict[str,
 def _zone_surfaces(
     zone_id: str,
     parameters: Annex71ModelParameters,
+    *,
+    capacity_allocation_basis: str = "air_volume",
 ) -> list[dict[str, Any]]:
-    total_volume = sum(ZONE_VOLUMES_M3.values())
-    zone_fraction = ZONE_VOLUMES_M3[zone_id] / total_volume
+    zone_fraction = zone_capacity_fractions(capacity_allocation_basis)[zone_id]
     target_envelope_ua = parameters.zone_envelope_conductance_w_k()[zone_id]
     windows = WINDOWS[zone_id]
     window_ua = sum(area * 1.20 for _name, area, _azimuth in windows)
@@ -627,6 +630,15 @@ def _zone_surfaces(
     result = []
     for azimuth in orientations:
         oriented_windows = [item for item in windows if item[2] == azimuth]
+        oriented_tilts = {
+            OPENING_TILT_DEG.get(name, 90.0)
+            for name, _area, _direction in oriented_windows
+        }
+        if len(oriented_tilts) != 1:
+            raise ValueError(
+                f"openings with different tilts cannot share a surface for {zone_id}"
+            )
+        surface_tilt = oriented_tilts.pop()
         surface_id = f"{zone_id}_exterior_{int(azimuth)}"
         opaque_area = opaque_ua / len(orientations) / 0.24
         opening_area = sum(area for _name, area, _direction in oriented_windows)
@@ -640,6 +652,7 @@ def _zone_surfaces(
                 u_value=0.24,
                 capacity_j_k=capacity_share / len(orientations),
                 azimuth_deg=azimuth,
+                tilt_deg=surface_tilt,
                 openings=openings,
             )
         )
@@ -675,6 +688,24 @@ def _zone_surfaces(
                 )
             )
     return result
+
+
+def zone_capacity_fractions(basis: str = "air_volume") -> dict[str, float]:
+    """Return deterministic zone weights for structural capacity diagnostics."""
+
+    if basis == "air_volume":
+        weights = ZONE_VOLUMES_M3
+    elif basis == "floor_area":
+        weights = {
+            zone_id: sum(room_areas.values())
+            for zone_id, room_areas in ZONE_ROOM_AREAS_M2.items()
+        }
+    else:
+        raise ValueError(
+            "capacity_allocation_basis must be 'air_volume' or 'floor_area'"
+        )
+    total = sum(weights.values())
+    return {zone_id: value / total for zone_id, value in weights.items()}
 
 
 def _zone_systems(
@@ -768,6 +799,7 @@ def build_canonical_scenario(
     parameters: Annex71ModelParameters | None = None,
     *,
     initial_record: Annex71Interval | None = None,
+    capacity_allocation_basis: str = "air_volume",
 ) -> tuple[CanonicalScenario, dict[str, object]]:
     """Build and compile the traceable four-air-body canonical scenario."""
 
@@ -804,7 +836,11 @@ def build_canonical_scenario(
                 "initial_mean_radiant_temperature_c": observation.air_temperature_c,
                 "initial_relative_humidity_fraction": observation.relative_humidity_fraction,
                 "initial_co2_ppm": first.outdoor_co2_ppm,
-                "surfaces": _zone_surfaces(zone_id, parameters),
+                "surfaces": _zone_surfaces(
+                    zone_id,
+                    parameters,
+                    capacity_allocation_basis=capacity_allocation_basis,
+                ),
                 "systems": _zone_systems(
                     zone_id, maximum_heating[zone_id], maximum_ventilation[zone_id]
                 ),
@@ -935,7 +971,11 @@ def build_annex71_step_input(
     record: Annex71Interval,
     index: int,
     prior: tuple[PriorZonePhysicalState, ...],
+    *,
+    heating_convective_fraction: float = HEATER_CONVECTIVE_FRACTION,
 ) -> SimulationStepInput:
+    if not 0.0 <= heating_convective_fraction <= 1.0:
+        raise ValueError("heating_convective_fraction must be between zero and one")
     commands = []
     gains = []
     for zone in scenario.building.dwelling.zones:
@@ -952,7 +992,7 @@ def build_annex71_step_input(
                 zone_id=zone.zone_id,
                 heating_on=observation.heating_power_w > 0.0,
                 heating_power_fraction=heating_fraction,
-                heating_convective_fraction=HEATER_CONVECTIVE_FRACTION,
+                heating_convective_fraction=heating_convective_fraction,
                 cooling_on=False,
                 cooling_power_fraction=0.0,
                 ventilation_volume_flow_m3_s=observation.ventilation_supply_flow_m3_s,
@@ -1143,4 +1183,5 @@ __all__ = [
     "run_object_scenario",
     "select_interval",
     "temperature_metrics",
+    "zone_capacity_fractions",
 ]

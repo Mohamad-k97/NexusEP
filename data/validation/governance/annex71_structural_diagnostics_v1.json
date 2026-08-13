@@ -1,0 +1,76 @@
+{
+  "protocol_version": "1.0.0",
+  "frozen_on": "2026-08-13",
+  "freeze_status": "predeclared_before_structural_diagnostic_execution",
+  "validation_category": "diagnostic_verification_and_empirical_residual_analysis",
+  "claim_limit": "Post-hoc structural diagnosis only. These counterfactuals cannot pass the empirical or blind-validation gates, change frozen acceptance thresholds, or authorize parameter fitting.",
+  "periods": {
+    "calibration": {
+      "start": "2018-12-19T10:00:00+01:00",
+      "end_exclusive": "2019-01-10T00:00:00+01:00"
+    },
+    "later_period": {
+      "start": "2019-01-10T00:00:00+01:00",
+      "end_exclusive": "2019-02-01T10:00:00+01:00"
+    }
+  },
+  "common_settings": {
+    "warmup_hours": 24,
+    "material_relative_change_fraction": 0.10,
+    "production_parameters": "reuse the recorded failed production fit without refitting"
+  },
+  "diagnostics": {
+    "source_timing": {
+      "source_kinds": [
+        "heating",
+        "internal",
+        "solar"
+      ],
+      "source_row_offsets_hours": [
+        -1,
+        0,
+        1
+      ],
+      "offset_semantics": "candidate source at target row t is copied from published row t plus offset; positive values advance a later source row",
+      "common_edge_trim_hours": 1,
+      "support_rule": "the same non-zero source offset must reduce whole-building unexplained-gain MAE by at least 10 percent in both periods"
+    },
+    "heater_distribution": {
+      "convective_fractions": [
+        0.5,
+        0.7,
+        0.9
+      ],
+      "published_baseline": 0.7,
+      "support_rule": "an alternative is material only if it reduces whole-building unexplained-gain MAE by at least 10 percent in both periods; the published 0.7 value remains authoritative regardless"
+    },
+    "initial_mass_state": {
+      "offsets_c": [
+        -2.0,
+        0.0,
+        2.0
+      ],
+      "scopes": [
+        "all_zones",
+        "attic_only"
+      ],
+      "support_rule": "initial-state uncertainty is material if the post-warmup whole-building or attic unexplained-gain MAE span is at least 10 percent of baseline in either period"
+    },
+    "capacity_allocation": {
+      "bases": [
+        "air_volume",
+        "floor_area"
+      ],
+      "production_baseline": "air_volume",
+      "support_rule": "floor-area allocation is supported only if it reduces both whole-building and attic unexplained-gain MAE by at least 10 percent in both periods without refitting total capacity"
+    }
+  },
+  "representation_checks": [
+    "component-specific roof, floor, ceiling, wall, window, and thermal-bridge topology",
+    "roof-window tilt and orientation",
+    "cellar boundary and temperature",
+    "per-opening blind state",
+    "source split and source-measurement provenance"
+  ],
+  "decision_rule": "Report every candidate, including negative results. A diagnostic finding may prioritize implementation work but cannot be applied as a fitted correction."
+}

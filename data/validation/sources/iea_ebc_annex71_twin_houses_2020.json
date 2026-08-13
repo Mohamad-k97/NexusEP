@@ -1,8 +1,8 @@
 {
   "manifest_version": "1.0.0",
   "source_id": "iea-ebc-annex71-twin-houses-2020",
-  "title": "IEA EBC Annex 71 Twin Houses: Main Experiment Data",
-  "version": "Fordatis dataset 76.2, main-experiment archive",
+  "title": "IEA EBC Annex 71 Twin Houses: Main Experiment Data and Supplementary Documents",
+  "version": "Fordatis dataset 76.2, main-experiment and supplementary-document archives",
   "publisher": "Fraunhofer Institute for Building Physics IBP",
   "doi": {
     "status": "assigned",
@@ -14,14 +14,20 @@
     "spdx_id": "CC-BY-SA-4.0",
     "terms_url": "https://creativecommons.org/licenses/by-sa/4.0/"
   },
-  "download_url": "https://fordatis.fraunhofer.de/bitstream/fordatis/161.2/4/03_Data_Main_Experiment.zip",
-  "retrieval_date": "2026-08-11",
+  "download_url": "https://fordatis.fraunhofer.de/handle/fordatis/161.2?locale=en",
+  "retrieval_date": "2026-08-13",
   "raw_files": [
     {
       "file_id": "annex71-main-experiment-zip",
       "path": "data/raw/validation/annex71-twin-houses/03_Data_Main_Experiment.zip",
       "sha256": "832754489e0c513c8cb09b7e43d61a9f5249ff5502a781a672cae6d588a876a1",
       "byte_size": 46262744
+    },
+    {
+      "file_id": "annex71-additional-documents-zip",
+      "path": "data/raw/validation/annex71-twin-houses/02_Additional Documents.zip",
+      "sha256": "08e7d39cd5e3eb06821f60cc0f809926d3d8badd48798ce66dbb33f08bce5da9",
+      "byte_size": 313280733
     }
   ],
   "units": {
@@ -35,9 +41,16 @@
   },
   "timezone": "Europe/Berlin",
   "measurement_uncertainty": {
-    "status": "not_reported",
-    "description": "No channel-level uncertainty values suitable for weighted scoring were established from the downloaded main-experiment workbook set; uncertainty coverage is therefore not claimed.",
-    "by_variable": {}
+    "status": "reported",
+    "description": "The official supplementary measurement-channel registry reports sensor and acquisition-system specifications. These values are retained as source metadata and are not yet propagated into weighted acceptance scores.",
+    "by_variable": {
+      "room_air_temperature": "PT100 sensor specified as +/-0.015 K, with +/-1.5 K possible under full solar irradiation; acquisition-system accuracy 0.1 K",
+      "outdoor_air_temperature": "weather-station specified accuracy 0.1 K",
+      "relative_humidity": "outdoor sensor specified accuracy +/-2 percentage points; room acquisition-system accuracy 3 percentage points",
+      "electrical_heating_and_internal_gain_power": "integrated electrical measurement specified as 1.5% + 0.5%",
+      "solar_radiation": "CMP11 channels specified as less than 2%",
+      "mechanical_ventilation_volume_flow": "specified as 3.5 cubic metres per hour; acquisition-system accuracy 0.03 cubic metres per hour"
+    }
   },
   "known_gaps": [
     "This is the IEA EBC Annex 71 main experiment, not the originally proposed Annex 58 Experiment 1 calibration and Experiment 2 blind-validation pair.",
@@ -45,7 +58,9 @@
     "The replacement maps four official N2 air bodies through the object production adapter, but the later target period was inspected during mapper repair and is not unseen validation.",
     "The selected alignment maps each source row to the preceding hour before conversion to canonical interval-start timestamps. This is supported by a lag audit and the published experiment start, but the workbook label convention is not independently proven.",
     "The production path now represents the measured heater convective/radiative split and mechanical supply-air temperature explicitly.",
-    "Canonical v1 still lacks per-opening blind state, detailed construction layers, cellar boundaries, and channel-level uncertainty.",
+    "The official supplementary archive is checksum-registered and supplies plans, construction properties, a measurement-channel list, shading geometry, and supporting material.",
+    "The source-determined 30-degree attic roof-window tilt is now mapped explicitly.",
+    "Canonical v1 still lacks per-opening blind state, component-resolved construction topology, and a time-varying cellar boundary contract; reported channel uncertainty is not yet propagated into weighted scoring.",
     "Both registered empirical thermal results remain rejected; the registered energy-path audit is diagnostic and none may be used as evidence for a passing blind-validation claim."
   ],
   "preprocessing": [
@@ -77,17 +92,18 @@
       "step_id": "run-four-airbody-production-diagnostic",
       "description": "Join official N2 and weather workbooks by timestamp, apply the documented lag-audited hourly alignment, allocate the published whole-house HTC with stable coheat observations, compile the four-air-body canonical graph, run the object production adapter, and preserve the failed numerical and sealed-target decisions.",
       "script_path": "scripts/validation_data/run_annex71_production_transfer.py",
-      "script_sha256": "c74026af37e025fbf831f8c7b8903de65459a01d25c03dc239b97db46cb3cfb3",
+      "script_sha256": "6e757ff2d9beedd46156ecce101ae8b9e429191c7cb2d8b5bd69a87d9c61d9fe",
       "command": "uv run python scripts/validation_data/run_annex71_production_transfer.py",
       "input_raw_file_ids": [
-        "annex71-main-experiment-zip"
+        "annex71-main-experiment-zip",
+        "annex71-additional-documents-zip"
       ],
       "output_fixtures": [
         {
           "file_id": "annex71-production-transfer-result",
           "path": "data/validation/fixtures/annex71-twin-houses/production-transfer-result-v1.json",
-          "sha256": "4833b389c3efb3de33cfb1464aa98afbbcb095a8dcfa6474f0686c57e45084cd",
-          "byte_size": 114741
+          "sha256": "efd1f6f7223b7252e63ad9b76206ba7379b12772a9859b027db20e1170c2591c",
+          "byte_size": 113508
         }
       ]
     },
@@ -95,17 +111,37 @@
       "step_id": "audit-four-airbody-energy-paths",
       "description": "Constrain each interval with measured air temperature, evolve the unmeasured mass node conditionally, and decompose storage, envelope, supply-air ventilation, interzone, air-mass, and source paths without fitting a correction.",
       "script_path": "scripts/validation_data/run_annex71_energy_path_audit.py",
-      "script_sha256": "7f08877a32dafcc77bacc729dd07b0b75292490a7a93b184df0984c03fefbcde",
+      "script_sha256": "d78d072365fed8e64d39ef8f41c10e508607e870af12ab6071cd141c161c03ec",
       "command": "uv run python scripts/validation_data/run_annex71_energy_path_audit.py",
       "input_raw_file_ids": [
-        "annex71-main-experiment-zip"
+        "annex71-main-experiment-zip",
+        "annex71-additional-documents-zip"
       ],
       "output_fixtures": [
         {
           "file_id": "annex71-energy-path-audit",
           "path": "data/validation/fixtures/annex71-twin-houses/energy-path-audit-v1.json",
-          "sha256": "282417a1b7724d53d72a31ffc1dd82c703d8cfb347f116f097f8eda8bfd744d2",
-          "byte_size": 30916
+          "sha256": "90f6a936f5ea00c029d940eafda0415d3efc50eba6bc8ed03dbd38864a095bac",
+          "byte_size": 30910
+        }
+      ]
+    },
+    {
+      "step_id": "diagnose-four-airbody-structure",
+      "description": "Inspect checksum-registered plans, construction properties, and channel metadata; apply the source-determined 30-degree roof tilt; then test source timing, heater split, initial mass state, and capacity allocation under a frozen cross-period decision rule without fitting.",
+      "script_path": "scripts/validation_data/run_annex71_structural_diagnostics.py",
+      "script_sha256": "cc2cda2ad43c65bd538b29e7abeaeff88a5c02e46c03e218e34e47331cb3ab1c",
+      "command": "uv run python scripts/validation_data/run_annex71_structural_diagnostics.py",
+      "input_raw_file_ids": [
+        "annex71-main-experiment-zip",
+        "annex71-additional-documents-zip"
+      ],
+      "output_fixtures": [
+        {
+          "file_id": "annex71-structural-diagnostics-result",
+          "path": "data/validation/fixtures/annex71-twin-houses/structural-diagnostics-v1.json",
+          "sha256": "a541ef398b59000ee0e62a6f107e11f4ebfb7433530d57fb875aeb98106a0424",
+          "byte_size": 59722
         }
       ]
     }

@@ -9,7 +9,8 @@ path error while keeping the production object adapter in the loop.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from collections.abc import Mapping
+from dataclasses import asdict, dataclass, replace
 from typing import Any
 
 import numpy as np
@@ -21,12 +22,15 @@ from nexusep.validation_data.annex71 import (
     AIR_DENSITY_KG_M3,
     AIR_HEAT_CAPACITY_J_KG_K,
     DT_MINUTES,
+    HEATER_CONVECTIVE_FRACTION,
     ZONE_VOLUMES_M3,
     Annex71Interval,
     Annex71ModelParameters,
     build_annex71_step_input,
     build_canonical_scenario,
 )
+
+SOURCE_TIMING_KINDS = frozenset({"heating", "internal", "solar"})
 
 
 @dataclass(frozen=True)
@@ -93,6 +97,68 @@ def _correlation(left: np.ndarray, right: np.ndarray) -> float | None:
     if left.size < 2 or np.std(left) <= 1.0e-12 or np.std(right) <= 1.0e-12:
         return None
     return float(np.corrcoef(left, right)[0, 1])
+
+
+def shift_annex71_source_rows(
+    records: tuple[Annex71Interval, ...],
+    source_kind: str,
+    row_offset: int,
+    *,
+    edge_trim_steps: int = 1,
+) -> tuple[Annex71Interval, ...]:
+    """Build a timestamp-preserving source-alignment counterfactual.
+
+    The physical targets, timestamps, and non-selected forcings remain on row
+    ``t``. Only the selected source is copied from ``t + row_offset``. A common
+    edge trim keeps every offset comparison on the same target observations.
+    """
+
+    if source_kind not in SOURCE_TIMING_KINDS:
+        raise ValueError(f"unsupported source_kind: {source_kind!r}")
+    if not isinstance(row_offset, int):
+        raise TypeError("row_offset must be an integer")
+    if edge_trim_steps < abs(row_offset):
+        raise ValueError("edge_trim_steps must cover the absolute row offset")
+    if len(records) - 2 * edge_trim_steps < 2:
+        raise ValueError("source timing comparison requires at least two rows")
+
+    shifted = []
+    for target_index in range(edge_trim_steps, len(records) - edge_trim_steps):
+        target = records[target_index]
+        source = records[target_index + row_offset]
+        if source_kind == "solar":
+            shifted.append(
+                replace(
+                    target,
+                    diffuse_horizontal_radiation_w_m2=(
+                        source.diffuse_horizontal_radiation_w_m2
+                    ),
+                    global_horizontal_radiation_w_m2=(
+                        source.global_horizontal_radiation_w_m2
+                    ),
+                )
+            )
+            continue
+        field_name = (
+            "heating_power_w" if source_kind == "heating" else "internal_gain_w"
+        )
+        shifted.append(
+            replace(
+                target,
+                zones=tuple(
+                    replace(
+                        target_observation,
+                        **{
+                            field_name: getattr(
+                                source.zone(target_observation.zone_id), field_name
+                            )
+                        },
+                    )
+                    for target_observation in target.zones
+                ),
+            )
+        )
+    return tuple(shifted)
 
 
 def _summarize(
@@ -197,6 +263,9 @@ def audit_annex71_energy_paths(
     parameters: Annex71ModelParameters | None = None,
     *,
     warmup_timesteps: int = 24,
+    initial_mass_temperature_offset_by_zone_c: Mapping[str, float] | None = None,
+    heating_convective_fraction: float = HEATER_CONVECTIVE_FRACTION,
+    capacity_allocation_basis: str = "air_volume",
 ) -> Annex71EnergyPathAudit:
     """Run an observation-constrained production-adapter heat-path audit."""
 
@@ -205,17 +274,25 @@ def audit_annex71_energy_paths(
     if warmup_timesteps < 0 or warmup_timesteps >= len(source_records) - 1:
         raise ValueError("warmup_timesteps must leave at least one scored interval")
     parameters = parameters or Annex71ModelParameters()
+    offsets = dict(initial_mass_temperature_offset_by_zone_c or {})
+    unknown_offset_zones = sorted(set(offsets) - set(ZONE_VOLUMES_M3))
+    if unknown_offset_zones:
+        raise ValueError(f"unknown initial mass offset zones: {unknown_offset_zones}")
+    if any(not np.isfinite(float(value)) for value in offsets.values()):
+        raise ValueError("initial mass temperature offsets must be finite")
     initial_record = source_records[0]
     forcing_records = source_records[1:]
     scenario, graph = build_canonical_scenario(
         forcing_records,
         parameters,
         initial_record=initial_record,
+        capacity_allocation_basis=capacity_allocation_basis,
     )
     adapter = ObjectEngineAdapter(scenario, graph)
     thermal_parameters = make_building_thermal_parameters(adapter.building_model)
     mass_temperature_c = {
         zone_id: initial_record.zone(zone_id).air_temperature_c
+        + float(offsets.get(zone_id, 0.0))
         for zone_id in ZONE_VOLUMES_M3
     }
     records: list[Annex71EnergyPathRecord] = []
@@ -235,7 +312,14 @@ def audit_annex71_energy_paths(
             )
             for zone_id in sorted(ZONE_VOLUMES_M3)
         )
-        step = build_annex71_step_input(scenario, graph, current, index, prior)
+        step = build_annex71_step_input(
+            scenario,
+            graph,
+            current,
+            index,
+            prior,
+            heating_convective_fraction=heating_convective_fraction,
+        )
         result = adapter.run_step(step, include_debug=True)
         if result.debug is None:
             raise RuntimeError("object adapter did not return requested debug fields")
@@ -319,7 +403,9 @@ def audit_annex71_energy_paths(
 
 
 __all__ = [
+    "SOURCE_TIMING_KINDS",
     "Annex71EnergyPathAudit",
     "Annex71EnergyPathRecord",
     "audit_annex71_energy_paths",
+    "shift_annex71_source_rows",
 ]

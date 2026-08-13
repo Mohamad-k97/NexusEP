@@ -112,17 +112,18 @@ def _write_report(payload: dict, path: Path) -> None:
                     "the free-running later-period RMSE, but do not remove the rejection."
                 ),
                 (
-                    "- The remaining residual changes sign and has large tails, especially in "
-                    "the attic. A single missing constant conductance cannot explain it."
+                    "- The source-determined 30-degree roof tilt is now mapped. It changes the "
+                    "residual only slightly and does not remove the rejection."
                 ),
                 (
-                    "- Residual correlation with heating/internal gains and interzone exchange "
-                    "shows that source timing/distribution and the two-node coupling require "
-                    "separate investigation before any new parameter is calibrated."
+                    "- Frozen cross-period tests reject one-hour heating, internal-gain, and "
+                    "solar shifts; alternate heater splits; +/-2 degC initial mass states; and "
+                    "floor-area capacity allocation as material explanations."
                 ),
                 (
-                    "- Mean radiant temperature is not measured. The conditional mass state is "
-                    "the largest unavoidable uncertainty in this audit."
+                    "- The remaining structural gaps are component-resolved fabric topology, "
+                    "the ground-floor cellar boundary, and per-opening blind state. A single "
+                    "fitted conductance or another aggregate correction is not justified."
                 ),
                 "",
                 "No empirical correction factor is applied to production physics.",

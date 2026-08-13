@@ -38,6 +38,11 @@ Validation category: **verification** (scope governance only).
 - [Annex 71 thermal-mapping diagnostic](results/annex71_thermal_transfer_v1.md)
   records why the historical helper-model transfer is not production or blind
   validation and preserves its rejected numerical result.
+- [Annex 71 production diagnostic](results/annex71_production_transfer_v1.md),
+  [energy-path audit](results/annex71_energy_path_audit_v1.md), and
+  [structural diagnostics](results/annex71_structural_diagnostics_v1.md)
+  preserve the repaired production mapping, rejected empirical result, and
+  frozen evidence against timing, split, mass-state, and capacity quick fixes.
 - [ATUS aggregate sleep alternative](results/atus_aggregate_sleep_alternative_v1.md)
   compares repaired object-runner output with the survey aggregate and records
   the remaining duration and distribution gaps.
