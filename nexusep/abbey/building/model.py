@@ -123,6 +123,11 @@ class ZoneModel:
 
     internal_heat_capacity_j_k: Optional[float] = None
     air_heat_capacity_j_k: Optional[float] = None
+    # Opaque surface area represented by internal_heat_capacity_j_k and
+    # available for convective/radiative exchange with the zone air node.
+    # Canonical adapters supply this from the compiled geometry; legacy
+    # callers may leave it unset and retain the historical estimator.
+    effective_thermal_mass_area_m2: Optional[float] = None
 
     external_wall_area_m2: float = 0.0
     internal_wall_area_m2: float = 0.0
@@ -283,6 +288,16 @@ class ZoneModel:
                 "internal_heat_capacity_j_k must be positive for zone "
                 + self.zone_id
             )
+
+        if self.effective_thermal_mass_area_m2 is not None:
+            self.effective_thermal_mass_area_m2 = float(
+                self.effective_thermal_mass_area_m2
+            )
+            if self.effective_thermal_mass_area_m2 <= 0:
+                raise ValueError(
+                    "effective_thermal_mass_area_m2 must be positive for zone "
+                    + self.zone_id
+                )
 
         # Backward compatibility with the existing simple model.
         if self.thermal_capacity_j_per_k is None:
@@ -473,6 +488,7 @@ class ZoneModel:
             "thermal_mass_class": self.thermal_mass_class,
             "internal_heat_capacity_j_k": self.internal_heat_capacity_j_k,
             "air_heat_capacity_j_k": self.air_heat_capacity_j_k,
+            "effective_thermal_mass_area_m2": self.effective_thermal_mass_area_m2,
             "external_wall_area_m2": self.external_wall_area_m2,
             "internal_wall_area_m2": self.internal_wall_area_m2,
             "floor_area_to_other_zone_m2": self.floor_area_to_other_zone_m2,

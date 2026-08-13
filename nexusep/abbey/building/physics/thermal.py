@@ -4087,10 +4087,24 @@ def make_zone_thermal_parameters(
         default=0.3,
     )
 
-    effective_mass_area_m2 = _estimate_effective_mass_area_m2(
-        floor_area_m2=floor_area_m2,
-        internal_wall_area_m2=internal_wall_area_m2,
+    effective_mass_area_m2 = _get_attr_or_default(
+        zone_model,
+        "effective_thermal_mass_area_m2",
+        None,
     )
+    if effective_mass_area_m2 is None:
+        # Compatibility path for legacy ZoneModel callers that have no
+        # surface-derived mass-coupling area.
+        effective_mass_area_m2 = _estimate_effective_mass_area_m2(
+            floor_area_m2=floor_area_m2,
+            internal_wall_area_m2=internal_wall_area_m2,
+        )
+    else:
+        effective_mass_area_m2 = _positive_float(
+            effective_mass_area_m2,
+            "effective_thermal_mass_area_m2",
+            zone_id,
+        )
 
     h_air_mass_w_k = (
         DEFAULT_AIR_MASS_COUPLING_W_M2K

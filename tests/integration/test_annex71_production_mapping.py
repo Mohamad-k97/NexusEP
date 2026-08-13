@@ -11,6 +11,8 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
+from nexusep.abbey.building.physics.thermal import make_zone_thermal_parameters
+from nexusep.adapters.object_engine import ObjectEngineAdapter
 from nexusep.schema.timestep import (
     CanonicalStepContractError,
     PriorZonePhysicalState,
@@ -209,6 +211,33 @@ def test_published_component_model_exposes_cellar_fabric_and_dynamic_blind() -> 
     ) > 50.0
 
 
+def test_object_adapter_couples_all_canonical_opaque_mass_to_zone_air() -> None:
+    timestamp = datetime(2018, 12, 20, 1, tzinfo=ZoneInfo("Europe/Berlin"))
+    scenario, graph = build_canonical_scenario((_record(timestamp, 20.0),))
+    adapter = ObjectEngineAdapter(scenario, graph)
+
+    kitchen = next(
+        zone
+        for zone in scenario.building.dwelling.zones
+        if zone.zone_id == "kitchen_airbody"
+    )
+    expected_area_m2 = sum(
+        surface.area_m2
+        - sum(opening.area_m2 for opening in surface.openings)
+        for surface in kitchen.surfaces
+    )
+    native_zone = adapter.building_model.all_zone_models()[kitchen.zone_id]
+    parameters = make_zone_thermal_parameters(native_zone)
+
+    assert native_zone.effective_thermal_mass_area_m2 == pytest.approx(
+        expected_area_m2
+    )
+    assert parameters.effective_mass_area_m2 == pytest.approx(expected_area_m2)
+    assert parameters.effective_mass_area_m2 > (
+        native_zone.floor_area_m2 + native_zone.internal_wall_area_m2
+    )
+
+
 def test_named_cellar_boundary_is_required_and_changes_the_solution() -> None:
     start = datetime(2018, 12, 20, 0, tzinfo=ZoneInfo("Europe/Berlin"))
     base = tuple(
@@ -274,8 +303,6 @@ def test_measured_window_and_door_positions_reach_native_controls() -> None:
         for zone in scenario.building.dwelling.zones
     )
     step = build_annex71_step_input(scenario, graph, operated, 0, prior)
-
-    from nexusep.adapters.object_engine import ObjectEngineAdapter
 
     result = ObjectEngineAdapter(scenario, graph).run_step(step, include_debug=True)
     assert result.debug is not None

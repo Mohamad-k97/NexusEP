@@ -2,7 +2,7 @@
 
 Validation category: post-hoc empirical diagnostic for the Main Experiment and
 predeclared holdout evaluation (not pristine blind evidence) for the Extended
-Experiment under governance protocol 1.1.
+Experiment under governance protocol 1.3.
 """
 
 from __future__ import annotations
@@ -46,14 +46,14 @@ FIXTURE_PATH = (
     / "validation"
     / "fixtures"
     / "annex71-twin-houses"
-    / "physical-runtime-error-v3.json"
+    / "physical-runtime-error-v4.json"
 )
 REPORT_PATH = (
     REPOSITORY_ROOT
     / "docs"
     / "validation"
     / "results"
-    / "annex71_physical_runtime_error_v3.md"
+    / "annex71_physical_runtime_error_v4.md"
 )
 TIMEZONE = ZoneInfo("Etc/GMT-1")
 WARMUP_HOURS = 24
@@ -254,9 +254,9 @@ def _render_report(document: dict[str, Any]) -> str:
     ext = document["extended_primary_holdout"]
     main = document["main_experiment_posthoc"]
     lines = [
-        "# Annex 71 physical-model runtime and error report v3",
+        "# Annex 71 physical-model runtime and error report v4",
         "",
-        "Validation category: post-hoc empirical diagnostic for the Main Experiment; predeclared holdout evaluation with a post-unsealing, target-independent time correction for the Extended Experiment. This is not pristine blind-validation evidence.",
+        "Validation category: post-hoc empirical diagnostic for the Main Experiment; predeclared holdout evaluation with documented post-unsealing source-schedule, time, and RC-mapping corrections for the Extended Experiment. This is not pristine blind-validation evidence.",
         "",
         "## Decision",
         "",
@@ -323,7 +323,9 @@ def _render_report(document: dict[str, Any]) -> str:
             "",
             "The component-resolved envelope, published thermal bridges, measured cellar boundary, fixed-CET alignment, measured opening/door states, and the specified blind states are now explicit. Remaining temperature residual is therefore not evidence for one more fitted whole-house conductance.",
             "",
-            "The strongest remaining structural risks are: (1) all construction layers are collapsed into one mass node per air body; (2) air-to-mass coupling uses a reduced effective-area coefficient rather than layer-resolved surface transfer; (3) open-door exchange uses a prescribed symmetric 0.10 m/s mixing speed rather than a pressure/buoyancy large-opening network; (4) solar optics use normal-incidence glazing data and a generic 0.35 closed-blind multiplier; and (5) infiltration is the published whole-house estimate applied uniformly to each air body. The largest kitchen errors coincide with roughly 1.8 kW internal-heat pulses and an open kitchen/living door, directly exposing item (3). These are model-form uncertainties, not parameters authorized for post-hoc tuning.",
+            "The canonical adapter now couples the mass node through the full graph-derived opaque surface area instead of the incomplete floor-plus-interzone estimate. The coefficient itself remains the declared model constant; no residual-derived value was introduced.",
+            "",
+            "The strongest remaining structural risks are: (1) all construction layers are collapsed into one mass node per air body; (2) the single air-to-mass coefficient cannot represent layer-resolved surface transfer; (3) open-door exchange uses a prescribed symmetric 0.10 m/s mixing speed rather than a pressure/buoyancy large-opening network; (4) solar optics use normal-incidence glazing data and a generic 0.35 closed-blind multiplier; and (5) infiltration is the published whole-house estimate applied uniformly to each air body. The largest prior kitchen errors coincided with roughly 1.8 kW internal-heat pulses and an open kitchen/living door, exposing items (1)-(3). These are model-form uncertainties, not parameters authorized for post-hoc tuning.",
             "",
             "## Source and data-quality findings",
             "",
@@ -408,11 +410,11 @@ def run() -> dict[str, Any]:
     profile = _profile_sample(extended_records[:73])
 
     document = {
-        "report_version": "3.0.0",
+        "report_version": "4.0.0",
         "created_on": datetime.now(tz=TIMEZONE).isoformat(),
         "validation_category": {
             "main": "post_hoc_empirical_diagnostic",
-            "extended": "predeclared_holdout_with_post_unsealing_source_correction",
+            "extended": "predeclared_holdout_with_post_unsealing_source_and_model_mapping_corrections",
         },
         "blocked_gate_classification": "blocked and rejected with alternative"
         if not gate["passed"]
@@ -421,6 +423,7 @@ def run() -> dict[str, Any]:
             "data/validation/governance/annex71_extended_holdout_v1.json",
             "data/validation/governance/annex71_extended_holdout_v1_1.json",
             "data/validation/governance/annex71_extended_holdout_v1_2.json",
+            "data/validation/governance/annex71_extended_holdout_v1_3.json",
         ],
         "software": software,
         "source": {
@@ -480,6 +483,7 @@ def run() -> dict[str, Any]:
             "Four missing outdoor-CO2 input rows were carried forward for thermal-only execution and fail the strict no-missing-input gate.",
             "One conflicting duplicate source row before the score period is dropped and reported.",
             "The two-node reduced-order model collapses all construction layers into one mass node per air body.",
+            "Graph-derived opaque area now couples that mass node to zone air, but the transfer coefficient is still a single reduced-order value.",
             "Open-door exchange is prescribed symmetric mixing rather than a pressure-network solution.",
             "Closed-blind solar attenuation uses the declared generic object-engine multiplier, not a fitted optical model.",
         ],

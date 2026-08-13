@@ -164,6 +164,11 @@ class ObjectEngineAdapter:
                 if external_area > 0.0
                 else 0.0
             )
+            effective_thermal_mass_area_m2 = sum(
+                surface.area_m2
+                - sum(opening.area_m2 for opening in surface.openings)
+                for surface in zone.surfaces
+            )
             systems = {item.system_type: item for item in zone.systems}
             ventilation = systems.get("ventilation")
             zone_path = f"/building/dwelling/zones/{zone.zone_id}"
@@ -210,6 +215,7 @@ class ObjectEngineAdapter:
                     item.heat_capacity_j_k for item in zone.surfaces
                 ),
                 air_heat_capacity_j_k=zone.volume_m3 * 1.2 * 1005.0,
+                effective_thermal_mass_area_m2=effective_thermal_mass_area_m2,
                 external_wall_area_m2=external_area,
                 internal_wall_area_m2=sum(item.area_m2 for item in interzone),
                 floor_area_to_other_zone_m2=0.0,

@@ -1,0 +1,25 @@
+{
+  "protocol_version": "1.3.0",
+  "supersedes": "data/validation/governance/annex71_extended_holdout_v1_2.json",
+  "amended_on": "2026-08-13",
+  "amendment_status": "post_unsealing_target_independent_rc_mapping_correction",
+  "validation_category": "post_unsealing_corrected_holdout_diagnostic",
+  "reason": "The canonical adapter assigned the heat capacity of every opaque surface to the zone mass node, but the solver's air-to-mass conductance used only floor area plus interzone-wall area. This left much of the represented mass weakly connected to the air node. The adapter now derives the coupling area from all canonical opaque surface faces. The correction follows the model topology and was not selected by fitting measured temperatures.",
+  "unchanged_from_v1_2": [
+    "fixed-CET time correction",
+    "published component capacities and U-values",
+    "forcing mappings",
+    "opening, door, and blind schedules",
+    "air-to-mass conductance coefficient",
+    "warm-up",
+    "all numerical acceptance thresholds",
+    "missing-data acceptance",
+    "no post-hoc fitting"
+  ],
+  "corrected_rc_mapping": {
+    "mass_capacity": "sum of canonical opaque-surface heat capacities assigned to the zone mass node",
+    "mass_coupling_area": "sum of canonical surface gross areas less opening areas for the zone",
+    "legacy_compatibility": "callers without canonical surface geometry retain the historical floor-plus-interzone estimator"
+  },
+  "scientific_label": "Results under v1.3 are post-unsealing corrected diagnostics. The immutable v2 first holdout result remains published and rejected. This amendment cannot restore a blind-validation claim."
+}
