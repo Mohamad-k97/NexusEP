@@ -157,7 +157,7 @@
       "step_id": "run-component-resolved-runtime-error-diagnostic",
       "description": "Load the official Main and Extended workbooks in fixed CET, apply the published component, boundary, blind, window, and door mappings, execute the object engine, and publish deterministic runtime, profiler, conservation, and temperature-error evidence under the amended holdout protocol.",
       "script_path": "scripts/validation_data/run_annex71_physical_runtime_error.py",
-      "script_sha256": "7501df1160db03b749e2739efba7f451b63b63e7f9111615f62c4c20e060d7ff",
+      "script_sha256": "ae7e0ca578b8328b66448f0afb2fe071c236d5b11110a4608feb21cd9d70166c",
       "command": "uv run python scripts/validation_data/run_annex71_physical_runtime_error.py",
       "input_raw_file_ids": [
         "annex71-main-experiment-zip",

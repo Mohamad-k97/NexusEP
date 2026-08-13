@@ -264,7 +264,7 @@ def _render_report(document: dict[str, Any]) -> str:
         "",
         "## Decision",
         "",
-        f"Strict gate: **{'passed' if ext['gate']['passed'] else 'rejected'}**. ",
+        f"Strict gate: **{'passed' if ext['gate']['passed'] else 'rejected'}**.",
         "The original Phase 4.9 row remains **blocked and rejected with alternative**. The temperature criteria fail and four missing outdoor-CO2 input rows independently violate the predeclared no-missing-input rule.",
         "",
         "## Runtime",

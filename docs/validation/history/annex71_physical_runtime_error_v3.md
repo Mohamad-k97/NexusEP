@@ -4,7 +4,7 @@ Validation category: post-hoc empirical diagnostic for the Main Experiment; pred
 
 ## Decision
 
-Strict gate: **rejected**. 
+Strict gate: **rejected**.
 The original Phase 4.9 row remains **blocked and rejected with alternative**. The temperature criteria fail and four missing outdoor-CO2 input rows independently violate the predeclared no-missing-input rule.
 
 ## Runtime
