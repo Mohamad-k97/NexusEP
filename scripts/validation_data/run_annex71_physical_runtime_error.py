@@ -256,6 +256,10 @@ def _render_report(document: dict[str, Any]) -> str:
     lines = [
         "# Annex 71 physical-model runtime and error report v4",
         "",
+        "Validation category: empirical validation",
+        "Model claim(s): THERMAL-1",
+        "Data source IDs: iea-ebc-annex71-twin-houses-2020",
+        "",
         "Validation category: post-hoc empirical diagnostic for the Main Experiment; predeclared holdout evaluation with documented post-unsealing source-schedule, time, and RC-mapping corrections for the Extended Experiment. This is not pristine blind-validation evidence.",
         "",
         "## Decision",

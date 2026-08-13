@@ -26,7 +26,11 @@ surface thermal-bridge, static shading, and interzone-opening fields. The
 object adapter maps them without hidden conductance allocation and accepts
 validated per-opening/per-door controls. Ventilation fan electrical power and
 detailed acoustic parameters remain absent, so fan power is explicitly zero.
-Surface heat capacity and U-values remain the canonical inputs. CO2 mass generation is
+Surface heat capacity and U-values remain the canonical inputs. The adapter
+derives the air-to-mass coupling area from all opaque canonical surface faces,
+so the area coupled to the mass node is consistent with the surface capacity
+assigned to that node; legacy callers without geometry retain their historical
+area estimator. CO2 mass generation is
 converted to the legacy volume rate using `1.842 kg/m3` at the adapter boundary.
 
 ## Array engine

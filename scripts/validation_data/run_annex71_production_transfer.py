@@ -133,16 +133,16 @@ def _write_report(payload: dict[str, object], path: Path) -> None:
                 ),
                 "- The source-determined 30-degree attic roof-window tilt is represented explicitly.",
                 (
-                    "- The ground-floor west blind is not represented because canonical v1 has "
-                    "no per-opening blind state; this is a structural solar-gain limitation."
+                    "- This historical legacy-effective diagnostic does not use the canonical "
+                    "per-opening blind controls; the component-resolved diagnostic does."
                 ),
                 (
-                    "- The ground floor still uses the common outdoor boundary because canonical "
-                    "v1 cannot yet carry the measured time-varying cellar temperature; "
-                    "substituting outdoor temperature for the cellar is not treated as valid."
+                    "- This historical legacy-effective diagnostic still uses the common "
+                    "outdoor boundary instead of the supported measured cellar boundary; "
+                    "that substitution is not treated as valid."
                 ),
                 (
-                    "- Opaque fabric remains a conductance-preserving reduction rather than "
+                    "- Its opaque fabric remains a conductance-preserving reduction rather than "
                     "component-resolved wall, roof, ceiling, floor, and thermal-bridge topology."
                 ),
                 (

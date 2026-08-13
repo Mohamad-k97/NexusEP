@@ -31,6 +31,7 @@
     "data/validation/results/annex71_production_transfer_v1.json",
     "data/validation/results/annex71_energy_path_audit_v1.json",
     "data/validation/results/annex71_structural_diagnostics_v1.json",
+    "data/validation/results/annex71_physical_runtime_error_v4.json",
     "data/validation/results/atus_population_holdout_v1.json"
   ]
 }

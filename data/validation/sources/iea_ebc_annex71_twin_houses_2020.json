@@ -1,8 +1,8 @@
 {
   "manifest_version": "1.0.0",
   "source_id": "iea-ebc-annex71-twin-houses-2020",
-  "title": "IEA EBC Annex 71 Twin Houses: Main Experiment Data and Supplementary Documents",
-  "version": "Fordatis dataset 76.2, main-experiment and supplementary-document archives",
+  "title": "IEA EBC Annex 71 Twin Houses: Main and Extended Experiment Data and Supplementary Documents",
+  "version": "Fordatis dataset 76.2, main-experiment, extended-experiment, and supplementary-document archives",
   "publisher": "Fraunhofer Institute for Building Physics IBP",
   "doi": {
     "status": "assigned",
@@ -28,6 +28,12 @@
       "path": "data/raw/validation/annex71-twin-houses/02_Additional Documents.zip",
       "sha256": "08e7d39cd5e3eb06821f60cc0f809926d3d8badd48798ce66dbb33f08bce5da9",
       "byte_size": 313280733
+    },
+    {
+      "file_id": "annex71-extended-experiment-zip",
+      "path": "data/raw/validation/annex71-twin-houses/04_Data_Extended_Experiment.zip",
+      "sha256": "73183bda3bed2caa0e6099d6aa1c40edfed29e0e81678c29ab3ebea9722355e9",
+      "byte_size": 53674589
     }
   ],
   "units": {
@@ -39,7 +45,7 @@
     "ventilation_supply_air_temperature": "degree Celsius",
     "ventilation_supply_volume_flow": "cubic metre per hour"
   },
-  "timezone": "Etc/GMT-1 (fixed UTC+1/CET, no daylight-saving shift)",
+  "timezone": "Etc/GMT-1",
   "measurement_uncertainty": {
     "status": "reported",
     "description": "The official supplementary measurement-channel registry reports sensor and acquisition-system specifications. These values are retained as source metadata and are not yet propagated into weighted acceptance scores.",
@@ -55,14 +61,15 @@
   "known_gaps": [
     "This is the IEA EBC Annex 71 main experiment, not the originally proposed Annex 58 Experiment 1 calibration and Experiment 2 blind-validation pair.",
     "The historical one-room 60/40 helper diagnostic is retained for provenance and remains rejected.",
-    "The replacement maps four official N2 air bodies through the object production adapter, but the later target period was inspected during mapper repair and is not unseen validation.",
+    "The replacement maps four official N2 air bodies through the object production adapter, but post-unsealing source and model-mapping corrections mean the Extended result is not pristine blind validation.",
     "The selected alignment maps each source row to the preceding hour before conversion to canonical interval-start timestamps. This is supported by a lag audit and the published experiment start, but the workbook label convention is not independently proven.",
     "The production path now represents the measured heater convective/radiative split and mechanical supply-air temperature explicitly.",
     "The official supplementary archive is checksum-registered and supplies plans, construction properties, a measurement-channel list, shading geometry, and supporting material.",
     "A source audit found that the Extended Experiment retains 02:00 through 02:50 on 31 March 2019; fixed CET is required to avoid duplicate UTC instants.",
     "The source-determined 30-degree attic roof-window tilt is now mapped explicitly.",
-    "Canonical v1 still lacks per-opening blind state, component-resolved construction topology, and a time-varying cellar boundary contract; reported channel uncertainty is not yet propagated into weighted scoring.",
-    "Both registered empirical thermal results remain rejected; the registered energy-path audit is diagnostic and none may be used as evidence for a passing blind-validation claim."
+    "The supported object path now carries per-opening state, published component properties, thermal bridges, and a measured cellar boundary, but still collapses construction layers to one mass node per air body and uses prescribed rather than pressure-driven large-opening exchange.",
+    "Four outdoor-CO2 rows are missing within the Extended primary interval. Carry-forward is allowed only for the thermal diagnostic and independently fails its strict no-missing-input gate.",
+    "All registered empirical thermal results remain rejected; the registered energy-path and runtime/error audits are diagnostic and none may be used as evidence for a passing blind-validation claim."
   ],
   "preprocessing": [
     {
@@ -93,7 +100,7 @@
       "step_id": "run-four-airbody-production-diagnostic",
       "description": "Join official N2 and weather workbooks by timestamp, apply the documented lag-audited hourly alignment, allocate the published whole-house HTC with stable coheat observations, compile the four-air-body canonical graph, run the object production adapter, and preserve the failed numerical and sealed-target decisions.",
       "script_path": "scripts/validation_data/run_annex71_production_transfer.py",
-      "script_sha256": "6e757ff2d9beedd46156ecce101ae8b9e429191c7cb2d8b5bd69a87d9c61d9fe",
+      "script_sha256": "a31c6c33c22257a3c839f6f7939c6eff2000c09e5dbe5b10d936ef46febb26d3",
       "command": "uv run python scripts/validation_data/run_annex71_production_transfer.py",
       "input_raw_file_ids": [
         "annex71-main-experiment-zip",
@@ -103,8 +110,8 @@
         {
           "file_id": "annex71-production-transfer-result",
           "path": "data/validation/fixtures/annex71-twin-houses/production-transfer-result-v1.json",
-          "sha256": "efd1f6f7223b7252e63ad9b76206ba7379b12772a9859b027db20e1170c2591c",
-          "byte_size": 113508
+          "sha256": "169b9fd97e2057ea750267634ee1527317455ccf75cbf0eab04d06a48f58f305",
+          "byte_size": 114744
         }
       ]
     },
@@ -143,6 +150,26 @@
           "path": "data/validation/fixtures/annex71-twin-houses/structural-diagnostics-v1.json",
           "sha256": "a541ef398b59000ee0e62a6f107e11f4ebfb7433530d57fb875aeb98106a0424",
           "byte_size": 59722
+        }
+      ]
+    },
+    {
+      "step_id": "run-component-resolved-runtime-error-diagnostic",
+      "description": "Load the official Main and Extended workbooks in fixed CET, apply the published component, boundary, blind, window, and door mappings, execute the object engine, and publish deterministic runtime, profiler, conservation, and temperature-error evidence under the amended holdout protocol.",
+      "script_path": "scripts/validation_data/run_annex71_physical_runtime_error.py",
+      "script_sha256": "7501df1160db03b749e2739efba7f451b63b63e7f9111615f62c4c20e060d7ff",
+      "command": "uv run python scripts/validation_data/run_annex71_physical_runtime_error.py",
+      "input_raw_file_ids": [
+        "annex71-main-experiment-zip",
+        "annex71-additional-documents-zip",
+        "annex71-extended-experiment-zip"
+      ],
+      "output_fixtures": [
+        {
+          "file_id": "annex71-physical-runtime-error-v4",
+          "path": "data/validation/fixtures/annex71-twin-houses/physical-runtime-error-v4.json",
+          "sha256": "f699f5149d1f778484ef1b2ec5b715e09ea9fd3f323e91b0dcf35ffb6bdecb3a",
+          "byte_size": 23397
         }
       ]
     }

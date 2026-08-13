@@ -87,8 +87,8 @@ def test_known_deviations_remain_explicit_and_no_defect_is_hidden(report) -> Non
     counts = report["classification_counts"]
     assert counts == {
         "exact_match": 181,
-        "expected_model_difference": 22,
-        "tolerance_match": 5,
+        "expected_model_difference": 23,
+        "tolerance_match": 4,
     }
     comparisons = report["comparisons"]
     assert not any(item["classification"] == "defect" for item in comparisons)

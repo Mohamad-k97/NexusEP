@@ -43,6 +43,9 @@ Validation category: **verification** (scope governance only).
   [structural diagnostics](results/annex71_structural_diagnostics_v1.md)
   preserve the repaired production mapping, rejected empirical result, and
   frozen evidence against timing, split, mass-state, and capacity quick fixes.
+- [Annex 71 component-resolved runtime/error diagnostic](results/annex71_physical_runtime_error_v4.md)
+  records the fixed-CET Extended run, deterministic timing, temperature error,
+  conservation result, and remaining model-form rejection under protocol 1.3.
 - [ATUS aggregate sleep alternative](results/atus_aggregate_sleep_alternative_v1.md)
   compares repaired object-runner output with the survey aggregate and records
   the remaining duration and distribution gaps.

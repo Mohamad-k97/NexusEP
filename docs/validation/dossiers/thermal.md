@@ -4,39 +4,39 @@ Validation category: **verification and empirical-validation status**.
 
 ## Model version and commit
 
-Model claim `THERMAL-1`; Phase 4 checkpoint `25d4751200c3eaaf938e3f8f50e78efbbe1505eb` plus the thermal structural-diagnostic branch.
+Model claim `THERMAL-1`; component-resolved runtime/error implementation commit `2947e1f816c366118970c7a2d0d7eb5af62ed457`.
 
 ## Dataset and license
 
-Closed-form RC cases are code-authored verification fixtures. The open IEA EBC Annex 71 Main Experiment and supplementary-document archives are checksum-registered under CC BY-SA 4.0. Both the rejected historical helper and its four-air-body production replacement are retained. Neither is blind validation.
+Closed-form RC cases are code-authored verification fixtures. The open IEA EBC Annex 71 Main, Extended, and supplementary-document archives are checksum-registered under CC BY-SA 4.0. The rejected historical helper, legacy four-air-body diagnostic, and current component-resolved diagnostic are retained. None is pristine blind validation.
 
 ## Scenario mapping
 
-One-/two-zone analytical cases plus the four official N2 air bodies, published windows and 30-degree roof-window tilt, measured heat/internal gains, mechanical ventilation flow/supply temperature, site weather, deterministic graph, and the object production adapter. Opaque component topology and the measured cellar boundary are not yet mapped.
+One-/two-zone analytical cases plus the four official N2 air bodies, published component U-values/capacities and thermal bridges, windows and 30-degree roof-window tilt, measured cellar/weather boundaries, heat/internal gains, opening/door schedules, mechanical ventilation flow/supply temperature, deterministic graph, and the object production adapter.
 
 ## Preprocessing
 
-The Annex 71 hourly workbooks are joined exactly by Excel timestamp. A lag audit and the published experiment start support mapping each row to the preceding hour before conversion to canonical interval-start timestamps; this is a documented preprocessing choice rather than a claim that the workbook convention was independently proven. The published 107 W/K whole-house HTC is distributed across air bodies using low-solar near-steady coheat observations. Canonical `other` gains now reach the thermal bridge. Measured mechanical supply temperature enters the air node directly, the documented heater split sends 70% to air and 30% to the mass node, and the dimensioned plan supplies the 30-degree attic roof tilt.
+The Main hourly and Extended 10-minute workbooks are joined by source timestamp and interpreted as fixed CET (UTC+1), because the source retains the complete 02:00 hour at the spring civil-time transition. The current path uses plan/component properties rather than the historical fitted whole-house HTC. Canonical `other` gains reach the thermal bridge; measured mechanical supply temperature enters the air node; the documented heater split sends 70% to air and 30% to the mass node; and graph-derived opaque area couples the surface capacity represented by each zone mass node.
 
 ## Calibrated parameters
 
-Only whole-house effective capacity is fitted in the production diagnostic. It reaches 1.4955e8 J/K, only 0.31% below the frozen upper bound; the optimizer exhausts its evaluation budget. The published whole-house HTC remains 107 W/K.
+The current component-resolved v4 run fits no parameter. The historical legacy-effective diagnostic fits whole-house capacity and still reaches 1.4955e8 J/K near its frozen upper bound, so that calibration remains non-identifiable evidence rather than a solution.
 
 ## Untouched validation period
 
-No untouched period is claimed. The later User-1 period was inspected while the mapper was repaired, so it is explicitly unsealed. The original Annex 58 Experiment 2 acquisition remains blocked.
+No untouched period is claimed. Extended targets were unsealed only after protocol v1 was frozen, but fixed-CET, blind-schedule, and RC-mapping repairs were required afterward. Protocols 1.1--1.3 preserve those amendments and prohibit a pristine blind claim.
 
 ## Metrics and plots
 
-Analytical temperature error, energy residual, timestep convergence, sensitivity rank, production-adapter temperature metrics, and an observation-constrained path decomposition are reported. With the sourced roof tilt, production calibration RMSE is 1.994 degC with +1.659 degC bias; the later-period diagnostic RMSE is 1.685 degC with +1.162 degC bias. The later one-step audit RMSE is 0.835 degC, but its unexplained heat-flow MAE is 302.7 W and it is not an acceptance score.
+Analytical temperature error, energy residual, timestep convergence, sensitivity rank, production-adapter temperature metrics, runtime, repeatability, and profiler evidence are reported. The v4 Extended result has pooled RMSE 2.663 degC, bias +2.316 degC, MAE 2.358 degC, and maximum absolute error 8.565 degC. Its 4,896 modeled steps take 98.088 s (49.914 steps/s) on the recorded machine. The older observation-constrained path audit is diagnostic and is not an acceptance score.
 
 ## Residual analysis
 
-Closed-system residuals are checked near numerical precision. The production diagnostic conserves heat to 1.70e-10 W and uses no fallback, so the remaining temperature error is not a balance leak. Frozen cross-period diagnostics reject one-hour source shifts, alternate heater splits, +/-2 degC initial mass states, and floor-area capacity allocation as material explanations. Bound-seeking capacity and positive free-run bias instead leave the component-resolved fabric, cellar boundary, and blind contract as explicit structural gaps.
+Closed-system residuals are checked near numerical precision. V4 conserves heat to 1.471e-9 W, uses no fallback, and repeats with identical output hashes, so the remaining temperature error is not balance leakage or stochastic noise. The largest errors remain in the kitchen during roughly 1.8 kW heat pulses with the internal door open. Correcting the mass-coupling area reduces the maximum excursion but slightly worsens pooled RMSE, which points to the one-mass-node construction form and prescribed symmetric large-opening mixing rather than another defensible scalar adjustment.
 
 ## Limitations
 
-The canonical contract now represents the measured heater's 70/30 convective/radiative split, mechanical supply-air temperature, and sourced roof tilt. It still lacks per-opening blind physics, component-resolved construction layers/bridges, and a time-varying cellar boundary. Source-reported measurement uncertainty is registered but not propagated into weighted scores. Mean radiant/mass temperature is unmeasured. Static effective interzone exchange is reduced-order and is not a pressure-network airflow claim.
+The canonical object path represents heater split, supply-air temperature, per-opening state, component properties, thermal bridges, and the time-varying cellar boundary. It still collapses all construction layers in each air body into one mass state, uses a single air-to-mass transfer coefficient, uses generic closed-blind optics, applies the source whole-house infiltration estimate uniformly by zone, and models the large door with prescribed symmetric mixing rather than pressure/buoyancy exchange. Source uncertainty is registered but not propagated into weighted scores; mean radiant/mass temperature is unmeasured.
 
 ## Pass/fail decision
 
@@ -44,4 +44,4 @@ The canonical contract now represents the measured heater's 70/30 convective/rad
 
 ## Reproducible command
 
-`uv run python scripts/validation_data/run_annex71_production_transfer.py`, then `uv run python scripts/validation_data/run_annex71_energy_path_audit.py` and `uv run python scripts/validation_data/run_annex71_structural_diagnostics.py`, followed by `uv run pytest -q tests/unit/test_thermal_rc_analytical.py tests/unit/test_thermal_energy_paths.py tests/integration/test_annex71_production_mapping.py tests/integration/test_phase4_blocked_alternatives.py`
+`uv run python scripts/validation_data/run_annex71_physical_runtime_error.py`, followed by `uv run pytest -q tests/unit/test_thermal_rc_analytical.py tests/unit/test_thermal_energy_paths.py tests/integration/test_annex71_production_mapping.py tests/integration/test_phase4_blocked_alternatives.py`

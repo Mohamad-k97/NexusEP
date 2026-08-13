@@ -24,7 +24,7 @@ Loading `contracts/examples/multizone_dwelling_v1_minimal.json` produces:
   output-path resolution;
 - the same 3-node / 5-connection / 8-system compiled graph; and
 - graph SHA-256
-  `885168497f39af100709e59c32516adac8dcb4f5cc87d5a5a379015f453f2b32`.
+  `a3021d4de71b7d32fa3a518520c2db11ee12a927d081c98b0d76d01adfb0f00a`.
 
 Loading the file twice yields equal scenario objects, audit logs, canonical
 graph JSON, and graph hashes. Callers receive a fresh decoded graph dictionary,
@@ -59,4 +59,3 @@ The canonical loader and compiler boundary is complete, but the existing object
 and array runner entry points are not yet rewired to require a
 `CanonicalScenarioBundle`. Runtime backend conformance remains unclaimed until
 that adapter work and ADR-0001 parity evidence are complete.
-

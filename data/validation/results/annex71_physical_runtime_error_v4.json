@@ -1,0 +1,43 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "annex71-physical-runtime-error-v4",
+  "title": "Annex 71 component-resolved physical-model runtime and error diagnostic",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-13",
+  "targeted_models": [
+    "THERMAL-1"
+  ],
+  "source_ids": [
+    "iea-ebc-annex71-twin-houses-2020"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_annex71_physical_runtime_error.py",
+      "sha256": "7501df1160db03b749e2739efba7f451b63b63e7f9111615f62c4c20e060d7ff",
+      "command": "uv run python scripts/validation_data/run_annex71_physical_runtime_error.py"
+    }
+  ],
+  "report_path": "docs/validation/results/annex71_physical_runtime_error_v4.md",
+  "result_artifacts": [
+    {
+      "file_id": "annex71-physical-runtime-error-v4",
+      "path": "data/validation/fixtures/annex71-twin-houses/physical-runtime-error-v4.json",
+      "sha256": "f699f5149d1f778484ef1b2ec5b715e09ea9fd3f323e91b0dcf35ffb6bdecb3a",
+      "byte_size": 23397
+    }
+  ],
+  "numerical_tolerances": {
+    "pooled_temperature_rmse_c": "less than or equal to 1.0 degC",
+    "pooled_absolute_temperature_bias_c": "less than or equal to 0.5 degC",
+    "per_air_body_temperature_rmse_c": "less than or equal to 1.5 degC",
+    "thermal_balance_residual_w": "less than or equal to 1e-7 W",
+    "missing_scored_inputs": "zero rows"
+  },
+  "known_deviations": [
+    "This is a post-unsealing corrected holdout diagnostic, not pristine blind-validation evidence.",
+    "The pooled RMSE, pooled bias, and per-zone RMSE criteria fail; four missing outdoor-CO2 input rows independently fail the strict input-completeness gate.",
+    "The run is deterministic, conserves thermal energy, and does not use fallback, so numerical leakage does not explain the empirical residual.",
+    "The two-node-per-zone RC form collapses construction layers and the large internal door uses prescribed symmetric mixing rather than a pressure/buoyancy opening model.",
+    "The graph-derived mass-coupling correction reduces the largest excursion but does not improve pooled holdout RMSE, so it is retained as a topology correction rather than claimed as an empirical fix."
+  ]
+}

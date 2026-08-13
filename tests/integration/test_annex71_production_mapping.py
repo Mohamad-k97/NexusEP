@@ -319,3 +319,34 @@ def test_measured_window_and_door_positions_reach_native_controls() -> None:
         and "ground_airbody_to_kitchen_airbody" in connection["surface_ids"]
     )
     assert door_controls[kitchen_connection]["opening_fraction"] == 0.0
+
+
+def test_legacy_effective_graph_does_not_invent_physical_opening_controls() -> None:
+    end = datetime(2018, 12, 20, 1, tzinfo=ZoneInfo("Europe/Berlin"))
+    initial = _record(end - timedelta(hours=1), 20.0)
+    operated = replace(
+        _record(end, 20.0),
+        child1_window_opening_fraction=0.6,
+        kitchen_door_opening_fraction=1.0,
+    )
+    scenario, graph = build_canonical_scenario(
+        (operated,),
+        initial_record=initial,
+        fabric_model="legacy_effective",
+    )
+    prior = tuple(
+        PriorZonePhysicalState(
+            zone_id=zone.zone_id,
+            air_temperature_c=zone.initial_air_temperature_c,
+            mean_radiant_temperature_c=zone.initial_mean_radiant_temperature_c,
+            relative_humidity_fraction=zone.initial_relative_humidity_fraction,
+            co2_ppm=zone.initial_co2_ppm,
+        )
+        for zone in scenario.building.dwelling.zones
+    )
+
+    step = build_annex71_step_input(scenario, graph, operated, 0, prior)
+
+    assert step.opening_control_commands == ()
+    assert step.interzone_opening_controls == ()
+    validate_step_input_for_scenario(step, scenario, graph)

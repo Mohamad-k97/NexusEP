@@ -1,16 +1,16 @@
 {
   "classification_counts": {
     "exact_match": 181,
-    "expected_model_difference": 22,
-    "tolerance_match": 5
+    "expected_model_difference": 23,
+    "tolerance_match": 4
   },
   "comparisons": [
     {
       "absolute_difference": null,
-      "array_value": "885168497f39af100709e59c32516adac8dcb4f5cc87d5a5a379015f453f2b32",
+      "array_value": "a3021d4de71b7d32fa3a518520c2db11ee12a927d081c98b0d76d01adfb0f00a",
       "classification": "exact_match",
       "entity_id": null,
-      "object_value": "885168497f39af100709e59c32516adac8dcb4f5cc87d5a5a379015f453f2b32",
+      "object_value": "a3021d4de71b7d32fa3a518520c2db11ee12a927d081c98b0d76d01adfb0f00a",
       "quantity": "graph_sha256",
       "rationale": "both adapters were constructed from the same compiled graph",
       "relative_difference": null,
@@ -704,14 +704,14 @@
       }
     },
     {
-      "absolute_difference": 2.12718184394247,
+      "absolute_difference": 2.663399805594022,
       "array_value": 19.162578257924906,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 21.289760101867376,
+      "object_value": 21.825978063518928,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.09991572632872879,
+      "relative_difference": 0.12202888676250281,
       "scope": "step_output",
       "timestep_index": 0,
       "tolerance": {
@@ -857,14 +857,14 @@
       }
     },
     {
-      "absolute_difference": 2.842884097397217,
+      "absolute_difference": 3.7133383930545634,
       "array_value": 20.580002149151085,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 23.422886246548302,
+      "object_value": 24.293340542205648,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.12137206608413414,
+      "relative_difference": 0.15285416950391215,
       "scope": "step_output",
       "timestep_index": 0,
       "tolerance": {
@@ -1530,14 +1530,14 @@
       }
     },
     {
-      "absolute_difference": 0.20382016509393353,
+      "absolute_difference": 0.26771127619939605,
       "array_value": 17.387172642651386,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 17.59099280774532,
+      "object_value": 17.11946136645199,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.011586620910002956,
+      "relative_difference": 0.015397056307055366,
       "scope": "step_output",
       "timestep_index": 1,
       "tolerance": {
@@ -1547,14 +1547,14 @@
       }
     },
     {
-      "absolute_difference": 0.020913027323466726,
+      "absolute_difference": 0.01813622953255145,
       "array_value": 0.3967323594087376,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 0.4176453867322043,
+      "object_value": 0.41486858894128903,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.050073646178872395,
+      "relative_difference": 0.043715600592548205,
       "scope": "step_output",
       "timestep_index": 1,
       "tolerance": {
@@ -1683,14 +1683,14 @@
       }
     },
     {
-      "absolute_difference": 2.276840331634233,
+      "absolute_difference": 3.2923445085110483,
       "array_value": 17.29228803596766,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 15.015447704333425,
+      "object_value": 13.99994352745661,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.13166796244073917,
+      "relative_difference": 0.19039380454819102,
       "scope": "step_output",
       "timestep_index": 1,
       "tolerance": {
@@ -1700,14 +1700,14 @@
       }
     },
     {
-      "absolute_difference": 0.07237283847925874,
+      "absolute_difference": 0.08144172620979384,
       "array_value": 0.37463179530787094,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 0.3022589568286122,
+      "object_value": 0.2931900690980771,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.1931839192126846,
+      "relative_difference": 0.2173913886376498,
       "scope": "step_output",
       "timestep_index": 1,
       "tolerance": {
@@ -2356,14 +2356,14 @@
       }
     },
     {
-      "absolute_difference": 2.154755105250185,
+      "absolute_difference": 2.6211114157684285,
       "array_value": 20.11095245425562,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 22.265707559505806,
+      "object_value": 22.73206387002405,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.09677460729651345,
+      "relative_difference": 0.11530459489975274,
       "scope": "step_output",
       "timestep_index": 2,
       "tolerance": {
@@ -2373,14 +2373,14 @@
       }
     },
     {
-      "absolute_difference": 0.13549100326906388,
+      "absolute_difference": 0.13675120521871437,
       "array_value": 0.4053689183303027,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 0.5408599215993666,
+      "object_value": 0.5421201235490171,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.25051034077068607,
+      "relative_difference": 0.2522525899305593,
       "scope": "step_output",
       "timestep_index": 2,
       "tolerance": {
@@ -2509,14 +2509,14 @@
       }
     },
     {
-      "absolute_difference": 0.05189165320047451,
+      "absolute_difference": 0.4265008800515311,
       "array_value": 18.36306010570663,
-      "classification": "tolerance_match",
+      "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 18.311168452506156,
+      "object_value": 17.9365592256551,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.0028258717720119155,
+      "relative_difference": 0.023226024289872513,
       "scope": "step_output",
       "timestep_index": 2,
       "tolerance": {
@@ -2526,14 +2526,14 @@
       }
     },
     {
-      "absolute_difference": 0.14660591230369535,
+      "absolute_difference": 0.14864065262129278,
       "array_value": 0.3829136194532742,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 0.5295195317569695,
+      "object_value": 0.531554272074567,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.2768659199732451,
+      "relative_difference": 0.2796340099782724,
       "scope": "step_output",
       "timestep_index": 2,
       "tolerance": {
@@ -3182,14 +3182,14 @@
       }
     },
     {
-      "absolute_difference": 0.7146884444148398,
+      "absolute_difference": 0.49209243247478796,
       "array_value": 18.61636992546558,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 19.33105836988042,
+      "object_value": 19.10846235794037,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.0369709940728538,
+      "relative_difference": 0.025752591875625352,
       "scope": "step_output",
       "timestep_index": 3,
       "tolerance": {
@@ -3199,14 +3199,14 @@
       }
     },
     {
-      "absolute_difference": 0.11162865718765719,
+      "absolute_difference": 0.11075744926211423,
       "array_value": 0.41874481305775596,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 0.5303734702454131,
+      "object_value": 0.5295022623198702,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.21047179666811885,
+      "relative_difference": 0.20917275929447512,
       "scope": "step_output",
       "timestep_index": 3,
       "tolerance": {
@@ -3335,14 +3335,14 @@
       }
     },
     {
-      "absolute_difference": 0.4459795930588619,
+      "absolute_difference": 1.027795277406181,
       "array_value": 17.58391612753453,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 17.137936534475667,
+      "object_value": 16.556120850128348,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.02536292767914797,
+      "relative_difference": 0.058450874648836824,
       "scope": "step_output",
       "timestep_index": 3,
       "tolerance": {
@@ -3352,14 +3352,14 @@
       }
     },
     {
-      "absolute_difference": 0.13166718008782574,
+      "absolute_difference": 0.13224669052232263,
       "array_value": 0.3921765807339769,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 0.5238437608218026,
+      "object_value": 0.5244232712562995,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.2513481880193956,
+      "relative_difference": 0.2521754807057183,
       "scope": "step_output",
       "timestep_index": 3,
       "tolerance": {
@@ -3531,7 +3531,7 @@
       "array_value": 4.263256414560601e-12,
       "classification": "tolerance_match",
       "entity_id": null,
-      "object_value": 1.1937117960769683e-12,
+      "object_value": 1.1226575225009583e-12,
       "quantity": "thermal_balance_residual_w",
       "rationale": "maximum absolute per-step residual in each engine must be near zero",
       "relative_difference": 4.263256414560601e-12,
@@ -3544,14 +3544,14 @@
       }
     },
     {
-      "absolute_difference": 1.3213713977167085e-19,
+      "absolute_difference": 8.131516293641283e-20,
       "array_value": 6.776263578034403e-20,
       "classification": "tolerance_match",
       "entity_id": null,
-      "object_value": 1.3213713977167085e-19,
+      "object_value": 8.131516293641283e-20,
       "quantity": "moisture_balance_residual_kg_s",
       "rationale": "maximum absolute per-step residual in each engine must be near zero",
-      "relative_difference": 1.3213713977167085e-19,
+      "relative_difference": 8.131516293641283e-20,
       "scope": "conservation",
       "timestep_index": null,
       "tolerance": {
@@ -3579,10 +3579,10 @@
     },
     {
       "absolute_difference": null,
-      "array_value": "100706a649cf84544ee2939fad681ee883e54e9a7430f62348b1eef154e84834",
+      "array_value": "74692f5b08e100a7f097e6c5b59f3327fdcb8591713ff327f87849ee4456b9da",
       "classification": "exact_match",
       "entity_id": "object",
-      "object_value": "100706a649cf84544ee2939fad681ee883e54e9a7430f62348b1eef154e84834",
+      "object_value": "74692f5b08e100a7f097e6c5b59f3327fdcb8591713ff327f87849ee4456b9da",
       "quantity": "repeat_run",
       "rationale": "SHA-256 hashes of fresh structured runs must be identical",
       "relative_difference": null,
@@ -3592,10 +3592,10 @@
     },
     {
       "absolute_difference": null,
-      "array_value": "97a7d5113ac8c1eff2da42e3a10c43c44c5323c96b25b32e40415d922d4d0eb8",
+      "array_value": "05354a680a255ee5c036eb2289d656bee46dc214b04d340625240f509ee2de5c",
       "classification": "exact_match",
       "entity_id": "array",
-      "object_value": "97a7d5113ac8c1eff2da42e3a10c43c44c5323c96b25b32e40415d922d4d0eb8",
+      "object_value": "05354a680a255ee5c036eb2289d656bee46dc214b04d340625240f509ee2de5c",
       "quantity": "repeat_run",
       "rationale": "SHA-256 hashes of fresh structured runs must be identical",
       "relative_difference": null,
@@ -3614,7 +3614,7 @@
     "array": "2.17.0",
     "object": "2.17.0"
   },
-  "graph_sha256": "885168497f39af100709e59c32516adac8dcb4f5cc87d5a5a379015f453f2b32",
+  "graph_sha256": "a3021d4de71b7d32fa3a518520c2db11ee12a927d081c98b0d76d01adfb0f00a",
   "report_version": "1.0.0",
   "scenario_id": "minimal_two_zone_dwelling",
   "scenario_path": "contracts/examples/multizone_dwelling_v1_minimal.json",

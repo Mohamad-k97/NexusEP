@@ -1492,6 +1492,19 @@ def build_annex71_step_input(
 ) -> SimulationStepInput:
     if not 0.0 <= heating_convective_fraction <= 1.0:
         raise ValueError("heating_convective_fraction must be between zero and one")
+    connections = tuple(dict(item) for item in graph["connections"])
+    available_opening_ids = {
+        str(connection["opening_ids"][0])
+        for connection in connections
+        if connection.get("connection_type") == "opening"
+    }
+    kitchen_door_surface_id = "ground_airbody_to_kitchen_airbody"
+    has_kitchen_airflow_opening = any(
+        connection.get("boundary_type") == "interzone"
+        and kitchen_door_surface_id in connection.get("surface_ids", ())
+        and float(connection.get("airflow_opening_area_m2", 0.0)) > 0.0
+        for connection in connections
+    )
     commands = []
     gains = []
     for zone in scenario.building.dwelling.zones:
@@ -1582,13 +1595,16 @@ def build_annex71_step_input(
                     **dict(record.shading_open_fraction_by_opening),
                 }.items()
             )
+            if opening_id in available_opening_ids
         ),
         interzone_opening_controls=(
             InterzoneOpeningControl(
-                surface_id="ground_airbody_to_kitchen_airbody",
+                surface_id=kitchen_door_surface_id,
                 opening_fraction=record.kitchen_door_opening_fraction,
             ),
-        ),
+        )
+        if has_kitchen_airflow_opening
+        else (),
         control_commands=tuple(commands),
         system_availability=tuple(
             SystemAvailability(

@@ -22,7 +22,7 @@ Compiling `contracts/examples/multizone_dwelling_v1_minimal.json` produces:
   and two openings;
 - 8 zone-attached systems; and
 - graph SHA-256
-  `885168497f39af100709e59c32516adac8dcb4f5cc87d5a5a379015f453f2b32`.
+  `a3021d4de71b7d32fa3a518520c2db11ee12a927d081c98b0d76d01adfb0f00a`.
 
 The hash covers canonical JSON containing the scenario version, ID registry,
 time axis, geometry configuration, nodes, connections, systems, and provenance.
@@ -56,4 +56,3 @@ The rule that compilation is mandatory is frozen here; wiring both runners to
 the compiled boundary is subsequent adapter work. Neither backend becomes
 canonical until ADR-0001 promotion evidence, including scenario-level parity,
 is complete.
-

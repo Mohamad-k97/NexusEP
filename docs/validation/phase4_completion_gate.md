@@ -12,14 +12,14 @@ Assessment date: **2026-08-13**. Source baseline:
 | Solar position passes an analytical reference | **pass** | not applicable | NREL SPA reference and edge-case contract suite |
 | Weather ingestion is source- and timezone-correct | **pass for registered fixtures** | not applicable | PVGIS/NASA POWER ingestion and common alignment contracts; source accuracy is not claimed |
 | Thermal RC passes analytical and comparative tests | **partial/open** | not applicable | Closed-form/conservation verification passes; no fabric cross-solver or Standard 140 result is registered |
-| A controlled thermal dataset is validated blindly | **blocked** | **blocked and rejected with alternative** | Annex 71 runs through the four-air-body object adapter with explicit supply air, heater split, and the official 30-degree roof tilt. The later targets were inspected, the fit remains bound-seeking, and frozen timing/distribution/mass alternatives are rejected. It is neither blind nor a pass. |
+| A controlled thermal dataset is validated blindly | **blocked** | **blocked and rejected with alternative** | Annex 71 now runs through the four-air-body object adapter with component properties, thermal bridges, measured cellar/weather forcing, opening schedules, fixed-CET alignment, and graph-derived RC mass area. It is deterministic and conservative, but the v4 Extended diagnostic fails pooled RMSE (2.663 degC), bias (+2.316 degC), per-zone RMSE, and four-row input-completeness gates. Post-unsealing corrections mean it is neither blind nor a pass. |
 | Airflow, CO2, and moisture balances close | **pass for declared reduced-order scope** | not applicable | Analytical suites reconcile storage, source, transfer, and removal |
 | HVAC control and energy accounting pass supported BESTEST cases | **partial/open** | not applicable | Ideal controller verification and open EnergyPlus ideal-load comparison pass; equipment BESTEST physics are not implemented |
-| Integrated performance is tested against NZERTF | **blocked** | **blocked and rejected with alternative** | Annex 71, DOE BOPTEST, and the registered EnergyPlus case were assessed. None replaces mapped measured temperature, humidity, HVAC, ventilation, occupant-load, and energy evidence; Annex 71 is currently only a rejected mapping diagnostic. |
+| Integrated performance is tested against NZERTF | **blocked** | **blocked and rejected with alternative** | Annex 71, DOE BOPTEST, and the registered EnergyPlus case were assessed. None replaces mapped measured temperature, humidity, HVAC, ventilation, occupant-load, and energy evidence; Annex 71 v4 is a rejected thermal diagnostic. |
 | Daylight passes analytical cases before empirical comparison | **pass for analytical prerequisite** | not applicable | Elementary response suite; CIE/BRE empirical evidence remains open |
 | Occupant models reproduce distributions | **blocked** | **blocked but passed with alternative** | The former aggregate comparison remains rejected. Its replacement fits complete survey-weighted ATUS 2023 development diaries and passes an isolated respondent holdout for daily sleep, observed home presence, sleep-episode duration, and deterministic sampling. The pass is limited to U.S. schedule priors. |
 | Acoustics remains explicitly non-validated until upgraded | **pass** | not applicable | `ACOUST-0` dossier limits evidence to placeholder arithmetic |
-| Calibrated parameters succeed on unseen data | **blocked** | **blocked and rejected with alternative** | The production mapping corrects the former helper defects, but debugging inspected the later targets and the fitted capacity approaches its upper bound. No unseen-parameter claim is made. |
+| Calibrated parameters succeed on unseen data | **blocked** | **blocked and rejected with alternative** | The legacy fitted capacity still approaches its upper bound, while the component-resolved v4 run remains outside the frozen error thresholds. Debugging inspected the targets and no unseen-parameter claim is made. |
 | Unsupported physics is visible in every report | **pass** | not applicable | Domain dossiers declare exclusions and scope-specific decisions |
 
 ## Decision
@@ -57,7 +57,8 @@ only when they test the same claim.
 | Object-runner/BLS ATUS aggregate sleep screen | Empirical validation alternative | rejected | [report](results/atus_aggregate_sleep_alternative_v1.md) |
 | Annex 71 N2 four-air-body production diagnostic | Post-hoc empirical diagnostic | rejected | [report](results/annex71_production_transfer_v1.md) fixes the mapper but fails the numerical and sealed-target gates |
 | Annex 71 thermal energy-path audit | Diagnostic verification and empirical residual analysis | rejection unchanged | [report](results/annex71_energy_path_audit_v1.md) verifies repaired paths and rejects a single fitted conductance as the remaining explanation |
-| Annex 71 structural diagnostics | Post-hoc empirical residual diagnosis | rejection unchanged | [report](results/annex71_structural_diagnostics_v1.md) rejects timing, heater-split, initial-mass, and floor-area-capacity quick fixes; applies the sourced roof tilt and identifies the cellar boundary contract as the next blocker |
+| Annex 71 structural diagnostics | Post-hoc empirical residual diagnosis | historical rejection retained | [report](results/annex71_structural_diagnostics_v1.md) rejected timing, heater-split, initial-mass, and floor-area-capacity quick fixes; its identified boundary/fabric contracts were subsequently implemented and re-evaluated in v4 |
+| Annex 71 component-resolved runtime/error diagnostic v4 | Post-unsealing empirical diagnostic | rejected | [report](results/annex71_physical_runtime_error_v4.md) records 98.088 s for 4,896 steps, pooled RMSE 2.663 degC, bias +2.316 degC, deterministic output, energy closure, and the remaining one-node/large-opening limitations |
 | BLS ATUS 2023 respondent-diary population model | Behavioral holdout validation | passed within U.S. schedule-prior scope | [report](results/atus_population_holdout_v1.md) |
 | BOPTEST for NZERTF replacement | Evidence-coverage assessment | rejected | Simulated controls benchmark; not an empirical integrated replacement |
 | EnergyPlus ideal-load case for NZERTF replacement | Comparative validation | rejected as integrated substitute | [narrow passing result](results/energyplus_ideal_loads_25_1_0.md) covers only ideal sensible load accounting |
@@ -67,8 +68,8 @@ The exact row classifications and their evidence paths are frozen in
 
 ## Verification outcome
 
-The focused repair/governance suite passes **43 tests**. The full default
-suite passes **427 tests** with **4 intentional annual-lane skips**. Those four
+The focused repair/governance suite passes **88 tests**. The full default
+suite passes **435 tests** with **4 intentional annual-lane skips**. Those four
 are opt-in 8,760-interval and repeated-determinism runs controlled by
 `NEXUSEP_RUN_ANNUAL` and `NEXUSEP_RUN_ANNUAL_REPEAT`; they are not unavailable
 scientific-source tests and are not classified as blocked alternatives.

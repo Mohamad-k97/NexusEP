@@ -34,10 +34,11 @@ alternative may close only the claim it actually tests.
 - NREL HVAC BESTEST reports are public candidates for future equipment-map,
   dynamic, and airside models. NexusEP currently lacks those physics, so their
   cases remain classified as missing feature rather than approximated.
-- The open Annex 71 Twin Houses main experiment has been acquired. The
-  historical single-node run is retained as a rejected mapping diagnostic:
-  it bypasses production adapters, crosses experimental regimes, and fails
-  the frozen numerical limits. It is not promoted as blind evidence.
+- The open Annex 71 Twin Houses Main and Extended experiments have been
+  acquired. The component-resolved object-engine run is deterministic and
+  conservative but fails its frozen temperature and input-completeness gates.
+  Post-unsealing amendments are recorded, so it is not promoted as blind
+  evidence; historical reduced mappings remain only for provenance.
 - BLS ATUS aggregate sleep statistics have been compared with repaired
   production object-runner output. The old 300-minute episode cliff is gone,
   but the output fails the narrow duration screen and aggregates cannot test
