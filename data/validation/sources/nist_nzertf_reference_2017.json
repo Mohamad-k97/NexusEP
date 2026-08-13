@@ -1,0 +1,126 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "nist-nzertf-reference-2017",
+  "title": "Performance Data from the NIST Net-Zero Energy Residential Test Facility and official checksum inventory",
+  "version": "Journal of Research of NIST volume 122 article 14; portal inventory retrieved 2026-08-11",
+  "publisher": "National Institute of Standards and Technology",
+  "doi": {
+    "status": "assigned",
+    "value": "10.6028/jres.122.014",
+    "absence_reason": null
+  },
+  "license": {
+    "name": "United States government work; NIST data portal describes the data as open and free",
+    "spdx_id": null,
+    "terms_url": "https://www.nist.gov/director/licensing"
+  },
+  "download_url": "https://nvlpubs.nist.gov/nistpubs/jres/122/jres.122.014.pdf",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "nist-nzertf-data-publication",
+      "path": "data/raw/validation/nist-nzertf/jres-122-014.pdf",
+      "sha256": "acb44e95f73860221b6cd674f5b10fde707e2a32671447ed587748f3eefb6437",
+      "byte_size": 183378
+    },
+    {
+      "file_id": "nist-nzertf-official-checksums",
+      "path": "data/raw/validation/nist-nzertf/hashes.csv",
+      "sha256": "8b261dd12b4d011a9d7bd568034e4f5e9db48ad82126fee08c3058c5d7705232",
+      "byte_size": 8387
+    },
+    {
+      "file_id": "nist-nzertf-year1-hourly-metadata",
+      "path": "data/raw/validation/nist-nzertf/metadata-year1-hour.csv",
+      "sha256": "9380ed87f1187813b405259beb267aa4abb23431d090b7f2b2baf75c3cb50aec",
+      "byte_size": 60705
+    },
+    {
+      "file_id": "nist-nzertf-year2-hourly-metadata-current",
+      "path": "data/raw/validation/nist-nzertf/metadata-year2-hour.csv",
+      "sha256": "d960162aa5120397da4f33180066815406ffa8808fbef40bcac3bdd74f89b631",
+      "byte_size": 65632
+    },
+    {
+      "file_id": "nist-nzertf-year1-load-minute-prefix",
+      "path": "data/raw/validation/nist-nzertf/load-minute-prefix.csv.part",
+      "sha256": "cf4f4c390666ebca7760afa41a77c37a3e713b8cc375e6e71080a89f365f612d",
+      "byte_size": 2097152
+    }
+  ],
+  "units": {
+    "room_air_temperature": "degree Celsius",
+    "indoor_relative_humidity": "unit field is blank in the downloaded metadata and must be resolved before analysis",
+    "electrical_and_thermal_power": "watt",
+    "electrical_and_thermal_energy": "watt-hour for cumulative channels",
+    "airflow": "cubic metre per hour or source channel unit",
+    "hourly_aggregation": "Average, Hour value, or Sum as declared per metadata channel",
+    "virtual_occupant_status": "binary 0 or 1",
+    "minute_load_power": "watt"
+  },
+  "timezone": "America/New_York",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "The registered publication and channel metadata do not provide channel-level measurement uncertainties suitable for weighted calibration.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "The Year 1 calibration measurement files and Year 2 holdout measurement files have not been downloaded or registered; this record is source metadata only.",
+    "Year 1 is 2013-07-01 through 2014-06-30, DOI 10.18434/T4/1503134; Year 2 is 2015-02-01 through 2016-01-31, DOI 10.18434/T46W2X.",
+    "The current Year 2 Metadata-hour.csv download is 65,632 bytes with SHA-256 d960162aa5120397da4f33180066815406ffa8808fbef40bcac3bdd74f89b631, but the official hashes.csv inventory lists 69,048 bytes and SHA-256 ac271b8c0267e00147c7c11e962c1be4a845be598d7b8a4c44ab62103dafadd4.",
+    "Timestamp timezone, daylight-saving convention, and interval labeling must be verified from the measurement files before alignment; America/New_York records the facility location policy, not a proven CSV timestamp encoding.",
+    "The publication reports 98.5 percent and 98.8 percent annual minute coverage for Years 1 and 2, respectively, and warns that missing values use NA while erroneous zero readings may remain.",
+    "Known operational anomalies include multi-day data-acquisition gaps and Year 2 changes to dehumidification equipment, ventilation scheduling, and thermostat configuration.",
+    "No canonical NZERTF building geometry, envelope, system representation, calibration parameter set, objective weights, or acceptance thresholds are frozen yet.",
+    "The registered Load-minute.csv raw file is only the first 2,097,152 HTTP bytes, not the full 367,266,298-byte official object; the official inventory records full-file SHA-256 0889a768e04994fc403aa2b13e2787b536144f158155f37a12f5f64ad6c7600c.",
+    "Source timestamps jitter and later contain acquisition gaps. The derived 900-record fixture retains source_timestamp and creates a separate one-minute canonical timestamp from the contiguous sequence counter.",
+    "Virtual-occupant flags prescribe a simulated family and are suitable for execution/attribution verification, not validation of natural human stochasticity."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-nzertf-reference-and-split",
+      "description": "Verify the NIST publication, official dataset checksum inventory, required hourly channel files, Year 1 calibration/Year 2 blind split, and the frozen Year 2 metadata checksum discrepancy.",
+      "script_path": "scripts/validation_data/inspect_nzertf_reference.py",
+      "script_sha256": "5306ca2afca5f2c75d256bfb445863af263deefb6396a452e134a2b5ed933db9",
+      "command": "uv run python scripts/validation_data/inspect_nzertf_reference.py data/raw/validation/nist-nzertf/jres-122-014.pdf data/raw/validation/nist-nzertf/hashes.csv data/raw/validation/nist-nzertf/metadata-year1-hour.csv data/raw/validation/nist-nzertf/metadata-year2-hour.csv",
+      "input_raw_file_ids": [
+        "nist-nzertf-data-publication",
+        "nist-nzertf-official-checksums",
+        "nist-nzertf-year1-hourly-metadata",
+        "nist-nzertf-year2-hourly-metadata-current"
+      ],
+      "output_fixtures": []
+    },
+    {
+      "step_id": "build-nzertf-virtual-schedule-fixture",
+      "description": "Extract the first 900 pre-gap Year 1 load records, retain raw timestamps, normalize the one-minute clock, and map four virtual occupants plus appliance and lighting flags.",
+      "script_path": "scripts/validation_data/build_nzertf_virtual_schedule_fixture.py",
+      "script_sha256": "8e2d76d6ac6745a044072c6e5de3147dda484862eabc51d4a5d127630e646f11",
+      "command": "uv run python scripts/validation_data/build_nzertf_virtual_schedule_fixture.py data/raw/validation/nist-nzertf/load-minute-prefix.csv.part data/validation/fixtures/nist-nzertf/virtual-schedule-first-900-records.csv",
+      "input_raw_file_ids": [
+        "nist-nzertf-year1-load-minute-prefix"
+      ],
+      "output_fixtures": [
+        {
+          "file_id": "nist-nzertf-virtual-schedule-first-900-records",
+          "path": "data/validation/fixtures/nist-nzertf/virtual-schedule-first-900-records.csv",
+          "sha256": "0a2986fb7af199d53fc53f3ab5846d27632a89e15a98c079ce228c363267d138",
+          "byte_size": 90393
+        }
+      ]
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Calibration protocol design, later empirical validation, and deterministic verification of the prescribed virtual-occupant load schedule",
+    "redistribution": "derived_only",
+    "commercial_use": null,
+    "citation_required": true,
+    "notes": "Keep source bytes under ignored raw storage. The compact derived schedule fixture contains selected U.S. government data fields. Do not register a calibration result until measurement files, uncertainties, exclusions, model inputs, and parameter bounds are frozen."
+  },
+  "targeted_models": [
+    "THERMAL-1",
+    "MOIST-1",
+    "HVAC-1",
+    "OCC-1"
+  ]
+}

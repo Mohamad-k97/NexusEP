@@ -1092,11 +1092,16 @@ def calculate_outdoor_noise_contributions_by_zone(
                     0.0,
                 )
 
-            transmission_factor = _get_attr_or_key(
-                boundary,
-                "outside_noise_transmission_factor",
-                1.0,
-            )
+            if hasattr(boundary, "effective_outdoor_noise_transmission_factor"):
+                transmission_factor = (
+                    boundary.effective_outdoor_noise_transmission_factor()
+                )
+            else:
+                transmission_factor = _get_attr_or_key(
+                    boundary,
+                    "outside_noise_transmission_factor",
+                    1.0,
+                )
 
             extra_reduction_db = _noise_transmission_factor_to_extra_attenuation_db(
                 transmission_factor

@@ -340,6 +340,7 @@ def calculate_outdoor_exchange_flow_for_zone_m3_s(
 def zone_humidity_ratio_from_state(
     zone_state,
     zone_i,
+    atmospheric_pressure_pa=ATMOSPHERIC_PRESSURE_PA,
 ):
     """
     Convert one zone's current RH and temperature to humidity ratio.
@@ -350,6 +351,7 @@ def zone_humidity_ratio_from_state(
     return relative_humidity_to_humidity_ratio_kg_kg(
         relative_humidity=rh,
         temperature_c=temp,
+        atmospheric_pressure_pa=atmospheric_pressure_pa,
     )
 
 
@@ -360,6 +362,7 @@ def zone_humidity_ratio_from_state(
 def fill_zone_humidity_ratio_snapshot(
     zone_state,
     humidity_ratio_snapshot,
+    atmospheric_pressure_pa=ATMOSPHERIC_PRESSURE_PA,
 ):
     """
     Fill preallocated previous-timestep humidity-ratio snapshot.
@@ -370,6 +373,7 @@ def fill_zone_humidity_ratio_snapshot(
         humidity_ratio_snapshot[zone_i] = zone_humidity_ratio_from_state(
             zone_state=zone_state,
             zone_i=zone_i,
+            atmospheric_pressure_pa=atmospheric_pressure_pa,
         )
 
     return True
@@ -406,6 +410,9 @@ def step_building_moisture_balance_numba_ready(
     fill_zone_humidity_ratio_snapshot(
         zone_state=zone_state,
         humidity_ratio_snapshot=humidity_ratio_snapshot,
+        atmospheric_pressure_pa=weather_state[
+            schema.WEATHER_ATMOSPHERIC_PRESSURE_PA
+        ],
     )
 
     for zone_i in range(zone_state.shape[0]):
@@ -448,7 +455,10 @@ def run_moisture_step_numba_ready(
     )
 
 
-def make_zone_humidity_ratio_snapshot(zone_state):
+def make_zone_humidity_ratio_snapshot(
+    zone_state,
+    atmospheric_pressure_pa=ATMOSPHERIC_PRESSURE_PA,
+):
     """
     Create previous-timestep humidity-ratio snapshot for all zones.
 
@@ -461,6 +471,7 @@ def make_zone_humidity_ratio_snapshot(zone_state):
         snapshot[zone_i] = zone_humidity_ratio_from_state(
             zone_state=zone_state,
             zone_i=zone_i,
+            atmospheric_pressure_pa=atmospheric_pressure_pa,
         )
 
     return snapshot
@@ -484,6 +495,9 @@ def weather_humidity_ratio_from_state(
     return relative_humidity_to_humidity_ratio_kg_kg(
         relative_humidity=outdoor_rh,
         temperature_c=outdoor_temp,
+        atmospheric_pressure_pa=weather_state[
+            schema.WEATHER_ATMOSPHERIC_PRESSURE_PA
+        ],
     )
 
 
@@ -687,6 +701,11 @@ def step_zone_moisture_balance(
         zone_static=zone_static,
         zone_i=zone_i,
     )
+    atmospheric_pressure_pa = weather_state[
+        schema.WEATHER_ATMOSPHERIC_PRESSURE_PA
+    ]
+    if atmospheric_pressure_pa <= 0.0:
+        atmospheric_pressure_pa = ATMOSPHERIC_PRESSURE_PA
 
     old_rh = zone_state[zone_i, schema.ZONE_RELATIVE_HUMIDITY]
     zone_temp = zone_state[zone_i, schema.ZONE_AIR_TEMPERATURE_C]
@@ -694,6 +713,7 @@ def step_zone_moisture_balance(
     old_w = relative_humidity_to_humidity_ratio_kg_kg(
         relative_humidity=old_rh,
         temperature_c=zone_temp,
+        atmospheric_pressure_pa=atmospheric_pressure_pa,
     )
 
     outdoor_w = weather_humidity_ratio_from_state(
@@ -732,6 +752,7 @@ def step_zone_moisture_balance(
     new_rh = humidity_ratio_to_relative_humidity(
         humidity_ratio_kg_kg=new_w,
         temperature_c=zone_temp,
+        atmospheric_pressure_pa=atmospheric_pressure_pa,
     )
 
     new_rh = _clip(
@@ -748,6 +769,21 @@ def step_zone_moisture_balance(
             schema.ZONE_ID,
         ]
         physics_result[zone_i, schema.PHYSICS_RELATIVE_HUMIDITY] = new_rh
+        storage_change_kg_s = (
+            AIR_DENSITY_KG_M3
+            * volume_m3
+            * (new_w - old_w)
+            / dt_seconds
+        )
+        transport_kg_s = AIR_DENSITY_KG_M3 * (
+            outdoor_flow * (outdoor_w - new_w)
+            + interzone_weighted_source
+            - interzone_flow * new_w
+        )
+        physics_result[
+            zone_i,
+            schema.PHYSICS_MOISTURE_BALANCE_RESIDUAL_KG_S,
+        ] = storage_change_kg_s - moisture_gain_kg_s - transport_kg_s
 
     return True
 
@@ -787,6 +823,9 @@ def step_building_moisture_balance(
         
     old_humidity_ratio_by_zone = make_zone_humidity_ratio_snapshot(
         zone_state=zone_state,
+        atmospheric_pressure_pa=weather_state[
+            schema.WEATHER_ATMOSPHERIC_PRESSURE_PA
+        ],
     )
     
     for zone_i in range(zone_state.shape[0]):
@@ -855,6 +894,11 @@ def step_building_moisture_balance_fast(
 
     outdoor_rh = weather_state[schema.WEATHER_OUTDOOR_RELATIVE_HUMIDITY]
     outdoor_temp = weather_state[schema.WEATHER_OUTDOOR_TEMPERATURE_C]
+    atmospheric_pressure_pa = weather_state[
+        schema.WEATHER_ATMOSPHERIC_PRESSURE_PA
+    ]
+    if atmospheric_pressure_pa <= 0.0:
+        atmospheric_pressure_pa = ATMOSPHERIC_PRESSURE_PA
 
     if outdoor_rh <= 0.0:
         outdoor_rh = DEFAULT_OUTDOOR_RELATIVE_HUMIDITY
@@ -874,10 +918,10 @@ def step_building_moisture_balance_fast(
 
     if p_v_outdoor < 0.0:
         p_v_outdoor = 0.0
-    elif p_v_outdoor > 0.99 * ATMOSPHERIC_PRESSURE_PA:
-        p_v_outdoor = 0.99 * ATMOSPHERIC_PRESSURE_PA
+    elif p_v_outdoor > 0.99 * atmospheric_pressure_pa:
+        p_v_outdoor = 0.99 * atmospheric_pressure_pa
 
-    denominator_outdoor = ATMOSPHERIC_PRESSURE_PA - p_v_outdoor
+    denominator_outdoor = atmospheric_pressure_pa - p_v_outdoor
 
     if denominator_outdoor <= 0.0:
         outdoor_w = DEFAULT_MAX_HUMIDITY_RATIO_KG_KG
@@ -921,10 +965,10 @@ def step_building_moisture_balance_fast(
 
         if p_v < 0.0:
             p_v = 0.0
-        elif p_v > 0.99 * ATMOSPHERIC_PRESSURE_PA:
-            p_v = 0.99 * ATMOSPHERIC_PRESSURE_PA
+        elif p_v > 0.99 * atmospheric_pressure_pa:
+            p_v = 0.99 * atmospheric_pressure_pa
 
-        denominator = ATMOSPHERIC_PRESSURE_PA - p_v
+        denominator = atmospheric_pressure_pa - p_v
 
         if denominator <= 0.0:
             old_w = DEFAULT_MAX_HUMIDITY_RATIO_KG_KG
@@ -1125,7 +1169,7 @@ def step_building_moisture_balance_fast(
             new_rh = DEFAULT_OUTDOOR_RELATIVE_HUMIDITY
         else:
             p_v_zone = (
-                ATMOSPHERIC_PRESSURE_PA
+                atmospheric_pressure_pa
                 * new_w_for_rh
                 / (WATER_VAPOR_MOLECULAR_RATIO + new_w_for_rh)
             )
@@ -1150,6 +1194,21 @@ def step_building_moisture_balance_fast(
                 zone_i,
                 schema.PHYSICS_RELATIVE_HUMIDITY,
             ] = new_rh
+            storage_change_kg_s = (
+                AIR_DENSITY_KG_M3
+                * volume_m3
+                * (new_w - old_w)
+                / dt_seconds
+            )
+            transport_kg_s = AIR_DENSITY_KG_M3 * (
+                outdoor_exchange_flow * (outdoor_w - new_w)
+                + interzone_weighted_source
+                - interzone_flow * new_w
+            )
+            physics_result[
+                zone_i,
+                schema.PHYSICS_MOISTURE_BALANCE_RESIDUAL_KG_S,
+            ] = storage_change_kg_s - moisture_gain_kg_s - transport_kg_s
 
     return zone_state, physics_result
 

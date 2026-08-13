@@ -1,0 +1,61 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "cie-171-2006-overview",
+  "title": "CIE 171:2006 Test Cases to Assess the Accuracy of Lighting Computer Programs",
+  "version": "171:2006 overview retrieved 2026-08-11",
+  "publisher": "International Commission on Illumination",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "The official overview identifies ISBN 978 3 901906 47 3 but does not assign a DOI."
+  },
+  "license": {
+    "name": "CIE copyright retained; benchmark values not licensed or acquired",
+    "spdx_id": null,
+    "terms_url": "https://cie.co.at/terms-and-conditions"
+  },
+  "download_url": "https://www.cie.co.at/publications/test-cases-assess-accuracy-lighting-computer-programs",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "cie-171-official-overview",
+      "path": "data/raw/validation/cie-171-2006/overview.html",
+      "sha256": "686e1b0cc1113e413d7b3fd6a37565dedc82b08582f67ac91818eee70f802344",
+      "byte_size": 68524
+    }
+  ],
+  "units": {
+    "overview_metadata": "not applicable",
+    "intended_illuminance_results": "lux"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_applicable",
+    "description": "Only publication metadata was retrieved; no analytical or measured reference values were acquired.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "The 97-page CIE publication and its numerical reference values were not acquired.",
+    "No CIE 171 comparative result may be claimed from the overview page.",
+    "Human acquisition and a documented right to use the benchmark inputs and values remain required."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-cie-171-overview",
+      "description": "Verify the retrieved official overview file and report its immutable checksum without extracting protected benchmark values.",
+      "script_path": "scripts/validation_data/inspect_daylight_occupant_references.py",
+      "script_sha256": "00ba657f363e9b1618a92c35c9cfa3dbada65a33e1bb2959453c48ab7c15578d",
+      "command": "uv run python scripts/validation_data/inspect_daylight_occupant_references.py cie-171-2006-overview data/raw/validation/cie-171-2006/overview.html",
+      "input_raw_file_ids": ["cie-171-official-overview"],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Source discovery and design of a future lighting comparative-validation protocol.",
+    "redistribution": "metadata_only",
+    "commercial_use": null,
+    "citation_required": true,
+    "notes": "Do not redistribute or reconstruct the CIE publication from this registry record."
+  },
+  "targeted_models": ["DAYLIGHT-1"]
+}

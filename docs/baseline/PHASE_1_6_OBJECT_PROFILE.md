@@ -1,5 +1,8 @@
 # Phase 1.6 — object-runner performance baseline
 
+Validation category: **verification** for reproducibility checks; timings are
+performance characterization, not model validation.
+
 Measurements used the deterministic Phase 1.5 config, seeds, weather, timezone,
 and hourly clock. One unmeasured 24-step warm-up ran separately. Small cases
 have three repetitions; annual cases have two. Results report median and full

@@ -779,6 +779,9 @@ def decode_weather_state_record(state):
         "wind_direction_deg": _to_float(row[schema.WEATHER_WIND_DIRECTION_DEG]),
         "sky_temperature_C": _to_float(row[schema.WEATHER_SKY_TEMPERATURE_C]),
         "rain": _to_bool(row[schema.WEATHER_RAIN_FLAG]),
+        "atmospheric_pressure_pa": _to_float(
+            row[schema.WEATHER_ATMOSPHERIC_PRESSURE_PA]
+        ),
     }
 
 

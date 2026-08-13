@@ -1,0 +1,106 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "iea-ebc-annex71-twin-houses-2020",
+  "title": "IEA EBC Annex 71 Twin Houses: Main Experiment Data",
+  "version": "Fordatis dataset 76.2, main-experiment archive",
+  "publisher": "Fraunhofer Institute for Building Physics IBP",
+  "doi": {
+    "status": "assigned",
+    "value": "10.24406/fordatis/76.2",
+    "absence_reason": null
+  },
+  "license": {
+    "name": "Creative Commons Attribution-ShareAlike 4.0 International",
+    "spdx_id": "CC-BY-SA-4.0",
+    "terms_url": "https://creativecommons.org/licenses/by-sa/4.0/"
+  },
+  "download_url": "https://fordatis.fraunhofer.de/bitstream/fordatis/161.2/4/03_Data_Main_Experiment.zip",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "annex71-main-experiment-zip",
+      "path": "data/raw/validation/annex71-twin-houses/03_Data_Main_Experiment.zip",
+      "sha256": "832754489e0c513c8cb09b7e43d61a9f5249ff5502a781a672cae6d588a876a1",
+      "byte_size": 46262744
+    }
+  ],
+  "units": {
+    "timestamp": "source Excel serial interpreted as Europe/Berlin local civil time",
+    "room_air_temperature": "degree Celsius",
+    "outdoor_air_temperature": "degree Celsius",
+    "electrical_heating_and_internal_gain_power": "watt",
+    "south_vertical_solar_irradiance": "watt per square metre",
+    "ventilation_supply_air_temperature": "degree Celsius",
+    "ventilation_supply_volume_flow": "cubic metre per hour"
+  },
+  "timezone": "Europe/Berlin",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "No channel-level uncertainty values suitable for weighted scoring were established from the downloaded main-experiment workbook set; uncertainty coverage is therefore not claimed.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "This is the IEA EBC Annex 71 main experiment, not the originally proposed Annex 58 Experiment 1 calibration and Experiment 2 blind-validation pair.",
+    "The historical one-room 60/40 helper diagnostic is retained for provenance and remains rejected.",
+    "The replacement maps four official N2 air bodies through the object production adapter, but the later target period was inspected during mapper repair and is not unseen validation.",
+    "The selected alignment maps each source row to the preceding hour before conversion to canonical interval-start timestamps. This is supported by a lag audit and the published experiment start, but the workbook label convention is not independently proven.",
+    "Canonical v1 lacks heater radiative split, per-opening blind state, supply-air temperature, detailed construction layers, cellar boundaries, and channel-level uncertainty.",
+    "Both registered thermal results are rejected and must not be used as evidence for a passing blind-validation claim."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "extract-and-run-n2-living-transfer",
+      "description": "Verify the archive checksum, join N2 living-room, opening-state, solar, and weather channels by Excel timestamp, retain the historical 60/40 transfer for forensic reproduction, and emit a protocol audit that prevents it from being treated as production-engine or official blind/open validation.",
+      "script_path": "scripts/validation_data/run_annex71_thermal_transfer.py",
+      "script_sha256": "48d83ec8411f8e455dcc94485523056862c31ce3f6388da629e4e1843e7666a5",
+      "command": "uv run python scripts/validation_data/run_annex71_thermal_transfer.py",
+      "input_raw_file_ids": [
+        "annex71-main-experiment-zip"
+      ],
+      "output_fixtures": [
+        {
+          "file_id": "annex71-n2-living-hourly-fixture",
+          "path": "data/validation/fixtures/annex71-twin-houses/n2-living-main-experiment-hourly.csv",
+          "sha256": "9f6109f11fe65545a5d9f682e27a8a736a847efaedf215a36cf535aefe6c6969",
+          "byte_size": 217754
+        },
+        {
+          "file_id": "annex71-thermal-transfer-result",
+          "path": "data/validation/fixtures/annex71-twin-houses/thermal-transfer-result-v1.json",
+          "sha256": "2c3ef8f250defd9193d2578552bdbda5e045a573194c7a3c5264998b1b524712",
+          "byte_size": 4376
+        }
+      ]
+    },
+    {
+      "step_id": "run-four-airbody-production-diagnostic",
+      "description": "Join official N2 and weather workbooks by timestamp, apply the documented lag-audited hourly alignment, allocate the published whole-house HTC with stable coheat observations, compile the four-air-body canonical graph, run the object production adapter, and preserve the failed numerical and sealed-target decisions.",
+      "script_path": "scripts/validation_data/run_annex71_production_transfer.py",
+      "script_sha256": "06dd1e0207b48333926d6120405c5992bf49bf2bd0a91b6c277037d4b3c2037e",
+      "command": "uv run python scripts/validation_data/run_annex71_production_transfer.py",
+      "input_raw_file_ids": [
+        "annex71-main-experiment-zip"
+      ],
+      "output_fixtures": [
+        {
+          "file_id": "annex71-production-transfer-result",
+          "path": "data/validation/fixtures/annex71-twin-houses/production-transfer-result-v1.json",
+          "sha256": "9ec5c442047424e9658fc7d1cde4445120c600d806bf24afee7f0e21e6cddade",
+          "byte_size": 113516
+        }
+      ]
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Forensic reduced-order thermal mapping and validation-protocol audit",
+    "redistribution": "permitted",
+    "commercial_use": true,
+    "citation_required": true,
+    "notes": "Preserve attribution and ShareAlike terms for redistributed derivatives. Do not describe the same-experiment holdout as Annex 58 Experiment 2 or as a successful validation."
+  },
+  "targeted_models": [
+    "THERMAL-1",
+    "MOIST-1",
+    "HVAC-1"
+  ]
+}

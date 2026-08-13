@@ -6,11 +6,17 @@ backend-adapter contracts introduced in Phase 2.
 
 from __future__ import annotations
 
+from datetime import datetime
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 from pydantic import ValidationError
 
+from nexusep.abbey.building.physics.solar import (
+    calculate_solar_position,
+    calculate_surface_solar_irradiance,
+)
 from nexusep.adapters import ArrayEngineAdapter, ObjectEngineAdapter
 from nexusep.adapters.common import BackendAdapterError
 from nexusep.scenarios import load_scenario
@@ -282,6 +288,190 @@ def test_array_adapter_runs_real_kernel_and_restores_canonical_ids() -> None:
         for row in result.zones
         for key in row.model_dump()
         if key != "timestep_index"
+    )
+
+
+def test_array_hvac_commands_do_not_mutate_equipment_capacities() -> None:
+    """Runtime control and availability scale delivered power, not static design data."""
+
+    scenario, graph, step = make_step_input()
+    living_zone = next(
+        zone
+        for zone in scenario.building.dwelling.zones
+        if zone.zone_id == "living_zone"
+    )
+    heating_system = next(
+        system for system in living_zone.systems if system.system_type == "heating"
+    )
+    design_capacity_w = heating_system.max_heating_power_w
+    assert design_capacity_w is not None
+    command_fraction = 0.4
+    availability_fraction = 0.5
+    controls = tuple(
+        item.model_copy(
+            update={"heating_on": True, "heating_power_fraction": command_fraction}
+        )
+        if item.zone_id == "living_zone"
+        else item
+        for item in step.control_commands
+    )
+    availability = tuple(
+        item.model_copy(update={"capacity_fraction": availability_fraction})
+        if item.system_id == heating_system.system_id
+        else item
+        for item in step.system_availability
+    )
+
+    result = ArrayEngineAdapter(scenario, graph).run_step(
+        step.model_copy(
+            update={
+                "control_commands": controls,
+                "system_availability": availability,
+            }
+        ),
+        include_debug=True,
+    )
+
+    living = next(row for row in result.zones if row.zone_id == "living_zone")
+    assert living.heating_power_w == pytest.approx(
+        design_capacity_w * command_fraction * availability_fraction
+    )
+    assert result.debug is not None
+    trace = result.debug.engine_fields["step_trace"]["controls"]["living_zone"]
+    assert trace["max_heating_power_W"] == pytest.approx(design_capacity_w)
+    assert trace["command_heating_power_fraction"] == pytest.approx(command_fraction)
+    assert trace["heating_capacity_fraction"] == pytest.approx(
+        availability_fraction
+    )
+
+
+@pytest.mark.parametrize("adapter_type", [ObjectEngineAdapter, ArrayEngineAdapter])
+def test_lighting_watt_command_is_the_delivered_power_contract(adapter_type) -> None:
+    """A watt command has one meaning for heat, electric power, and energy."""
+
+    scenario, graph, step = make_step_input()
+    commanded_power_w = 80.0
+    commands = tuple(
+        command.model_copy(
+            update={"lights_on": True, "lighting_power_w": commanded_power_w}
+        )
+        if command.zone_id == "living_zone"
+        else command
+        for command in step.control_commands
+    )
+    result = adapter_type(scenario, graph).run_step(
+        step.model_copy(update={"control_commands": commands}),
+        include_debug=True,
+    )
+
+    living = next(row for row in result.zones if row.zone_id == "living_zone")
+    assert living.lighting_power_w == pytest.approx(commanded_power_w)
+    assert living.total_electrical_power_w == pytest.approx(commanded_power_w)
+    living_energy = next(
+        row for row in result.zone_energy if row.zone_id == "living_zone"
+    )
+    assert living_energy.electrical_energy_wh == pytest.approx(
+        commanded_power_w * step.dt_minutes / 60.0
+    )
+
+
+@pytest.mark.parametrize("adapter_type", [ObjectEngineAdapter, ArrayEngineAdapter])
+def test_canonical_window_solar_gain_uses_site_and_surface_orientation(
+    adapter_type,
+) -> None:
+    scenario, graph, step = make_step_input()
+    timestamp = datetime(2026, 6, 21, 12, 0, tzinfo=ZoneInfo("Europe/Rome"))
+    weather = step.weather.model_copy(
+        update={
+            "timestamp": timestamp,
+            "direct_normal_radiation_w_m2": 800.0,
+            "diffuse_horizontal_radiation_w_m2": 100.0,
+            "global_horizontal_radiation_w_m2": 700.0,
+        }
+    )
+    scenario = scenario.model_copy(
+        update={
+            "simulation_period": scenario.simulation_period.model_copy(
+                update={"start_datetime": timestamp}
+            ),
+            "weather_series": (weather,) + scenario.weather_series[1:],
+        }
+    )
+    step = step.model_copy(update={"timestamp": timestamp, "weather": weather})
+
+    position = calculate_solar_position(
+        timestamp,
+        latitude_deg=scenario.site.latitude_deg,
+        longitude_deg=scenario.site.longitude_deg,
+        elevation_m=scenario.site.elevation_m,
+        atmospheric_pressure_pa=weather.atmospheric_pressure_pa,
+        outdoor_temperature_c=weather.outdoor_temperature_c,
+    )
+    expected_by_zone = {"bedroom_zone": 0.0, "living_zone": 0.0}
+    controls = {item.zone_id: item for item in step.control_commands}
+    for connection in graph["connections"]:
+        if connection["connection_type"] != "opening":
+            continue
+        zone_id = connection["source_node_id"]
+        irradiance = calculate_surface_solar_irradiance(
+            solar_zenith_deg=position.zenith_deg,
+            solar_azimuth_deg=position.azimuth_deg,
+            surface_tilt_deg=connection["tilt_deg"],
+            surface_azimuth_deg=connection["azimuth_deg"],
+            direct_normal_radiation_w_m2=weather.direct_normal_radiation_w_m2,
+            diffuse_horizontal_radiation_w_m2=(
+                weather.diffuse_horizontal_radiation_w_m2
+            ),
+            global_horizontal_radiation_w_m2=(
+                weather.global_horizontal_radiation_w_m2
+            ),
+            ground_albedo_fraction=scenario.site.ground_albedo_fraction,
+        )
+        expected_by_zone[zone_id] += irradiance.transmitted_gain_w(
+            area_m2=connection["gross_area_m2"],
+            solar_transmittance_fraction=connection[
+                "solar_transmittance_fraction"
+            ],
+            unshaded_fraction=controls[zone_id].shading_open_fraction,
+        )
+
+    result = adapter_type(scenario, graph).run_step(step, include_debug=True)
+    assert result.debug is not None
+    records_key = (
+        "native_zone_records"
+        if adapter_type is ObjectEngineAdapter
+        else "zone_records"
+    )
+    gain_key = (
+        "solar_gain_w" if adapter_type is ObjectEngineAdapter else "solar_gain_W"
+    )
+    actual_by_zone = {
+        item["zone_id"]: item[gain_key]
+        for item in result.debug.engine_fields[records_key]
+    }
+    assert actual_by_zone == pytest.approx(expected_by_zone)
+    assert actual_by_zone["living_zone"] > actual_by_zone["bedroom_zone"]
+
+
+def test_array_psychrometrics_consume_canonical_atmospheric_pressure() -> None:
+    scenario, graph, step = make_step_input()
+
+    def run_at_pressure(pressure_pa: float):
+        weather = step.weather.model_copy(
+            update={"atmospheric_pressure_pa": pressure_pa}
+        )
+        run_scenario = scenario.model_copy(
+            update={"weather_series": (weather,) + scenario.weather_series[1:]}
+        )
+        run_step = step.model_copy(update={"weather": weather})
+        return ArrayEngineAdapter(run_scenario, graph).run_step(run_step)
+
+    sea_level = run_at_pressure(101_325.0)
+    high_altitude = run_at_pressure(80_000.0)
+    assert any(
+        abs(left.relative_humidity_fraction - right.relative_humidity_fraction)
+        > 1.0e-9
+        for left, right in zip(sea_level.zones, high_altitude.zones, strict=True)
     )
 
 

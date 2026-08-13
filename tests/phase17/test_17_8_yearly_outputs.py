@@ -121,7 +121,6 @@ def test_short_simulation_produces_source_records_for_yearly_export():
         "Normal yearly source building records should use performance_path='engine'.",
     )
 
-    print("PASS: test_short_simulation_produces_source_records_for_yearly_export")
 
 
 def test_raw_records_validate_with_minimal_schema():
@@ -150,7 +149,6 @@ def test_raw_records_validate_with_minimal_schema():
         + str(validation.get("energy_checks", {})),
     )
 
-    print("PASS: test_raw_records_validate_with_minimal_schema")
 
 
 def test_save_building_yearly_outputs_creates_core_csvs():
@@ -165,7 +163,6 @@ def test_save_building_yearly_outputs_creates_core_csvs():
             include_interzone_summaries=False,
             include_window_detail_summaries=False,
         )
-
         expected_csv_keys = [
             "hourly_zone_summary_csv",
             "daily_zone_summary_csv",
@@ -181,7 +178,6 @@ def test_save_building_yearly_outputs_creates_core_csvs():
             path = assert_path_exists(paths, key)
             read_non_empty_csv(path)
 
-    print("PASS: test_save_building_yearly_outputs_creates_core_csvs")
 
 
 def test_energy_by_zone_dwelling_building_outputs_have_expected_columns():
@@ -254,7 +250,6 @@ def test_energy_by_zone_dwelling_building_outputs_have_expected_columns():
             "energy_by_building total energy should be non-negative.",
         )
 
-    print("PASS: test_energy_by_zone_dwelling_building_outputs_have_expected_columns")
 
 
 def test_minimal_yearly_output_does_not_write_heavy_timestep_debug_csvs():
@@ -318,7 +313,6 @@ def test_minimal_yearly_output_does_not_write_heavy_timestep_debug_csvs():
                 + str(matches),
             )
 
-    print("PASS: test_minimal_yearly_output_does_not_write_heavy_timestep_debug_csvs")
 
 
 def test_interzone_and_window_summaries_are_optional_and_safe():
@@ -361,7 +355,6 @@ def test_interzone_and_window_summaries_are_optional_and_safe():
                 + str(key),
             )
 
-    print("PASS: test_interzone_and_window_summaries_are_optional_and_safe")
 
 
 def test_minimal_schema_keeps_fallback_visibility_but_not_debug_requirement():
@@ -375,12 +368,18 @@ def test_minimal_schema_keeps_fallback_visibility_but_not_debug_requirement():
         mode=OUTPUT_MODE_MINIMAL,
     )
 
+    dwelling_columns = output_columns_for_record_type(
+        record_type="dwelling",
+        mode=OUTPUT_MODE_MINIMAL,
+    )
+
     required_status_columns = [
         "physics_engine_active",
         "physics_path",
         "performance_path",
         "legacy_fallback_used",
         "legacy_fallback_reason",
+        "legacy_fallback_exception_category",
     ]
 
     for column in required_status_columns:
@@ -396,6 +395,13 @@ def test_minimal_schema_keeps_fallback_visibility_but_not_debug_requirement():
             + str(column),
         )
 
+        if column.startswith("legacy_fallback_"):
+            assert_true(
+                column in dwelling_columns,
+                "Minimal dwelling schema should keep fallback/status column: "
+                + str(column),
+            )
+
     debug_only_zone_columns = [
         "old_indoor_temp_c",
         "thermal_old_air_temperature_c",
@@ -410,21 +416,3 @@ def test_minimal_schema_keeps_fallback_visibility_but_not_debug_requirement():
             "Minimal zone schema should not require debug-only column: "
             + str(column),
         )
-
-    print("PASS: test_minimal_schema_keeps_fallback_visibility_but_not_debug_requirement")
-
-
-def main():
-    test_short_simulation_produces_source_records_for_yearly_export()
-    test_raw_records_validate_with_minimal_schema()
-    test_save_building_yearly_outputs_creates_core_csvs()
-    test_energy_by_zone_dwelling_building_outputs_have_expected_columns()
-    test_minimal_yearly_output_does_not_write_heavy_timestep_debug_csvs()
-    test_interzone_and_window_summaries_are_optional_and_safe()
-    test_minimal_schema_keeps_fallback_visibility_but_not_debug_requirement()
-
-    print("Phase 17.8 yearly/minimal output tests passed.")
-
-
-if __name__ == "__main__":
-    main()

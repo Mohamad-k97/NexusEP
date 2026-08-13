@@ -127,13 +127,3 @@ def test_fast_thermal_kernel_matches_reference():
         print("diff:")
         print(physics_fast - physics_ref)
         raise AssertionError("Fast thermal physics_result mismatch.")
-
-    print("Fast thermal kernel matches reference.")
-
-
-def main():
-    test_fast_thermal_kernel_matches_reference()
-
-
-if __name__ == "__main__":
-    main()

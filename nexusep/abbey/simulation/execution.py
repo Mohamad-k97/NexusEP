@@ -556,7 +556,11 @@ def clean_execution_state(
         if not process.is_active():
             continue
 
-        if not person.is_home and not process.can_continue_without_actor:
+        if (
+            process.actor_id == person.occupant_id
+            and not person.is_home
+            and not process.can_continue_without_actor
+        ):
             continue
 
         background.append(process)
@@ -715,18 +719,19 @@ def advance_household_execution_state(
     new_background = []
 
     for process in execution.background_processes:
-        advanced = process.advance(minutes)
-
-        if not advanced.is_active():
-            continue
-
         actor_location = locations.get(process.actor_id)
-
-        if actor_location is None:
-            new_background.append(advanced)
+        if (
+            actor_location is not None
+            and not actor_location.is_home
+            and not process.can_continue_without_actor
+        ):
+            # Paused processes retain their remaining duration while the actor
+            # is away; they are not advanced and then silently discarded.
+            new_background.append(process)
             continue
 
-        if actor_location.is_home or process.can_continue_without_actor:
+        advanced = process.advance(minutes)
+        if advanced.is_active():
             new_background.append(advanced)
 
     new_action_cooldowns = {

@@ -445,7 +445,7 @@ def _zone_id_for_location(
         return None
 
     current_space_id = _get_attr_or_key(location, "current_space_id", None)
-    dwelling_id = _get_attr_or_key(location, "dwelling_id", "dwelling_1")
+    dwelling_id = _get_attr_or_key(location, "dwelling_id", None)
 
     if current_space_id is None:
         return None
@@ -454,6 +454,12 @@ def _zone_id_for_location(
 
     if current_space_id in all_zone_ids:
         return current_space_id
+
+    if not dwelling_id:
+        dwelling_ids = list(building_model.dwellings)
+        if len(dwelling_ids) != 1:
+            return None
+        dwelling_id = dwelling_ids[0]
 
     dwelling_aware_id = make_dwelling_space_id(
         space_id=current_space_id,

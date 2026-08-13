@@ -9,33 +9,59 @@ Later:
     replace deterministic max with softmax/stochastic choice.
 """
 
-from typing import Any, Mapping
+from collections.abc import Mapping
+from typing import Any
 
 from nexusep.abbey.actions.action import Action
-from nexusep.abbey.agents.schedule import (
-    sleep_drive,
-    wake_drive,
-    work_obligation_signal,
-    melatonin_signal,
-    work_day_active,
-    work_day_finished,
-)
-from nexusep.abbey.agents.states import (
-    PersonState,
-    DwellingObservation,
-    SystemState,
-    ExecutionState,
-    SimulationClock,
-)
 from nexusep.abbey.actions.proposal import ActionProposal
 from nexusep.abbey.agents.location import OccupantLocation, SpaceAssignment
-from nexusep.abbey.agents.schedule import homeostatic_sleep_signal
+from nexusep.abbey.agents.schedule import (
+    homeostatic_sleep_signal,
+    melatonin_signal,
+    planned_leave_soon,
+    sleep_drive,
+    wake_drive,
+    work_day_active,
+    work_day_finished,
+    work_obligation_signal,
+)
+from nexusep.abbey.agents.states import (
+    DwellingObservation,
+    ExecutionState,
+    PersonState,
+    SimulationClock,
+    SystemState,
+)
 
 AbbeyConfig = Mapping[str, Any]
 
 
 def _decision_cfg(config: AbbeyConfig) -> Mapping[str, Any]:
     return config["decision"]
+
+
+def _sleep_target_protection(
+    minutes_asleep: float,
+    minimum_minutes: float,
+    target_minutes: float,
+) -> float:
+    """Return a continuous sleep-protection factor in ``[0, 1]``.
+
+    Protection is complete through the configured minimum sleep duration and
+    then tapers linearly to zero at the target.  The previous implementation
+    removed the entire continuation bonus and wake penalty at the minimum,
+    which made otherwise healthy episodes terminate at exactly five hours.
+    """
+
+    if target_minutes <= minimum_minutes:
+        return 1.0 if minutes_asleep < minimum_minutes else 0.0
+    if minutes_asleep <= minimum_minutes:
+        return 1.0
+    if minutes_asleep >= target_minutes:
+        return 0.0
+    return (target_minutes - minutes_asleep) / (
+        target_minutes - minimum_minutes
+    )
 
 
 def score_action(
@@ -161,9 +187,15 @@ def score_action(
         max_sleep = float(cfg["maximum_sleep_minutes"])
     
         if person.is_sleeping:
-            # Before minimum sleep duration, continuing sleep is strongly preferred.
-            if person.minutes_asleep < min_sleep:
-                sleep_score += float(cfg["sleep_continuation_before_min_bonus"])
+            protection = _sleep_target_protection(
+                person.minutes_asleep,
+                min_sleep,
+                target_sleep,
+            )
+            sleep_score += (
+                float(cfg["sleep_continuation_before_min_bonus"])
+                * protection
+            )
     
             # After target sleep duration, continuing sleep becomes less attractive.
             if person.minutes_asleep > target_sleep:
@@ -171,7 +203,7 @@ def score_action(
                 sleep_score -= float(cfg["oversleep_penalty_weight"]) * oversleep_hours
     
             # After maximum sleep duration, sleep should almost never continue.
-            if person.minutes_asleep > max_sleep:
+            if person.minutes_asleep >= max_sleep:
                 sleep_score -= float(cfg["forced_wake_after_max_bonus"])
     
         else:
@@ -194,6 +226,23 @@ def score_action(
     
             if 8.0 <= (clock.hour % 24.0) <= 17.0:
                 sleep_score -= float(cfg["sleep_daytime_penalty"])
+
+            # A scheduled departure is an external obligation, not merely a
+            # weak biological preference.  Prevent a new ordinary sleep
+            # episode from starting immediately before work; sickness remains
+            # an explicit exception.
+            if person.sickness_severity <= 0.5:
+                leave_signal = planned_leave_soon(
+                    person=person,
+                    clock=clock,
+                    config=config,
+                    horizon_hours=float(
+                        cfg.get("pre_work_sleep_horizon_hours", 1.5)
+                    ),
+                )
+                sleep_score -= float(
+                    cfg.get("pre_work_sleep_penalty", 50.0)
+                ) * leave_signal
     
             if person.fatigue < float(cfg["long_sleep_threshold_fatigue"]):
                 sleep_score -= float(cfg["sleep_after_long_sleep_penalty"])
@@ -215,8 +264,14 @@ def score_action(
         max_sleep = float(cfg["maximum_sleep_minutes"])
     
         if person.is_sleeping:
-            if person.minutes_asleep < min_sleep:
-                wake_score -= 20.0
+            protection = _sleep_target_protection(
+                person.minutes_asleep,
+                min_sleep,
+                target_sleep,
+            )
+            wake_score -= float(
+                cfg.get("wake_before_target_penalty", 20.0)
+            ) * protection
             emergency_hot_temp_c = float(
                 cfg.get("emergency_wake_hot_temp_c", 28.0)
             )
@@ -249,7 +304,7 @@ def score_action(
                 extra_hours = (person.minutes_asleep - target_sleep) / 60.0
                 wake_score += float(cfg["wake_after_target_weight"]) * extra_hours
     
-            if person.minutes_asleep > max_sleep:
+            if person.minutes_asleep >= max_sleep:
                 wake_score += float(cfg["forced_wake_after_max_bonus"])
     
         score += wake_score
@@ -597,19 +652,22 @@ def choose_action(
         raise ValueError("No available actions were provided to choose_action().")
 
     # HARD RULE 1:
-    # If at home during work hours, go to work.
+    # A scheduled work obligation first wakes a sleeping occupant, then sends
+    # an awake occupant to work on the next decision cycle.  Requiring the
+    # person to already be awake allowed sleep to suppress the obligation.
     if (
         person.has_job
         and location.is_home
-        and not person.is_sleeping
         and work_day_active(person, clock, config)
     ):
+        required_action = "wake_up" if person.is_sleeping else "go_to_work"
         for action in available_actions:
-            if action.name == "go_to_work":
+            if action.name == required_action:
                 return action
 
         raise RuntimeError(
-            "Person should go to work, but 'go_to_work' is not available. "
+            "Work obligation requires "
+            f"'{required_action}', but it is not available. "
             f"Available actions: {[a.name for a in available_actions]}"
         )
 

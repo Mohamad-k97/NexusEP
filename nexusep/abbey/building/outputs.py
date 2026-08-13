@@ -351,6 +351,7 @@ ZONE_ENGINE_STATUS_COLUMNS = [
     "performance_path",
     "legacy_fallback_used",
     "legacy_fallback_reason",
+    "legacy_fallback_exception_category",
 ]
 
 ZONE_DEBUG_COLUMNS = (
@@ -410,6 +411,12 @@ DWELLING_ENERGY_COLUMNS = [
     "hvac_input_energy_wh",
 ]
 
+DWELLING_ENGINE_STATUS_COLUMNS = [
+    "legacy_fallback_used",
+    "legacy_fallback_reason",
+    "legacy_fallback_exception_category",
+]
+
 DWELLING_DEBUG_COLUMNS = [
     "zone_count",
     "mean_indoor_temp_c",
@@ -444,9 +451,13 @@ DWELLING_TIMESTEP_STANDARD_COLUMNS = (
 DWELLING_TIMESTEP_DEBUG_COLUMNS = (
     DWELLING_TIMESTEP_STANDARD_COLUMNS
     + DWELLING_DEBUG_COLUMNS
+    + DWELLING_ENGINE_STATUS_COLUMNS
 )
 
-DWELLING_TIMESTEP_YEARLY_SAFE_COLUMNS = DWELLING_TIMESTEP_STANDARD_COLUMNS
+DWELLING_TIMESTEP_YEARLY_SAFE_COLUMNS = (
+    DWELLING_TIMESTEP_STANDARD_COLUMNS
+    + DWELLING_ENGINE_STATUS_COLUMNS
+)
 
 
 BUILDING_CORE_COLUMNS = [
@@ -523,6 +534,7 @@ BUILDING_ENGINE_STATUS_COLUMNS = [
     "performance_path",
     "legacy_fallback_used",
     "legacy_fallback_reason",
+    "legacy_fallback_exception_category",
     "physics_engine_has_thermal_step_result",
     "physics_engine_has_interzone_thermal_network",
     "physics_engine_interzone_thermal_link_count",
@@ -609,6 +621,7 @@ OUTPUT_SCHEMA_GROUPS = {
 
     "dwelling_core": DWELLING_CORE_COLUMNS,
     "dwelling_energy": DWELLING_ENERGY_COLUMNS,
+    "dwelling_engine_status": DWELLING_ENGINE_STATUS_COLUMNS,
     "dwelling_debug": DWELLING_DEBUG_COLUMNS,
     "dwelling_timestep_standard": DWELLING_TIMESTEP_STANDARD_COLUMNS,
     "dwelling_timestep_debug": DWELLING_TIMESTEP_DEBUG_COLUMNS,

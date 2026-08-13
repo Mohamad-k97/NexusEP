@@ -10,13 +10,14 @@ Meaning:
 - ZoneControlCommand = physical command sent to systems
 """
 
+import math
 from typing import Any, Optional
 
 from nexusep.abbey.building.model import ZoneState
 from nexusep.abbey.building.systems import (
-    ZoneSystemSpec,
-    ZoneControlState,
     ZoneControlCommand,
+    ZoneControlState,
+    ZoneSystemSpec,
     constrain_zone_control_command_to_system_spec,
 )
 
@@ -113,11 +114,29 @@ class ThermostatController:
     Thermostat decides final heating/cooling operation using deadband.
     """
 
-    def __init__(self, deadband_c: float = 0.5):
+    def __init__(
+        self,
+        deadband_c: float = 0.5,
+        lighting_on_threshold: float = 0.35,
+        lighting_off_threshold: float = 0.45,
+    ):
+        lighting_on_threshold = float(lighting_on_threshold)
+        lighting_off_threshold = float(lighting_off_threshold)
         if deadband_c < 0:
             raise ValueError("deadband_c must be non-negative.")
+        if (
+            not math.isfinite(lighting_on_threshold)
+            or not math.isfinite(lighting_off_threshold)
+            or not 0.0 <= lighting_on_threshold <= lighting_off_threshold
+        ):
+            raise ValueError(
+                "lighting thresholds must satisfy "
+                "0 <= lighting_on_threshold <= lighting_off_threshold."
+            )
 
         self.deadband_c = float(deadband_c)
+        self.lighting_on_threshold = lighting_on_threshold
+        self.lighting_off_threshold = lighting_off_threshold
 
     def step(
         self,
@@ -163,6 +182,7 @@ class ThermostatController:
             control_state=control_state,
             system_spec=system_spec,
             zone_state=zone_state,
+            previous_command=previous_command,
         )
 
         window_open = self._decide_window(
@@ -312,6 +332,7 @@ class ThermostatController:
         control_state: ZoneControlState,
         system_spec: ZoneSystemSpec,
         zone_state: ZoneState,
+        previous_command: Optional[ZoneControlCommand],
     ) -> bool:
         if not system_spec.has_lighting:
             return False
@@ -323,10 +344,19 @@ class ThermostatController:
             return bool(control_state.manual_lights_on)
 
         if control_state.lighting_mode in THERMOSTAT_CONTROL_MODES:
-            return (
-                zone_state.number_of_people > 0
-                and zone_state.indoor_daylight < 0.35
-            )
+            if zone_state.number_of_people <= 0:
+                return False
+
+            if zone_state.indoor_daylight < self.lighting_on_threshold:
+                return True
+
+            if zone_state.indoor_daylight > self.lighting_off_threshold:
+                return False
+
+            if previous_command is not None:
+                return bool(previous_command.lights_on)
+
+            return False
 
         return False
 

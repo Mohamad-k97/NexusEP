@@ -63,7 +63,6 @@ def make_explicit_weather():
         sky_condition="clear",
     )
 
-
 def make_person_and_location():
     people = {
         "person_1": {
@@ -183,7 +182,6 @@ def test_explicit_weather_state_is_passed_through_unchanged():
         "Building record should expose explicit outdoor temperature.",
     )
 
-    print("PASS: test_explicit_weather_state_is_passed_through_unchanged")
 
 
 def test_missing_weather_creates_safe_synthetic_weather():
@@ -222,7 +220,6 @@ def test_missing_weather_creates_safe_synthetic_weather():
         "Synthetic weather should expose relative_humidity_percent.",
     )
 
-    print("PASS: test_missing_weather_creates_safe_synthetic_weather")
 
 
 def test_people_and_locations_reach_internal_sources():
@@ -276,7 +273,6 @@ def test_people_and_locations_reach_internal_sources():
         "Target zone should receive sensible heat from occupant.",
     )
 
-    print("PASS: test_people_and_locations_reach_internal_sources")
 
 
 def test_chunk_records_reach_internal_sources():
@@ -321,7 +317,6 @@ def test_chunk_records_reach_internal_sources():
         "Cooking chunk should create internal electricity.",
     )
 
-    print("PASS: test_chunk_records_reach_internal_sources")
 
 
 def test_controls_and_systems_reach_building_physics_step_input():
@@ -358,7 +353,6 @@ def test_controls_and_systems_reach_building_physics_step_input():
         "First zone missing from zone_system_specs.",
     )
 
-    print("PASS: test_controls_and_systems_reach_building_physics_step_input")
 
 
 class StaticWeatherProvider:
@@ -418,20 +412,3 @@ def test_runner_passes_weather_state_when_provider_available():
         float(building_record["weather_outdoor_temperature_c"]) == 3.5,
         "Runner-provided weather should reach building record.",
     )
-
-    print("PASS: test_runner_passes_weather_state_when_provider_available")
-
-
-def main():
-    test_explicit_weather_state_is_passed_through_unchanged()
-    test_missing_weather_creates_safe_synthetic_weather()
-    test_people_and_locations_reach_internal_sources()
-    test_chunk_records_reach_internal_sources()
-    test_controls_and_systems_reach_building_physics_step_input()
-    test_runner_passes_weather_state_when_provider_available()
-
-    print("Phase 17.2 performance input contract tests passed.")
-
-
-if __name__ == "__main__":
-    main()

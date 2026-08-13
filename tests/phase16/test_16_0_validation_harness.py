@@ -107,7 +107,6 @@ def assert_validation_ok(
         mode=mode,
         tolerance_wh=tolerance_wh,
     )
-
     if not validation["ok"]:
         raise AssertionError(
             "Output validation failed:\n"
@@ -429,7 +428,6 @@ def test_make_phase16_building_and_graph():
         "Phase 16 graph should not be None.",
     )
 
-    print("PASS: test_make_phase16_building_and_graph")
 
 
 def test_make_phase16_weather():
@@ -453,7 +451,6 @@ def test_make_phase16_weather():
         "Weather outdoor CO2 mismatch.",
     )
 
-    print("PASS: test_make_phase16_weather")
 
 
 def test_make_phase16_performance_input():
@@ -497,7 +494,6 @@ def test_make_phase16_performance_input():
         "Performance input should keep the provided weather state.",
     )
 
-    print("PASS: test_make_phase16_performance_input")
 
 
 def test_run_phase16_case_engine_smoke():
@@ -550,7 +546,6 @@ def test_run_phase16_case_engine_smoke():
         "Engine smoke unexpected physics_path values: " + str(physics_paths),
     )
 
-    print("PASS: test_run_phase16_case_engine_smoke")
 
 
 def test_run_phase16_case_legacy_smoke():
@@ -585,7 +580,6 @@ def test_run_phase16_case_legacy_smoke():
         "Legacy smoke unexpected physics_path values: " + str(physics_paths),
     )
 
-    print("PASS: test_run_phase16_case_legacy_smoke")
 
 
 def test_assert_direction_helper():
@@ -602,20 +596,3 @@ def test_assert_direction_helper():
         direction="decrease",
         message="Decrease helper should pass.",
     )
-
-    print("PASS: test_assert_direction_helper")
-
-
-def main():
-    test_make_phase16_building_and_graph()
-    test_make_phase16_weather()
-    test_make_phase16_performance_input()
-    test_run_phase16_case_engine_smoke()
-    test_run_phase16_case_legacy_smoke()
-    test_assert_direction_helper()
-
-    print("Phase 16.0 validation harness tests passed.")
-
-
-if __name__ == "__main__":
-    main()

@@ -42,6 +42,25 @@ class ScenarioMetadata(CanonicalModel):
     tags: tuple[str, ...] = ()
 
 
+class SiteLocation(CanonicalModel):
+    """Physical site used by weather and solar calculations.
+
+    Coordinates use WGS84-style decimal degrees.  Ground albedo is explicit
+    because it contributes to plane-of-array irradiance on tilted surfaces.
+    """
+
+    latitude_deg: Annotated[
+        float, Field(ge=-90.0, le=90.0, allow_inf_nan=False)
+    ]
+    longitude_deg: Annotated[
+        float, Field(ge=-180.0, le=180.0, allow_inf_nan=False)
+    ]
+    elevation_m: Annotated[
+        float, Field(ge=-500.0, le=10_000.0, allow_inf_nan=False)
+    ]
+    ground_albedo_fraction: Fraction
+
+
 class SimulationPeriod(CanonicalModel):
     """Fixed timezone-aware simulation period."""
 

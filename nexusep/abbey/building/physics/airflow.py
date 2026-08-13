@@ -16,11 +16,12 @@ Agent-friendly rule:
     bridge inputs before entering this module.
 """
 
-from dataclasses import dataclass, replace
-from typing import Any, Dict, List, Optional
 import copy
 import math
+from dataclasses import dataclass, replace
+from typing import Any, Dict, List, Optional
 
+import numpy as np
 
 AIRFLOW_MODEL_FAMILY = "simplified_multizone_airflow"
 CO2_MODEL_FAMILY = "zone_level_mass_balance"
@@ -88,7 +89,9 @@ AIRFLOW_NETWORK_PRESSURE_SOLVE = "not_solved"
 
 DEFAULT_OUTDOOR_CO2_PPM = 420.0
 CO2_TIMESTEP_METHOD = "semi_implicit_mass_balance"
+CO2_BUILDING_TIMESTEP_METHOD = "coupled_implicit_mass_balance"
 CO2_GENERATION_PPM_FACTOR = 1000000.0
+DEFAULT_AIR_DENSITY_KG_M3 = 1.2
 
 AIR_CO2_MODEL_INTERFACE_MODE = "runner_facing_airflow_co2_model"
 DEFAULT_AIR_CO2_DT_MINUTES = 15.0
@@ -1260,6 +1263,40 @@ class ZoneOutdoorAirflowRecord:
 
         return sources
 
+    def flow_paths(self) -> List[Dict[str, Any]]:
+        """Return explicit directed supply/exhaust paths for audit output."""
+
+        paths = []
+        source_components = self.active_sources()
+
+        if self.outdoor_supply_m3_h > 0.0:
+            paths.append(
+                {
+                    "flow_id": self.zone_id + "__outdoor_supply",
+                    "from_node_id": "outdoor",
+                    "to_node_id": self.zone_id,
+                    "flow_m3_h": self.outdoor_supply_m3_h,
+                    "flow_m3_s": self.outdoor_supply_m3_s(),
+                    "source_components": source_components,
+                    "model": self.source,
+                }
+            )
+
+        if self.outdoor_exhaust_m3_h > 0.0:
+            paths.append(
+                {
+                    "flow_id": self.zone_id + "__outdoor_exhaust",
+                    "from_node_id": self.zone_id,
+                    "to_node_id": "outdoor",
+                    "flow_m3_h": self.outdoor_exhaust_m3_h,
+                    "flow_m3_s": self.outdoor_exhaust_m3_s(),
+                    "source_components": source_components,
+                    "model": self.source,
+                }
+            )
+
+        return paths
+
     def copy(self, **updates: Any) -> "ZoneOutdoorAirflowRecord":
         if not updates:
             return copy.deepcopy(self)
@@ -1278,6 +1315,7 @@ class ZoneOutdoorAirflowRecord:
             "mixing_exchange_m3_h": self.mixing_exchange_m3_h,
             "mixing_exchange_m3_s": self.mixing_exchange_m3_s(),
             "active_sources": self.active_sources(),
+            "flow_paths": self.flow_paths(),
             "source": self.source,
         }
 
@@ -1612,6 +1650,29 @@ class InterzoneAirflowRecord:
     def is_symmetric(self, tolerance_m3_h: float = 1e-9) -> bool:
         return abs(self.net_a_to_b_m3_h) <= float(tolerance_m3_h)
 
+    def flow_paths(self) -> List[Dict[str, Any]]:
+        """Return both directed legs of the symmetric mixing exchange."""
+
+        paths = []
+        for suffix, from_node_id, to_node_id, flow_m3_h in (
+            ("a_to_b", self.zone_a_id, self.zone_b_id, self.flow_a_to_b_m3_h),
+            ("b_to_a", self.zone_b_id, self.zone_a_id, self.flow_b_to_a_m3_h),
+        ):
+            if flow_m3_h <= 0.0:
+                continue
+            paths.append(
+                {
+                    "flow_id": self.link_id + "__" + suffix,
+                    "from_node_id": from_node_id,
+                    "to_node_id": to_node_id,
+                    "flow_m3_h": flow_m3_h,
+                    "flow_m3_s": flow_m3_h / 3600.0,
+                    "source_components": [self.source],
+                    "model": self.source,
+                }
+            )
+        return paths
+
     def to_dict(self) -> Dict[str, Any]:
         mixing_exchange_m3_h = max(
             self.flow_a_to_b_m3_h,
@@ -1649,6 +1710,7 @@ class InterzoneAirflowRecord:
             # Original net-flow diagnostic.
             "net_a_to_b_m3_h": self.net_a_to_b_m3_h,
             "is_symmetric": self.is_symmetric(),
+            "flow_paths": self.flow_paths(),
             "source": self.source,
         }
     
@@ -2005,6 +2067,66 @@ class BuildingAirflowNetwork:
 
         return out
 
+    def approximate_air_mass_residual_by_zone_kg_s(
+        self,
+        air_density_kg_m3: float = DEFAULT_AIR_DENSITY_KG_M3,
+    ) -> Dict[str, float]:
+        """Convert the prescribed volumetric residual to a mass residual."""
+
+        air_density_kg_m3 = _positive_float(
+            air_density_kg_m3,
+            "air_density_kg_m3",
+            "airflow_network",
+        )
+        return {
+            zone_id: net_flow_m3_h * air_density_kg_m3 / 3600.0
+            for zone_id, net_flow_m3_h in (
+                self.approximate_net_air_balance_by_zone_m3_h().items()
+            )
+        }
+
+    def flow_paths(self) -> List[Dict[str, Any]]:
+        """Return every non-zero prescribed flow with explicit endpoints."""
+
+        paths = []
+        for record in self.outdoor_airflows_by_zone.values():
+            paths.extend(record.flow_paths())
+        for record in self.interzone_airflow_records.values():
+            paths.extend(record.flow_paths())
+        return paths
+
+    def all_flow_paths_traceable(self) -> bool:
+        """Check that every emitted path names a source, destination, and model."""
+
+        for link_id, link in self.interzone_airflow_links.items():
+            if link.mixing_flow_m3_h <= 0.0:
+                continue
+            record = self.interzone_airflow_records.get(link_id)
+            if record is None:
+                return False
+            if (
+                record.zone_connection_id != link.zone_connection_id
+                or record.zone_a_id != link.zone_a_id
+                or record.zone_b_id != link.zone_b_id
+            ):
+                return False
+
+        if set(self.interzone_airflow_records) - set(self.interzone_airflow_links):
+            return False
+
+        for path in self.flow_paths():
+            if (
+                not path["flow_id"]
+                or not path["from_node_id"]
+                or not path["to_node_id"]
+            ):
+                return False
+            if path["from_node_id"] == path["to_node_id"]:
+                return False
+            if not path["model"] or path["flow_m3_h"] <= 0.0:
+                return False
+        return True
+
     def all_interzone_records_symmetric(
         self,
         tolerance_m3_h: float = 1e-9,
@@ -2031,8 +2153,15 @@ class BuildingAirflowNetwork:
             "interzone_mixing_by_zone_m3_h": self.interzone_mixing_by_zone_m3_h(),
             "interzone_mixing_by_zone_m3_s": self.interzone_mixing_by_zone_m3_s(),
             "total_air_exchange_by_zone_m3_h": self.total_air_exchange_by_zone_m3_h(),
-            "approximate_net_air_balance_by_zone_m3_h": self.approximate_net_air_balance_by_zone_m3_h(),
+            "approximate_net_air_balance_by_zone_m3_h": (
+                self.approximate_net_air_balance_by_zone_m3_h()
+            ),
+            "approximate_air_mass_residual_by_zone_kg_s": (
+                self.approximate_air_mass_residual_by_zone_kg_s()
+            ),
             "all_interzone_records_symmetric": self.all_interzone_records_symmetric(),
+            "all_flow_paths_traceable": self.all_flow_paths_traceable(),
+            "flow_paths": self.flow_paths(),
             "outdoor_airflows_by_zone": {
                 zone_id: record.to_dict()
                 for zone_id, record in self.outdoor_airflows_by_zone.items()
@@ -2267,6 +2396,7 @@ class ZoneCO2UpdateResult:
 
     air_volume_m3: float
     co2_generation_m3_s: float
+    generation_source: str = "unspecified"
 
     targets: List[CO2ConcentrationTarget] = None
 
@@ -2320,6 +2450,39 @@ class ZoneCO2UpdateResult:
             air_volume_m3=self.air_volume_m3,
         )
 
+        self.generation_source = str(self.generation_source).strip()
+        if not self.generation_source:
+            self.generation_source = "unspecified"
+
+    def storage_change_m3_s(self) -> float:
+        """CO2-equivalent volume storage rate represented by the ppm state."""
+
+        return (
+            self.air_volume_m3
+            * (self.new_co2_ppm - self.old_co2_ppm)
+            / CO2_GENERATION_PPM_FACTOR
+            / self.dt_seconds
+        )
+
+    def transport_rate_m3_s(self) -> float:
+        """Net CO2-equivalent volume rate entering through all airflow targets."""
+
+        return sum(
+            target.airflow_m3_s
+            * (target.co2_ppm - self.new_co2_ppm)
+            / CO2_GENERATION_PPM_FACTOR
+            for target in self.targets
+        )
+
+    def balance_residual_m3_s(self) -> float:
+        """Storage minus generation and airflow transport."""
+
+        return (
+            self.storage_change_m3_s()
+            - self.co2_generation_m3_s
+            - self.transport_rate_m3_s()
+        )
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "zone_id": self.zone_id,
@@ -2327,6 +2490,10 @@ class ZoneCO2UpdateResult:
             "new_co2_ppm": self.new_co2_ppm,
             "air_volume_m3": self.air_volume_m3,
             "co2_generation_m3_s": self.co2_generation_m3_s,
+            "generation_source": self.generation_source,
+            "storage_change_m3_s": self.storage_change_m3_s(),
+            "transport_rate_m3_s": self.transport_rate_m3_s(),
+            "balance_residual_m3_s": self.balance_residual_m3_s(),
             "dt_seconds": self.dt_seconds,
             "method": self.method,
             "targets": [
@@ -2381,12 +2548,30 @@ class BuildingCO2StepResult:
             for zone_id, state in self.updated_air_state.zone_states.items()
         }
 
+    def total_storage_change_m3_s(self) -> float:
+        return sum(result.storage_change_m3_s() for result in self.zone_results.values())
+
+    def total_generation_m3_s(self) -> float:
+        return sum(
+            result.co2_generation_m3_s for result in self.zone_results.values()
+        )
+
+    def total_transport_rate_m3_s(self) -> float:
+        return sum(result.transport_rate_m3_s() for result in self.zone_results.values())
+
+    def balance_residual_m3_s(self) -> float:
+        return sum(result.balance_residual_m3_s() for result in self.zone_results.values())
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "updated_air_state": self.updated_air_state.to_dict(),
             "co2_by_zone_ppm": self.co2_by_zone_ppm(),
             "dt_minutes": self.dt_minutes,
             "method": self.method,
+            "total_storage_change_m3_s": self.total_storage_change_m3_s(),
+            "total_generation_m3_s": self.total_generation_m3_s(),
+            "total_transport_rate_m3_s": self.total_transport_rate_m3_s(),
+            "balance_residual_m3_s": self.balance_residual_m3_s(),
             "zone_results": {
                 zone_id: result.to_dict()
                 for zone_id, result in self.zone_results.items()
@@ -2891,6 +3076,7 @@ def update_zone_co2_state(
         old_co2_ppm=zone_air_state.co2_ppm,
         targets=targets,
         co2_generation_m3_s=co2_generation_record.co2_generation_m3_s(),
+        generation_source=co2_generation_record.source,
         dt_seconds=dt_seconds,
     )
 
@@ -2921,7 +3107,9 @@ def step_building_co2_state(
     - BuildingCO2GenerationResult
     - WeatherState.outdoor_co2_ppm
 
-    Uses old-state concentrations for interzone mixing.
+    Outdoor exchange and generation are assembled with every interzone term in
+    one coupled backward-Euler system. This avoids the contaminant-mass drift
+    caused by updating zones independently from neighbour old states.
     """
 
     if not isinstance(air_state, BuildingAirState):
@@ -2946,33 +3134,88 @@ def step_building_co2_state(
         )
     )
 
+    dt_seconds = _positive_float(
+        float(dt_minutes) * 60.0,
+        "dt_seconds",
+        "building_co2_state",
+    )
+    zone_ids = air_state.zone_ids()
+    zone_index = {zone_id: index for index, zone_id in enumerate(zone_ids)}
+    coefficient_matrix = np.zeros((len(zone_ids), len(zone_ids)), dtype=float)
+    right_hand_side = np.zeros(len(zone_ids), dtype=float)
+    outdoor_exchange_by_zone_m3_s = airflow_network.outdoor_mixing_by_zone_m3_s()
+
+    for zone_id, index in zone_index.items():
+        zone_air_state = air_state.get_zone_state(zone_id)
+        generation = co2_generation_result.get_zone_record(zone_id)
+        storage_m3_s = zone_air_state.air_volume_m3 / dt_seconds
+        outdoor_flow_m3_s = outdoor_exchange_by_zone_m3_s.get(zone_id, 0.0)
+        coefficient_matrix[index, index] = storage_m3_s + outdoor_flow_m3_s
+        right_hand_side[index] = (
+            storage_m3_s * zone_air_state.co2_ppm
+            + outdoor_flow_m3_s * outdoor_co2_ppm
+            + generation.co2_generation_m3_s() * CO2_GENERATION_PPM_FACTOR
+        )
+
+    for link in airflow_network.interzone_airflow_links.values():
+        missing = {
+            link.zone_a_id,
+            link.zone_b_id,
+        } - set(zone_index)
+        if missing:
+            raise KeyError(
+                "Interzone airflow link "
+                + link.link_id
+                + " references zones missing from BuildingAirState: "
+                + str(sorted(missing))
+            )
+        a_index = zone_index[link.zone_a_id]
+        b_index = zone_index[link.zone_b_id]
+        flow_m3_s = link.mixing_flow_m3_s()
+        coefficient_matrix[a_index, a_index] += flow_m3_s
+        coefficient_matrix[b_index, b_index] += flow_m3_s
+        coefficient_matrix[a_index, b_index] -= flow_m3_s
+        coefficient_matrix[b_index, a_index] -= flow_m3_s
+
+    solved_co2_ppm = np.linalg.solve(coefficient_matrix, right_hand_side)
     updated_zone_states = {}
     zone_results = {}
 
-    outdoor_exchange_by_zone_m3_s = (
-        airflow_network.outdoor_mixing_by_zone_m3_s()
-    )
-
-    for zone_id in air_state.zone_ids():
+    for zone_id, index in zone_index.items():
         zone_air_state = air_state.get_zone_state(zone_id)
-
-        co2_generation_record = co2_generation_result.get_zone_record(zone_id)
-
-        interzone_targets = _make_interzone_co2_targets_for_zone(
+        generation = co2_generation_result.get_zone_record(zone_id)
+        targets = []
+        outdoor_flow_m3_s = outdoor_exchange_by_zone_m3_s.get(zone_id, 0.0)
+        if outdoor_flow_m3_s > 0.0:
+            targets.append(
+                CO2ConcentrationTarget(
+                    target_id="outdoor",
+                    target_type="outdoor_air",
+                    co2_ppm=outdoor_co2_ppm,
+                    airflow_m3_s=outdoor_flow_m3_s,
+                )
+            )
+        for link in airflow_network.interzone_links_for_zone(zone_id):
+            other_zone_id = link.other_zone_id(zone_id)
+            targets.append(
+                CO2ConcentrationTarget(
+                    target_id=other_zone_id,
+                    target_type="interzone_air",
+                    co2_ppm=float(solved_co2_ppm[zone_index[other_zone_id]]),
+                    airflow_m3_s=link.mixing_flow_m3_s(),
+                )
+            )
+        result = ZoneCO2UpdateResult(
             zone_id=zone_id,
-            air_state=air_state,
-            airflow_network=airflow_network,
+            old_co2_ppm=zone_air_state.co2_ppm,
+            new_co2_ppm=float(solved_co2_ppm[index]),
+            air_volume_m3=zone_air_state.air_volume_m3,
+            co2_generation_m3_s=generation.co2_generation_m3_s(),
+            generation_source=generation.source,
+            targets=targets,
+            dt_seconds=dt_seconds,
+            method=CO2_BUILDING_TIMESTEP_METHOD,
         )
-
-        result = update_zone_co2_state(
-            zone_air_state=zone_air_state,
-            co2_generation_record=co2_generation_record,
-            outdoor_co2_ppm=outdoor_co2_ppm,
-            outdoor_exchange_m3_s=outdoor_exchange_by_zone_m3_s.get(zone_id, 0.0),
-            interzone_targets=interzone_targets,
-            dt_minutes=dt_minutes,
-        )
-
         updated_zone_states[zone_id] = result.to_zone_air_state()
         zone_results[zone_id] = result
 
@@ -2984,7 +3227,7 @@ def step_building_co2_state(
         updated_air_state=updated_air_state,
         zone_results=zone_results,
         dt_minutes=dt_minutes,
-        method=CO2_TIMESTEP_METHOD,
+        method=CO2_BUILDING_TIMESTEP_METHOD,
     )
 
 def calculate_and_step_building_co2_state(
@@ -4383,6 +4626,9 @@ def check_airflow_network_mass_balance(
     if not airflow_network.all_interzone_records_symmetric(
         tolerance_m3_h=tolerance_m3_h
     ):
+        return False
+
+    if not airflow_network.all_flow_paths_traceable():
         return False
 
     return True

@@ -11,6 +11,7 @@ from nexusep.schema.common import (
     ExternalID,
     ScenarioMetadata,
     SimulationPeriod,
+    SiteLocation,
 )
 from nexusep.schema.geometry import Building, GeometryConfiguration
 from nexusep.schema.outputs import OutputConfiguration
@@ -48,6 +49,7 @@ class ScenarioV1(CanonicalModel):
     use_case: Literal["multizone_dwelling_v1"]
     scenario_id: ExternalID
     metadata: ScenarioMetadata
+    site: SiteLocation
     deterministic_seed: Annotated[int, Field(ge=0, le=4_294_967_295)]
     simulation_period: SimulationPeriod
     geometry_configuration: GeometryConfiguration

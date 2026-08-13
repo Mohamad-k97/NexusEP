@@ -94,6 +94,16 @@ DEFAULT_TOLERANCES: dict[str, QuantityTolerance] = {
         relative=0.0,
         rationale="canonical input mapping is structural conformance, not physical parity",
     ),
+    "thermal_balance_residual_w": QuantityTolerance(
+        absolute=1.0e-8,
+        relative=0.0,
+        rationale="backward-Euler heat balance should close near floating-point precision",
+    ),
+    "mass_balance_residual_kg_s": QuantityTolerance(
+        absolute=1.0e-12,
+        relative=0.0,
+        rationale="well-mixed constituent balances should close near floating-point precision",
+    ),
 }
 
 
@@ -299,6 +309,7 @@ def _comparison(
     rationale: str,
     timestep_index: int | None = None,
     entity_id: str | None = None,
+    compare_to_zero: bool = False,
 ) -> dict[str, object]:
     tolerance = DEFAULT_TOLERANCES.get(tolerance_name or "")
     absolute_difference: float | None = None
@@ -311,13 +322,27 @@ def _comparison(
     ):
         left = float(object_value)
         right = float(array_value)
-        absolute_difference = abs(left - right)
-        relative_difference = _relative_difference(left, right)
+        absolute_difference = (
+            max(abs(left), abs(right))
+            if compare_to_zero
+            else abs(left - right)
+        )
+        relative_difference = (
+            absolute_difference if compare_to_zero else _relative_difference(left, right)
+        )
         if not math.isfinite(left) or not math.isfinite(right):
             classification = "defect"
-        elif left == right:
+        elif compare_to_zero and absolute_difference == 0.0:
             classification = "exact_match"
-        elif tolerance is not None and math.isclose(
+        elif (
+            compare_to_zero
+            and tolerance is not None
+            and absolute_difference <= tolerance.absolute
+        ):
+            classification = "tolerance_match"
+        elif not compare_to_zero and left == right:
+            classification = "exact_match"
+        elif not compare_to_zero and tolerance is not None and math.isclose(
             left,
             right,
             abs_tol=tolerance.absolute,
@@ -400,10 +425,15 @@ def _initial_state_comparisons(
     rows.append(
         _comparison(
             scope="topology",
-            quantity="native_surface_graph",
-            object_value=object_execution.snapshot["native_topology"],
-            array_value=None,
-            rationale="the array backend has compiled UA values but no surface-graph kernel",
+            quantity="compiled_graph_connection_ids",
+            object_value=object_execution.snapshot["native_topology"][
+                "compiled_connection_ids"
+            ],
+            array_value=array_execution.snapshot["native_topology"][
+                "compiled_connection_ids"
+            ],
+            outside_tolerance="contract_violation",
+            rationale="both adapters must consume every deterministic compiled connection",
         )
     )
     return rows
@@ -435,7 +465,7 @@ def _normalized_weather(engine_name: str, trace: dict[str, Any]) -> dict[str, ob
         "timestamp": trace["timestamp"],
         "outdoor_temperature_c": weather["outdoor_temperature_C"],
         "relative_humidity_fraction": weather["outdoor_relative_humidity"],
-        "atmospheric_pressure_pa": None,
+        "atmospheric_pressure_pa": weather["atmospheric_pressure_pa"],
         "outdoor_co2_ppm": weather["outdoor_co2_ppm"],
         "wind_speed_m_s": weather["wind_speed_m_s"],
         "wind_direction_deg": weather["wind_direction_deg"],
@@ -475,7 +505,6 @@ def _normalized_occupants(engine_name: str, trace: dict[str, Any]) -> list[dict[
 def _normalized_controls(
     engine_name: str,
     trace: dict[str, Any],
-    scenario: CanonicalScenario,
 ) -> dict[str, dict[str, object]]:
     if engine_name == "object":
         return {
@@ -496,24 +525,12 @@ def _normalized_controls(
             }
             for zone_id, item in trace["controls"].items()
         }
-    zones = {item.zone_id: item for item in scenario.building.dwelling.zones}
     result = {}
     for zone_id, item in trace["controls"].items():
-        systems = {entry.system_type: entry for entry in zones[zone_id].systems}
-        heating_capacity = systems["heating"].max_heating_power_w or 0.0
-        cooling_capacity = systems["cooling"].max_cooling_power_w or 0.0
         result[zone_id] = {
             "hvac_mode": item["hvac_mode"],
-            "heating_power_fraction": (
-                item["max_heating_power_W"] / heating_capacity
-                if heating_capacity
-                else 0.0
-            ),
-            "cooling_power_fraction": (
-                item["max_cooling_power_W"] / cooling_capacity
-                if cooling_capacity
-                else 0.0
-            ),
+            "heating_power_fraction": item["command_heating_power_fraction"],
+            "cooling_power_fraction": item["command_cooling_power_fraction"],
             "ventilation_volume_flow_m3_s": item[
                 "mechanical_ventilation_flow_m3_s"
             ],
@@ -553,11 +570,7 @@ def _step_comparisons(
                     array_value=array_weather[quantity],
                     tolerance_name="canonical_input",
                     outside_tolerance="contract_violation",
-                    rationale=(
-                        "array pressure consumption is not implemented"
-                        if quantity == "atmospheric_pressure_pa"
-                        else "both engines must receive the same normalized weather"
-                    ),
+                    rationale="both engines must receive the same normalized weather",
                 )
             )
         rows.append(
@@ -571,10 +584,8 @@ def _step_comparisons(
                 rationale="occupant identities, locations, and presence are canonical inputs",
             )
         )
-        object_controls = _normalized_controls(
-            "object", object_trace, bundle.scenario
-        )
-        array_controls = _normalized_controls("array", array_trace, bundle.scenario)
+        object_controls = _normalized_controls("object", object_trace)
+        array_controls = _normalized_controls("array", array_trace)
         for zone_id in sorted(object_controls):
             for quantity in object_controls[zone_id]:
                 rows.append(
@@ -723,31 +734,46 @@ def _step_comparisons(
                     rationale="the invariant is evaluated independently in each backend",
                 )
             )
-    rows.extend(
+    residual_specs = (
         (
-            _comparison(
-                scope="conservation",
-                quantity="thermal_balance_residual",
-                object_value=None,
-                array_value=None,
-                rationale="neither canonical adapter exposes a comparable thermal residual",
-            ),
-            _comparison(
-                scope="conservation",
-                quantity="moisture_balance_residual",
-                object_value=None,
-                array_value=None,
-                rationale="neither canonical adapter exposes a comparable moisture residual",
-            ),
-            _comparison(
-                scope="conservation",
-                quantity="co2_mass_balance_residual",
-                object_value=None,
-                array_value=None,
-                rationale="neither canonical adapter exposes a comparable CO2 residual",
-            ),
-        )
+            "thermal_balance_residual_w",
+            "thermal_balance_residual_w",
+            "thermal_balance_residual_w",
+        ),
+        (
+            "moisture_balance_residual_kg_s",
+            "moisture_balance_residual_kg_s",
+            "mass_balance_residual_kg_s",
+        ),
+        (
+            "co2_mass_balance_residual_kg_s",
+            "co2_mass_balance_residual_kg_s",
+            "mass_balance_residual_kg_s",
+        ),
     )
+    for quantity, residual_key, tolerance_name in residual_specs:
+        object_max = max(
+            abs(step.debug.engine_fields["conservation_residuals"][residual_key])
+            for step in object_execution.run.steps
+            if step.debug is not None
+        )
+        array_max = max(
+            abs(step.debug.engine_fields["conservation_residuals"][residual_key])
+            for step in array_execution.run.steps
+            if step.debug is not None
+        )
+        rows.append(
+            _comparison(
+                scope="conservation",
+                quantity=quantity,
+                object_value=object_max,
+                array_value=array_max,
+                tolerance_name=tolerance_name,
+                outside_tolerance="defect",
+                compare_to_zero=True,
+                rationale="maximum absolute per-step residual in each engine must be near zero",
+            )
+        )
     return rows
 
 

@@ -1,0 +1,50 @@
+{
+  "governance_version": "1.0.0",
+  "validation_category": "verification_and_validation_planning",
+  "frozen_on": "2026-08-11",
+  "interval_policy": "Reports must label partial intervals by included components. A total prediction interval requires joint propagation of every applicable component and may not be replaced by a best-fit trace.",
+  "components": [
+    {
+      "name": "measurement",
+      "status": "pending",
+      "method": "Use source-specific sensor, meter, sampling, and missing-data uncertainty from the registered dataset manifest.",
+      "evidence": "No measurement series is used in the Phase 4.27 analytical RC fixture.",
+      "calibration_gate": "Block empirical fitting until variable-level measurement uncertainty or a documented conservative fallback is frozen."
+    },
+    {
+      "name": "weather_input",
+      "status": "pending",
+      "method": "Perturb aligned weather fields using registered source uncertainty while preserving radiation and temporal consistency.",
+      "evidence": "The RC sensitivity fixture uses prescribed deterministic forcing; no weather accuracy claim is made.",
+      "calibration_gate": "Block empirical credibility claims until weather/input uncertainty is propagated."
+    },
+    {
+      "name": "parameter",
+      "status": "quantified",
+      "method": "A deterministic 512-sample clipped-normal ensemble reports a 95 percent parameter-only temperature interval.",
+      "evidence": "artifacts/baseline/validation/thermal-rc-sensitivity-v1.json",
+      "calibration_gate": "Replace illustrative distributions with justified priors or fitted covariance before empirical reporting."
+    },
+    {
+      "name": "structural_model",
+      "status": "pending",
+      "method": "Compare supported model structures and analyze systematic residuals by regime.",
+      "evidence": "The one-node fixture verifies one declared reduced-order structure only.",
+      "calibration_gate": "Do not interpret parameter uncertainty as structural uncertainty."
+    },
+    {
+      "name": "numerical",
+      "status": "quantified",
+      "method": "Compare the 15-minute production timestep against a one-minute reference and report RMSE and maximum absolute temperature error.",
+      "evidence": "artifacts/baseline/validation/thermal-rc-sensitivity-v1.json",
+      "calibration_gate": "Repeat convergence analysis at every empirical study timestep."
+    },
+    {
+      "name": "stochastic_occupant",
+      "status": "not_applicable",
+      "method": "Use repeated fixed-seed ensembles and between-person variability intervals for occupant-enabled studies.",
+      "evidence": "The Phase 4.27 RC fixture contains deterministic scheduled gains and no stochastic occupant model.",
+      "calibration_gate": "Mandatory for occupant-enabled calibration; not applicable to this deterministic analytical fixture."
+    }
+  ]
+}

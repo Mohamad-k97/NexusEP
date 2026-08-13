@@ -1,0 +1,67 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "nsrdb-api-contract-2026",
+  "title": "NSRDB data downloads API documentation",
+  "version": "Documentation retrieved 2026-08-10; PSM v3/v4 endpoints",
+  "publisher": "National Laboratory of the Rockies",
+  "doi": {
+    "status": "unknown",
+    "value": null,
+    "absence_reason": "No dataset DOI is assigned on the API index page and no data query was performed."
+  },
+  "license": {
+    "name": "NLR developer network and NSRDB data-access terms",
+    "spdx_id": null,
+    "terms_url": "https://developer.nlr.gov/docs/solar/nsrdb/"
+  },
+  "download_url": "https://developer.nlr.gov/docs/solar/nsrdb/",
+  "retrieval_date": "2026-08-10",
+  "raw_files": [
+    {
+      "file_id": "nsrdb-api-docs",
+      "path": "data/raw/validation/nsrdb/nsrdb-api-docs.html",
+      "sha256": "e163a52a6f103b3a6f4b59c1e69b25ca469c0c20d61badca4fc6038ecdb2b07e",
+      "byte_size": 30460
+    }
+  ],
+  "units": {
+    "GHI": "W/m2",
+    "DNI": "W/m2",
+    "DHI": "W/m2"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_applicable",
+    "description": "Only API contract documentation was retrieved; no NSRDB values are included in this evidence bundle.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "End-to-end NSRDB data validation is not executed because it requires an API key and identifying request metadata.",
+    "No NSRDB raw data or derived data fixture is committed.",
+    "The parser contract is verified with an authored schema sample only and is not a scientific validation result."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-nsrdb-api-contract",
+      "description": "Check that the retrieved official page documents the PSM and three required solar-radiation components.",
+      "script_path": "scripts/validation_data/inspect_nsrdb_contract.py",
+      "script_sha256": "b62cdc7843cb9555ebaa9ca6107ff65adbdda318ab290211fd6c1c765686fa02",
+      "command": "uv run python scripts/validation_data/inspect_nsrdb_contract.py data/raw/validation/nsrdb/nsrdb-api-docs.html",
+      "input_raw_file_ids": [
+        "nsrdb-api-docs"
+      ],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Document the NSRDB ingestion contract and API-key gate",
+    "redistribution": "metadata_only",
+    "commercial_use": null,
+    "citation_required": true,
+    "notes": "No NSRDB data were retrieved. Resolve dataset-specific license and DOI metadata when an authenticated query is added."
+  },
+  "targeted_models": [
+    "WEATHER-1",
+    "SOLAR-1"
+  ]
+}

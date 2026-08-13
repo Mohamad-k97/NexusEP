@@ -75,13 +75,3 @@ def test_fast_action_scoring_matches_reference():
         print(diff)
 
         raise AssertionError("Fast action scoring does not match reference.")
-
-    print("Fast action scoring matches reference.")
-
-
-def main():
-    test_fast_action_scoring_matches_reference()
-
-
-if __name__ == "__main__":
-    main()

@@ -1,0 +1,293 @@
+{
+  "expected": {
+    "derived_fields": [
+      "direct_normal_radiation_w_m2",
+      "global_horizontal_radiation_w_m2"
+    ],
+    "missing_canonical_fields": [
+      "relative_humidity_fraction",
+      "atmospheric_pressure_pa",
+      "wind_direction_deg"
+    ],
+    "records": [
+      {
+        "atmospheric_pressure_pa": null,
+        "diffuse_horizontal_radiation_w_m2": 0.0,
+        "direct_normal_radiation_w_m2": 0.0,
+        "global_horizontal_radiation_w_m2": 0.0,
+        "outdoor_temperature_c": 1.81,
+        "relative_humidity_fraction": null,
+        "timestamp_utc": "2020-01-01T00:10:00+00:00",
+        "wind_direction_deg": null,
+        "wind_speed_m_s": 0.9
+      },
+      {
+        "atmospheric_pressure_pa": null,
+        "diffuse_horizontal_radiation_w_m2": 57.0,
+        "direct_normal_radiation_w_m2": 828.218531672278,
+        "global_horizontal_radiation_w_m2": 334.01,
+        "outdoor_temperature_c": 4.21,
+        "relative_humidity_fraction": null,
+        "timestamp_utc": "2020-01-01T10:10:00+00:00",
+        "wind_direction_deg": null,
+        "wind_speed_m_s": 0.21
+      },
+      {
+        "atmospheric_pressure_pa": null,
+        "diffuse_horizontal_radiation_w_m2": 59.0,
+        "direct_normal_radiation_w_m2": 849.2510754615445,
+        "global_horizontal_radiation_w_m2": 369.01,
+        "outdoor_temperature_c": 8.46,
+        "relative_humidity_fraction": null,
+        "timestamp_utc": "2020-01-01T12:10:00+00:00",
+        "wind_direction_deg": null,
+        "wind_speed_m_s": 0.69
+      },
+      {
+        "atmospheric_pressure_pa": null,
+        "diffuse_horizontal_radiation_w_m2": 0.0,
+        "direct_normal_radiation_w_m2": 0.0,
+        "global_horizontal_radiation_w_m2": 0.0,
+        "outdoor_temperature_c": 0.23,
+        "relative_humidity_fraction": null,
+        "timestamp_utc": "2020-01-02T00:10:00+00:00",
+        "wind_direction_deg": null,
+        "wind_speed_m_s": 0.41
+      },
+      {
+        "atmospheric_pressure_pa": null,
+        "diffuse_horizontal_radiation_w_m2": 0.0,
+        "direct_normal_radiation_w_m2": 0.0,
+        "global_horizontal_radiation_w_m2": 0.0,
+        "outdoor_temperature_c": 17.74,
+        "relative_humidity_fraction": null,
+        "timestamp_utc": "2020-06-21T00:10:00+00:00",
+        "wind_direction_deg": null,
+        "wind_speed_m_s": 0.97
+      },
+      {
+        "atmospheric_pressure_pa": null,
+        "diffuse_horizontal_radiation_w_m2": 230.0,
+        "direct_normal_radiation_w_m2": 731.7726975572757,
+        "global_horizontal_radiation_w_m2": 903.0,
+        "outdoor_temperature_c": 27.91,
+        "relative_humidity_fraction": null,
+        "timestamp_utc": "2020-06-21T12:10:00+00:00",
+        "wind_direction_deg": null,
+        "wind_speed_m_s": 0.34
+      }
+    ],
+    "source_timezone": "UTC",
+    "time_semantic": "instantaneous_sample"
+  },
+  "fixture_version": "1.0.0",
+  "source": "PVGIS 5.3 seriescalc",
+  "source_payload": {
+    "inputs": {
+      "location": {
+        "elevation": 250.0,
+        "latitude": 45.0,
+        "longitude": 8.0
+      },
+      "meteo_data": {
+        "horizon_db": null,
+        "meteo_db": "ERA5",
+        "radiation_db": "PVGIS-SARAH3",
+        "use_horizon": false,
+        "year_max": 2020,
+        "year_min": 2020
+      },
+      "mounting_system": {
+        "fixed": {
+          "azimuth": {
+            "optimal": false,
+            "value": 0
+          },
+          "slope": {
+            "optimal": false,
+            "value": 0
+          },
+          "type": "free-standing"
+        }
+      },
+      "pv_module": {
+        "peak_power": null,
+        "system_loss": null,
+        "technology": null
+      }
+    },
+    "meta": {
+      "inputs": {
+        "location": {
+          "description": "Selected location",
+          "variables": {
+            "elevation": {
+              "description": "Elevation",
+              "units": "m"
+            },
+            "latitude": {
+              "description": "Latitude",
+              "units": "decimal degree"
+            },
+            "longitude": {
+              "description": "Longitude",
+              "units": "decimal degree"
+            }
+          }
+        },
+        "meteo_data": {
+          "description": "Sources of meteorological data",
+          "variables": {
+            "horizon_db": {
+              "description": "Source of horizon data"
+            },
+            "meteo_db": {
+              "description": "Database used for meteorological variables other than solar radiation"
+            },
+            "radiation_db": {
+              "description": "Solar radiation database"
+            },
+            "use_horizon": {
+              "description": "Include horizon shadows"
+            },
+            "year_max": {
+              "description": "Last year of the calculations"
+            },
+            "year_min": {
+              "description": "First year of the calculations"
+            }
+          }
+        },
+        "mounting_system": {
+          "choices": "fixed, vertical_axis, inclined_axis, two_axis",
+          "description": "Mounting system",
+          "fields": {
+            "azimuth": {
+              "description": "Orientation (azimuth) angle of the (fixed) PV system (0 = S, 90 = W, -90 = E)",
+              "units": "degree"
+            },
+            "slope": {
+              "description": "Inclination angle from the horizontal plane",
+              "units": "degree"
+            }
+          }
+        },
+        "pv_module": {
+          "description": "PV module parameters",
+          "variables": {
+            "peak_power": {
+              "description": "Nominal (peak) power of the PV module",
+              "units": "kW"
+            },
+            "system_loss": {
+              "description": "Sum of system losses",
+              "units": "%"
+            },
+            "technology": {
+              "description": "PV technology"
+            }
+          }
+        }
+      },
+      "outputs": {
+        "hourly": {
+          "timestamp": "hourly averages",
+          "type": "time series",
+          "variables": {
+            "Gb(i)": {
+              "description": "Beam (direct) irradiance on the inclined plane (plane of the array)",
+              "units": "W/m2"
+            },
+            "Gd(i)": {
+              "description": "Diffuse irradiance on the inclined plane (plane of the array)",
+              "units": "W/m2"
+            },
+            "Gr(i)": {
+              "description": "Reflected irradiance on the inclined plane (plane of the array)",
+              "units": "W/m2"
+            },
+            "H_sun": {
+              "description": "Sun height",
+              "units": "degree"
+            },
+            "Int": {
+              "description": "1 means solar radiation values are reconstructed"
+            },
+            "T2m": {
+              "description": "2-m air temperature",
+              "units": "degree Celsius"
+            },
+            "WS10m": {
+              "description": "10-m total wind speed",
+              "units": "m/s"
+            }
+          }
+        }
+      }
+    },
+    "outputs": {
+      "hourly": [
+        {
+          "Gb(i)": 0.0,
+          "Gd(i)": 0.0,
+          "Gr(i)": 0.0,
+          "H_sun": 0.0,
+          "Int": 0.0,
+          "T2m": 1.81,
+          "WS10m": 0.9,
+          "time": "20200101:0010"
+        },
+        {
+          "Gb(i)": 277.01,
+          "Gd(i)": 57.0,
+          "Gr(i)": 0.0,
+          "H_sun": 19.54,
+          "Int": 0.0,
+          "T2m": 4.21,
+          "WS10m": 0.21,
+          "time": "20200101:1010"
+        },
+        {
+          "Gb(i)": 310.01,
+          "Gd(i)": 59.0,
+          "Gr(i)": 0.0,
+          "H_sun": 21.41,
+          "Int": 0.0,
+          "T2m": 8.46,
+          "WS10m": 0.69,
+          "time": "20200101:1210"
+        },
+        {
+          "Gb(i)": 0.0,
+          "Gd(i)": 0.0,
+          "Gr(i)": 0.0,
+          "H_sun": 0.0,
+          "Int": 0.0,
+          "T2m": 0.23,
+          "WS10m": 0.41,
+          "time": "20200102:0010"
+        },
+        {
+          "Gb(i)": 0.0,
+          "Gd(i)": 0.0,
+          "Gr(i)": 0.0,
+          "H_sun": 0.0,
+          "Int": 0.0,
+          "T2m": 17.74,
+          "WS10m": 0.97,
+          "time": "20200621:0010"
+        },
+        {
+          "Gb(i)": 673.0,
+          "Gd(i)": 230.0,
+          "Gr(i)": 0.0,
+          "H_sun": 66.88,
+          "Int": 0.0,
+          "T2m": 27.91,
+          "WS10m": 0.34,
+          "time": "20200621:1210"
+        }
+      ]
+    }
+  }
+}

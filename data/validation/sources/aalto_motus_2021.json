@@ -1,0 +1,62 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "aalto-motus-1-0-metadata",
+  "title": "Motus: higher-order Ambisonic room impulse responses and 3D models with varying furniture",
+  "version": "1.0",
+  "publisher": "Zenodo / Aalto Acoustics Lab",
+  "doi": {
+    "status": "assigned",
+    "value": "10.5281/zenodo.4923187",
+    "absence_reason": null
+  },
+  "license": {
+    "name": "Creative Commons Attribution 4.0 International",
+    "spdx_id": "CC-BY-4.0",
+    "terms_url": "https://creativecommons.org/licenses/by/4.0/"
+  },
+  "download_url": "https://zenodo.org/records/4923187",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "motus-zenodo-record-json",
+      "path": "data/raw/validation/aalto-motus-2021/zenodo-record.json",
+      "sha256": "fc78b8bca4d563aacfbeb2f24b41ca3c29db6b11194f283e8980a5f819df1bf8",
+      "byte_size": 7911
+    }
+  ],
+  "units": {
+    "metadata": "not applicable",
+    "future_room_impulse_response": "digital signal samples with sampling and Ambisonic conventions declared by the dataset files"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "The registered Zenodo record does not provide a channel-level uncertainty model suitable for NexusEP comparison.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "Only the 7,911-byte Zenodo metadata record was downloaded; none of the seven dataset archives was acquired.",
+    "The Zenodo inventory totals 63,649,043,963 bytes and supplies MD5 rather than SHA-256 checksums for the archives; NexusEP must record local SHA-256 after any future download.",
+    "Motus contains 3,320 room impulse responses from 830 furniture configurations and four source-receiver configurations in one room; it is not evidence for generic façade or interzone transmission loss.",
+    "NexusEP has no impulse-response, frequency-dependent absorption, reflection, or reverberation model, so Motus is scientifically mismatched to ACOUST-0."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-motus-metadata",
+      "description": "Verify DOI, version, CC BY 4.0 license, seven-file inventory, total byte size, and metadata checksum without downloading the dataset archives.",
+      "script_path": "scripts/validation_data/inspect_future_acoustic_references.py",
+      "script_sha256": "daa8df48f9a604ecac5f22cc75e84f0dfdb0c091431d6df53302645603d4adbd",
+      "command": "uv run python scripts/validation_data/inspect_future_acoustic_references.py motus data/raw/validation/aalto-motus-2021/zenodo-record.json",
+      "input_raw_file_ids": ["motus-zenodo-record-json"],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Future empirical validation of an implemented room-impulse-response or reverberation model.",
+    "redistribution": "metadata_only",
+    "commercial_use": true,
+    "citation_required": true,
+    "notes": "Do not ingest the 63.6 GB dataset or claim comparison until the relevant NexusEP acoustic state, outputs, metrics, and resource budget are approved."
+  },
+  "targeted_models": ["ACOUST-0"]
+}

@@ -8,6 +8,12 @@
     "scenario_kind": "validated",
     "tags": ["canonical", "validation", "two-zone"]
   },
+  "site": {
+    "latitude_deg": 45.4064,
+    "longitude_deg": 11.8768,
+    "elevation_m": 12.0,
+    "ground_albedo_fraction": 0.2
+  },
   "deterministic_seed": 20260806,
   "simulation_period": {
     "start_datetime": "2026-01-15T00:00:00+01:00",

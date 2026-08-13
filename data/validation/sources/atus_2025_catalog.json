@@ -1,0 +1,61 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "atus-2025-catalog",
+  "title": "American Time Use Survey public-data catalog record",
+  "version": "2025 public-use release catalog record retrieved 2026-08-11",
+  "publisher": "U.S. Bureau of Labor Statistics via Data.gov",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "The public-data catalog record does not assign a DOI."
+  },
+  "license": {
+    "name": "United States government work / CC0 catalog designation",
+    "spdx_id": "CC0-1.0",
+    "terms_url": "https://www.bls.gov/opub/copyright-information.htm"
+  },
+  "download_url": "https://catalog.data.gov/dataset/american-time-use-survey",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "atus-data-gov-record",
+      "path": "data/raw/validation/atus-2025/data-gov-record.html",
+      "sha256": "1f682aeb8d00ef88b8f35fa0824a8f8d71453a0386217002c3cfe5f97c8b0d31",
+      "byte_size": 113314
+    }
+  ],
+  "units": {
+    "catalog_metadata": "not applicable",
+    "intended_diary_start_and_stop": "local clock time in the public-use activity file"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "No microdata, replicate weights, or sampling-error calculation was registered in this metadata-only record.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "The 2025 public-use activity, respondent, roster, and replicate-weight files were not downloaded because the automated BLS request was rejected.",
+    "ATUS is a U.S. population survey and cannot establish deterministic truth for an individual NexusEP household.",
+    "Activity-code, location-code, survey-weight, weekday/weekend, and household-stratum mappings must be frozen before calibration."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-atus-catalog",
+      "description": "Checksum the public catalog page while leaving microdata acquisition and weighted preprocessing gated.",
+      "script_path": "scripts/validation_data/inspect_daylight_occupant_references.py",
+      "script_sha256": "00ba657f363e9b1618a92c35c9cfa3dbada65a33e1bb2959453c48ab7c15578d",
+      "command": "uv run python scripts/validation_data/inspect_daylight_occupant_references.py atus-2025-catalog data/raw/validation/atus-2025/data-gov-record.html",
+      "input_raw_file_ids": ["atus-data-gov-record"],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Plan population-prior calibration for time at home, sleep, meals, and household activities.",
+    "redistribution": "metadata_only",
+    "commercial_use": true,
+    "citation_required": true,
+    "notes": "Use survey weights and report population distributions; do not label survey priors as household truth."
+  },
+  "targeted_models": ["OCC-1"]
+}

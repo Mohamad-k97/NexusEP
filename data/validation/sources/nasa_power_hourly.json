@@ -1,0 +1,80 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "nasa-power-hourly-v2.9.8",
+  "title": "NASA POWER source-native-resolution hourly point data",
+  "version": "POWER Hourly API v2.9.8; 2020-01-01 through 2020-01-02 UTC",
+  "publisher": "NASA Langley Research Center POWER Project",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "The API response does not assign a DOI to this point query."
+  },
+  "license": {
+    "name": "NASA open science data policy",
+    "spdx_id": "CC0-1.0",
+    "terms_url": "https://science.data.nasa.gov/about/license"
+  },
+  "download_url": "https://power.larc.nasa.gov/api/temporal/hourly/point?parameters=T2M,RH2M,PS,WS10M,WD10M,ALLSKY_SFC_SW_DWN,ALLSKY_SFC_SW_DNI,ALLSKY_SFC_SW_DIFF&community=SB&longitude=8&latitude=45&start=20200101&end=20200102&format=JSON&time-standard=UTC",
+  "retrieval_date": "2026-08-10",
+  "raw_files": [
+    {
+      "file_id": "nasa-power-45n-8e-20200101-02-utc",
+      "path": "data/raw/validation/nasa-power/power-45n-8e-20200101-02-utc.json",
+      "sha256": "035e08a5b8eb0ee9ad381ccf734965776d626b48a0f688f2a447fa36707e63e8",
+      "byte_size": 8178
+    }
+  ],
+  "units": {
+    "T2M": "degree Celsius",
+    "RH2M": "percent converted to fraction",
+    "PS": "kPa converted to Pa",
+    "WS10M": "m/s",
+    "WD10M": "degree clockwise from north",
+    "ALLSKY_SFC_SW_DWN": "W/m2",
+    "ALLSKY_SFC_SW_DNI": "W/m2",
+    "ALLSKY_SFC_SW_DIFF": "W/m2"
+  },
+  "timezone": "UTC",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "The API response does not embed per-value uncertainty; POWER offers a separate parameter uncertainty viewer.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "POWER combines satellite observations and assimilation/reanalysis model products.",
+    "The archive can be revised by bias corrections, model updates, and error fixes, so the raw response checksum is required.",
+    "The API defaults to Local Solar Time unless UTC is requested explicitly.",
+    "Satellite and reanalysis values are forcing-plausibility evidence rather than exact ground truth."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "reduce-nasa-power-hourly",
+      "description": "Select representative raw rows and record normalized fields, unit conversions, missing masks, and UTC semantics.",
+      "script_path": "scripts/validation_data/build_weather_fixture.py",
+      "script_sha256": "51073109de7fe21649fae1654f40b07b1226fd84215f8afb8b447feb8559fac2",
+      "command": "uv run python scripts/validation_data/build_weather_fixture.py nasa_power data/raw/validation/nasa-power/power-45n-8e-20200101-02-utc.json data/validation/fixtures/nasa_power_hourly_sample.json",
+      "input_raw_file_ids": [
+        "nasa-power-45n-8e-20200101-02-utc"
+      ],
+      "output_fixtures": [
+        {
+          "file_id": "nasa-power-hourly-sample",
+          "path": "data/validation/fixtures/nasa_power_hourly_sample.json",
+          "sha256": "ea506fd64df8cb433a928a2c2bcb17c99ac12d62d43ac410dbf186b12c0a6d29",
+          "byte_size": 5010
+        }
+      ]
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Weather-ingestion verification and forcing-plausibility checks",
+    "redistribution": "permitted",
+    "commercial_use": true,
+    "citation_required": false,
+    "notes": "NASA encourages citation; the source response contains no restrictive notice and is treated under NASA's science-data CC0 default."
+  },
+  "targeted_models": [
+    "WEATHER-1",
+    "SOLAR-1"
+  ]
+}

@@ -86,22 +86,17 @@ def test_initial_graph_inputs_occupancy_and_repeat_runs_match(report) -> None:
 def test_known_deviations_remain_explicit_and_no_defect_is_hidden(report) -> None:
     counts = report["classification_counts"]
     assert counts == {
-        "contract_violation": 11,
-        "exact_match": 165,
+        "exact_match": 181,
         "expected_model_difference": 22,
-        "missing_feature": 8,
-        "tolerance_match": 2,
+        "tolerance_match": 5,
     }
     comparisons = report["comparisons"]
     assert not any(item["classification"] == "defect" for item in comparisons)
+    assert not any(
+        item["classification"] == "contract_violation" for item in comparisons
+    )
     assert {
         item["quantity"]
         for item in comparisons
         if item["classification"] == "missing_feature"
-    } >= {
-        "atmospheric_pressure_pa",
-        "native_surface_graph",
-        "thermal_balance_residual",
-        "moisture_balance_residual",
-        "co2_mass_balance_residual",
-    }
+    } == set()

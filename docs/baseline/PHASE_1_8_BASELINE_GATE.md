@@ -1,5 +1,7 @@
 # Phase 1.8 — published baseline and architecture gate
 
+Validation category: **verification**
+
 ## Deliverables
 
 | Deliverable | Location |
@@ -39,4 +41,3 @@ before the final gate can be marked passed.
 
 Protected `.spyproject` files, the local ABBEY config, and all four root
 CSV/NPZ hashes remained unchanged throughout Phase 1.4–1.8.
-

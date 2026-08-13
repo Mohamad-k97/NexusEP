@@ -1,0 +1,77 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "nrel-spa-2008",
+  "title": "Solar Position Algorithm for Solar Radiation Applications",
+  "version": "NREL/TP-560-34302, revised January 2008; C tester updated by NLR",
+  "publisher": "National Laboratory of the Rockies (formerly NREL)",
+  "doi": {
+    "status": "assigned",
+    "value": "10.2172/15003974",
+    "absence_reason": null
+  },
+  "license": {
+    "name": "NLR SPA internal noncommercial software notice",
+    "spdx_id": null,
+    "terms_url": "https://midcdmz.nlr.gov/spa/"
+  },
+  "download_url": "https://midcdmz.nlr.gov/spa/",
+  "retrieval_date": "2026-08-10",
+  "raw_files": [
+    {
+      "file_id": "nrel-spa-header",
+      "path": "data/raw/validation/nrel-spa/spa.h",
+      "sha256": "b8893f79dac111c9f8145e56f9bf033ea8288945fe7a91efc1fa89d366d4dca5",
+      "byte_size": 11117
+    },
+    {
+      "file_id": "nrel-spa-tester",
+      "path": "data/raw/validation/nrel-spa/spa_tester.c",
+      "sha256": "5a39f7e96334439d18de33bea3e801da6f1e3767369e230851382fa91605ca73",
+      "byte_size": 3855
+    }
+  ],
+  "units": {
+    "zenith": "degree",
+    "azimuth": "degree clockwise from true north",
+    "incidence": "degree",
+    "pressure": "millibar in the NLR input contract"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "reported",
+    "description": "The publisher claims approximately plus or minus 0.0003 degree algorithm uncertainty for zenith and azimuth over years -2000 to 6000.",
+    "by_variable": {
+      "zenith": "+/-0.0003 degree",
+      "azimuth": "+/-0.0003 degree"
+    }
+  },
+  "known_gaps": [
+    "The C implementation was not downloaded because it requires form submission and acceptance of non-redistribution terms.",
+    "The publisher states that the software is not guaranteed across platforms.",
+    "NexusEP uses pvlib's independent Python SPA implementation; the NLR source remains local-only corroborating material."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-nrel-spa-contract",
+      "description": "Check the locally held header and tester for the declared inputs and published scalar reference outputs without redistributing source or derived fixtures.",
+      "script_path": "scripts/validation_data/inspect_nrel_spa_contract.py",
+      "script_sha256": "2627259dd7556bc25f7f34b20714f7106919ebb5753accfb524797b16303e2fc",
+      "command": "uv run python scripts/validation_data/inspect_nrel_spa_contract.py data/raw/validation/nrel-spa/spa.h data/raw/validation/nrel-spa/spa_tester.c",
+      "input_raw_file_ids": [
+        "nrel-spa-header",
+        "nrel-spa-tester"
+      ],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Internal, noncommercial analytical verification of solar position",
+    "redistribution": "metadata_only",
+    "commercial_use": false,
+    "citation_required": true,
+    "notes": "Do not commit or redistribute the NLR SPA source. The notice must remain accessible to application users when the software itself is used."
+  },
+  "targeted_models": [
+    "SOLAR-1"
+  ]
+}

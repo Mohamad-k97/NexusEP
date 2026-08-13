@@ -9,7 +9,6 @@ from typing import Any, Dict, List, Optional, Union
 import pandas as pd
 
 from nexusep.abbey.agents.location import OccupantLocation, SpaceAssignment
-from nexusep.abbey.agents.location import OccupantLocation, SpaceAssignment
 from nexusep.abbey.agents.states import (
     PersonState,
     DwellingObservation,
@@ -113,6 +112,7 @@ class SimulationLogger:
         self._record_zones(
             clock=clock,
             location=location,
+            locations=locations,
             observation=observation,
             systems=systems,
         )
@@ -121,14 +121,19 @@ class SimulationLogger:
         self,
         clock: SimulationClock,
         location: OccupantLocation,
+        locations: Optional[Dict[str, OccupantLocation]],
         observation: DwellingObservation,
         systems: SystemState,
     ) -> None:
+        effective_locations = locations or {location.occupant_id: location}
         for zone_id, zone in observation.zone_observations.items():
-            occupied_person_ids = []
+            occupied_person_ids = sorted(
+                occupant_id
+                for occupant_id, occupant_location in effective_locations.items()
+                if occupant_location.is_home
+                and occupant_location.current_space_id == zone_id
+            )
             zone_controls = systems.get_space_controls(zone_id)
-            if location.is_home and location.current_space_id == zone_id:
-                occupied_person_ids.append(location.occupant_id)
                 
             self.zone_records.append(
                 {

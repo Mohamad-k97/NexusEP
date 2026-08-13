@@ -1,0 +1,61 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "bre-idmp-2001-metadata",
+  "title": "BRE-IDMP dataset publication metadata: reliable datasets for lighting programs",
+  "version": "Crossref metadata retrieved 2026-08-11",
+  "publisher": "SAGE Publications / Lighting Research and Technology",
+  "doi": {
+    "status": "assigned",
+    "value": "10.1177/136578280103300209",
+    "absence_reason": null
+  },
+  "license": {
+    "name": "Reuse license for the underlying BRE-IDMP files not established",
+    "spdx_id": null,
+    "terms_url": "https://journals.sagepub.com/doi/10.1177/136578280103300209"
+  },
+  "download_url": "https://api.crossref.org/works/10.1177/136578280103300209",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "bre-idmp-crossref-metadata",
+      "path": "data/raw/validation/bre-idmp-2001/crossref.json",
+      "sha256": "b1a446fda3475f5cca3232d39fa8f9c9a333f6e368e7783afdc1f65a8da42747",
+      "byte_size": 5815
+    }
+  ],
+  "units": {
+    "publication_metadata": "not applicable",
+    "intended_internal_illuminance": "lux"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "The registered Crossref metadata does not contain the measurement uncertainties of the BRE-IDMP series.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "No measured-sky or internal-illuminance file was downloaded.",
+    "The current download location, file checksums, sensor metadata, and reusable-data license remain unresolved.",
+    "No BRE-IDMP empirical result may be claimed from bibliographic metadata."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-bre-idmp-metadata",
+      "description": "Parse and checksum the retrieved Crossref record without treating it as measured evidence.",
+      "script_path": "scripts/validation_data/inspect_daylight_occupant_references.py",
+      "script_sha256": "00ba657f363e9b1618a92c35c9cfa3dbada65a33e1bb2959453c48ab7c15578d",
+      "command": "uv run python scripts/validation_data/inspect_daylight_occupant_references.py bre-idmp-2001-metadata data/raw/validation/bre-idmp-2001/crossref.json",
+      "input_raw_file_ids": ["bre-idmp-crossref-metadata"],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Bibliographic provenance and a gate for later measured daylight validation.",
+    "redistribution": "metadata_only",
+    "commercial_use": null,
+    "citation_required": true,
+    "notes": "Underlying measurement data must not be acquired or redistributed until its license is confirmed."
+  },
+  "targeted_models": ["DAYLIGHT-1"]
+}

@@ -118,7 +118,10 @@ def test_weather_is_mapped_to_backend_native_units(adapter_case) -> None:
     else:
         assert trace["weather"]["outdoor_temperature_C"] == weather.outdoor_temperature_c
         assert trace["weather"]["outdoor_relative_humidity"] == weather.relative_humidity_fraction
-        assert any(
+        assert trace["weather"]["atmospheric_pressure_pa"] == (
+            weather.atmospheric_pressure_pa
+        )
+        assert not any(
             item.code == "array_engine_unsupported_weather_fields"
             for item in result.warnings
         )
@@ -175,7 +178,22 @@ def test_control_unit_conversions_are_explicit(adapter_case) -> None:
                 command.ventilation_volume_flow_m3_s
             )
             assert native["max_heating_power_W"] == pytest.approx(
-                heating.max_heating_power_w * command.heating_power_fraction
+                heating.max_heating_power_w
+            )
+            assert native["command_heating_power_fraction"] == pytest.approx(
+                command.heating_power_fraction
+            )
+            availability = next(
+                item
+                for item in step.system_availability
+                if item.system_id == heating.system_id
+            )
+            assert native["heating_power_W"] == pytest.approx(
+                heating.max_heating_power_w
+                * availability.capacity_fraction
+                * command.heating_power_fraction
+                if command.heating_on
+                else 0.0
             )
 
 

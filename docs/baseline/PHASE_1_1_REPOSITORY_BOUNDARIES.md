@@ -1,5 +1,7 @@
 # Phase 1.1 — repository boundaries
 
+Validation category: **verification** (repository provenance only)
+
 The repository now uses these roles:
 
 | Path | Role |

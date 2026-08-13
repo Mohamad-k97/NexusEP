@@ -1,5 +1,8 @@
 # Phase 1.7 — array-runner benchmark
 
+Validation category: **verification** for reproducibility checks; timings are
+performance characterization, not model validation.
+
 The surviving Phase 18.20 scenario has 8,760 hourly timesteps, one building,
 one dwelling, five zones, four people, five systems, and seven actions.
 Thermal, airflow, CO2, moisture, and daylight kernels are enabled; acoustics is
@@ -51,4 +54,3 @@ The existing Phase 18.21 cProfile artifacts are linked and hashed in the JSON
 report. Their top cumulative paths include `run_array_timestep`,
 `run_array_timestep_arrays`, action scoring, person dynamics, execution, and
 daylight.
-

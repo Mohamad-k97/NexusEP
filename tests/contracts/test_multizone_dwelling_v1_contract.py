@@ -93,7 +93,7 @@ def test_schema_numeric_inputs_and_unit_registry_are_bijective(
         if field["direction"] == "input"
     }
 
-    assert len(schema_fields) == 52
+    assert len(schema_fields) == 56
     assert schema_fields.keys() == registered_inputs.keys()
     for path, definition in schema_fields.items():
         registered = registered_inputs[path]

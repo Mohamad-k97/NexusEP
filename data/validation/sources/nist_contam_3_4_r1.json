@@ -1,0 +1,68 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "nist-contam-3.4-r1",
+  "title": "CONTAM 3.4 User Guide and Program Documentation",
+  "version": "NIST Technical Note 1887 Revision 1, August 2020",
+  "publisher": "National Institute of Standards and Technology",
+  "doi": {
+    "status": "assigned",
+    "value": "10.6028/NIST.TN.1887r1",
+    "absence_reason": null
+  },
+  "license": {
+    "name": "United States government work; CONTAM public-domain documentation",
+    "spdx_id": null,
+    "terms_url": "https://www.nist.gov/services-resources/software/contam"
+  },
+  "download_url": "https://nvlpubs.nist.gov/nistpubs/TechnicalNotes/NIST.TN.1887r1.pdf",
+  "retrieval_date": "2026-08-10",
+  "raw_files": [
+    {
+      "file_id": "nist-contam-user-guide",
+      "path": "data/raw/validation/nist-contam/nist-tn-1887r1-contam.pdf",
+      "sha256": "ccdca593a0b30da45bca32cadea73ba709212b08765e2b2247a36dc6d495be30",
+      "byte_size": 6985102
+    }
+  ],
+  "units": {
+    "airflow": "kilogram per second or cubic metre per second as declared by the report",
+    "contaminant_concentration": "mass fraction or user-selected display concentration",
+    "pressure_difference": "pascal",
+    "time": "second"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_applicable",
+    "description": "The registered material documents equations, numerical methods, and software behavior rather than measured validation data.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "CONTAM supports pressure, wind, buoyancy, fans, ducts, and directional flow paths that the NexusEP prescribed-flow model does not solve.",
+    "No CONTAM project result is registered in this phase, so no comparative-validation result is claimed.",
+    "A future comparison must align volumes, prescribed flows, source terms, initial concentrations, and integration settings before calibration is considered."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-nist-contam-report",
+      "description": "Verify the exact public NIST CONTAM user-guide PDF by signature, byte size, and SHA-256 without creating a derived dataset.",
+      "script_path": "scripts/validation_data/inspect_nist_contam_reference.py",
+      "script_sha256": "b9d525b63a63d92b554e3315d63c3be03df78f2badebb755c99b8371880122b6",
+      "command": "uv run python scripts/validation_data/inspect_nist_contam_reference.py contam data/raw/validation/nist-contam/nist-tn-1887r1-contam.pdf",
+      "input_raw_file_ids": [
+        "nist-contam-user-guide"
+      ],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Equation verification and scoped comparative-validation planning for airflow and contaminant transport",
+    "redistribution": "permitted",
+    "commercial_use": true,
+    "citation_required": true,
+    "notes": "The source is a United States government publication and CONTAM is public-domain software. NexusEP still requires source attribution for scientific traceability."
+  },
+  "targeted_models": [
+    "AIRFLOW-1",
+    "CO2-1"
+  ]
+}

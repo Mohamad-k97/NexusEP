@@ -41,17 +41,19 @@ and maps canonical per-service availability and controls into them. Carrier
 IDs and numeric indices never enter required output rows.
 
 Before every kernel call, the adapter writes prior state, occupant location,
-system availability, and control values by private array-column constants. It
-decodes zone/system rows immediately after execution. Array mutation and
-column constants remain internal to `ArrayEngineAdapter`.
+system availability, and control values by private array-column constants.
+Compiled maximum capacities remain immutable design data; command and
+availability fractions determine separate per-step delivered-power arrays.
+The adapter decodes zone/system rows immediately after execution. Array
+mutation and column constants remain internal to `ArrayEngineAdapter`.
 
 Current experimental limitations are explicit errors or warnings:
 
 - externally supplied action events and non-occupant internal gains are
   rejected because the current timestep kernel has no injection boundary;
-- canonical pressure is validated but not consumed by the array kernel;
-- compiled surface topology is reduced to deterministic envelope/interzone UA
-  values because no surface-graph array kernel exists;
+- canonical pressure is encoded and consumed by array psychrometric conversions;
+- compiled surface topology is consumed deterministically and reduced to
+  explicit envelope/interzone UA and capacity coefficients before execution;
 - window pressure-flow and ventilation fan electrical power are explicitly
   zero because canonical v1 lacks the required coefficients.
 

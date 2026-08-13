@@ -7,7 +7,7 @@ Phase 3.1:
 """
 
 from dataclasses import dataclass, replace
-from datetime import datetime as DateTime
+from datetime import datetime as DateTime, timedelta, timezone
 from typing import Any, Dict, Optional, List
 import copy
 import os
@@ -184,6 +184,14 @@ class WeatherState:
     relative_humidity_percent: Optional[float] = None
     atmospheric_pressure_pa: Optional[float] = None
 
+    # Solar geometry is calculated once by the canonical adapter.  Legacy
+    # callers may omit it and continue through the explicitly labelled
+    # compatibility path.
+    solar_zenith_deg: Optional[float] = None
+    solar_azimuth_deg: Optional[float] = None
+    solar_altitude_deg: Optional[float] = None
+    ground_albedo_fraction: float = 0.0
+
     def __post_init__(self) -> None:
         self.datetime = _normalize_datetime(self.datetime)
 
@@ -246,6 +254,20 @@ class WeatherState:
                 "atmospheric_pressure_pa",
             )
 
+        if self.solar_zenith_deg is not None:
+            self.solar_zenith_deg = _clamp(self.solar_zenith_deg, 0.0, 180.0)
+        if self.solar_azimuth_deg is not None:
+            self.solar_azimuth_deg = normalize_orientation_deg(
+                self.solar_azimuth_deg
+            )
+        if self.solar_altitude_deg is not None:
+            self.solar_altitude_deg = _clamp(
+                self.solar_altitude_deg, -90.0, 90.0
+            )
+        self.ground_albedo_fraction = _clamp(
+            self.ground_albedo_fraction, 0.0, 1.0
+        )
+
     def copy(self, **updates: Any) -> "WeatherState":
         if not updates:
             return copy.deepcopy(self)
@@ -267,6 +289,10 @@ class WeatherState:
             "outdoor_noise_db": self.outdoor_noise_db,
             "relative_humidity_percent": self.relative_humidity_percent,
             "atmospheric_pressure_pa": self.atmospheric_pressure_pa,
+            "solar_zenith_deg": self.solar_zenith_deg,
+            "solar_azimuth_deg": self.solar_azimuth_deg,
+            "solar_altitude_deg": self.solar_altitude_deg,
+            "ground_albedo_fraction": self.ground_albedo_fraction,
         }
     
 @dataclass
@@ -1451,8 +1477,8 @@ def preprocess_wind(
 
     # For non-calm missing wind directions, use nearest available direction.
     direction = raw_direction.copy()
-    direction = direction.fillna(method="ffill")
-    direction = direction.fillna(method="bfill")
+    direction = direction.ffill()
+    direction = direction.bfill()
     direction = direction.fillna(default_wind_direction_deg)
 
     direction = direction.apply(normalize_orientation_deg)
@@ -1624,8 +1650,8 @@ def interpolate_weather_to_timestep(
         )
 
         if allow_extrapolation:
-            work_df[column] = work_df[column].fillna(method="ffill")
-            work_df[column] = work_df[column].fillna(method="bfill")
+            work_df[column] = work_df[column].ffill()
+            work_df[column] = work_df[column].bfill()
 
     work_df = _interpolate_wind_direction_circularly(
         work_df=work_df,
@@ -1636,8 +1662,8 @@ def interpolate_weather_to_timestep(
         if column not in work_df.columns:
             continue
 
-        work_df[column] = work_df[column].fillna(method="ffill")
-        work_df[column] = work_df[column].fillna(method="bfill")
+        work_df[column] = work_df[column].ffill()
+        work_df[column] = work_df[column].bfill()
 
     timestep_df = work_df.loc[timestep_index].reset_index()
     timestep_df = timestep_df.rename(columns={"index": "datetime"})
@@ -1712,19 +1738,11 @@ def _interpolate_wind_direction_circularly(
     )
 
     if allow_extrapolation:
-        work_df["wind_direction_sin"] = work_df["wind_direction_sin"].fillna(
-            method="ffill"
-        )
-        work_df["wind_direction_sin"] = work_df["wind_direction_sin"].fillna(
-            method="bfill"
-        )
+        work_df["wind_direction_sin"] = work_df["wind_direction_sin"].ffill()
+        work_df["wind_direction_sin"] = work_df["wind_direction_sin"].bfill()
 
-        work_df["wind_direction_cos"] = work_df["wind_direction_cos"].fillna(
-            method="ffill"
-        )
-        work_df["wind_direction_cos"] = work_df["wind_direction_cos"].fillna(
-            method="bfill"
-        )
+        work_df["wind_direction_cos"] = work_df["wind_direction_cos"].ffill()
+        work_df["wind_direction_cos"] = work_df["wind_direction_cos"].bfill()
 
     radians = np.arctan2(
         work_df["wind_direction_sin"].astype(float),
@@ -1988,6 +2006,9 @@ def _make_epw_datetimes(
     metadata: WeatherSourceMetadata,
 ) -> List[DateTime]:
     datetimes = []
+    if metadata.timezone is None:
+        raise ValueError("EPW LOCATION header must declare a UTC offset.")
+    source_timezone = timezone(timedelta(hours=float(metadata.timezone)))
 
     for _, row in raw_df.iterrows():
         epw_year = int(row["year"])
@@ -2018,6 +2039,7 @@ def _make_epw_datetimes(
                 hour=hour,
                 minute=0,
                 second=0,
+                tzinfo=source_timezone,
             )
         )
 

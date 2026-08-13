@@ -14,3 +14,6 @@ in the ignored sibling directories.
 - `phase_2_15_conformance.json`: shared structural/semantic backend suite.
 - `phase_2_16_initial_parity.json`: quantity-specific measured differences,
   tolerances, classifications, and rationales for the first parity scenario.
+- `validation/thermal-rc-sensitivity-v1.json`: Phase 4.27 scaled sensitivity,
+  practical-identifiability decision, physical bounds, and partial uncertainty
+  summary for the supported analytical RC experiment.

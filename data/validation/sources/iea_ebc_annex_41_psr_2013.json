@@ -1,0 +1,68 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "iea-ebc-annex-41-psr-2013",
+  "title": "EBC Annex 41: Whole Building Heat-Air-Moisture Response (MoistEng), Project Summary Report",
+  "version": "Project Summary Report, 2013",
+  "publisher": "IEA Energy in Buildings and Communities Programme",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "The official project page and report do not identify a DOI."
+  },
+  "license": {
+    "name": "Publicly downloadable IEA EBC project report; detailed reuse license not stated",
+    "spdx_id": null,
+    "terms_url": "https://www.iea-ebc.org/projects/project?AnnexID=41"
+  },
+  "download_url": "https://www.iea-ebc.org/Data/publications/EBC_Annex_41_PSR.pdf",
+  "retrieval_date": "2026-08-10",
+  "raw_files": [
+    {
+      "file_id": "iea-ebc-annex-41-project-summary",
+      "path": "data/raw/validation/iea-annex-41/ebc-annex-41-psr.pdf",
+      "sha256": "c56ea7aa8fdb2df7898d14b389557abb149640a7e1fe524ba5a45649c6c2c868",
+      "byte_size": 2661112
+    }
+  ],
+  "units": {
+    "temperature": "degree Celsius",
+    "relative_humidity": "percent",
+    "absolute_humidity": "kilogram water per kilogram dry air in reported exercise plots",
+    "ventilation_rate": "air changes per hour"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "The project summary shows representative measurement and simulation curves but does not provide variable-level measurement uncertainty for incorporation into NexusEP.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "The summary does not provide complete machine-readable inputs or reference outputs for each common exercise.",
+    "Licensing and availability of every underlying common-exercise file remain unverified, so no raw exercise dataset is incorporated.",
+    "NexusEP lacks material moisture buffering, latent thermal feedback, condensation, and non-isothermal envelope HAM transport.",
+    "The Phase 4.16 fixture uses only the published non-buffering isothermal chamber structure and an explicitly authored moisture pulse; it is not an empirical Annex 41 result."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-iea-annex-41-report",
+      "description": "Verify the exact IEA EBC Annex 41 project-summary PDF by signature, byte size, and SHA-256 without redistributing source content or derived data.",
+      "script_path": "scripts/validation_data/inspect_co2_moisture_references.py",
+      "script_sha256": "08e4c4e3b2a49dc43759b51e280840a87e1fe32ad8c4cc0d95456fe0da8d3f0c",
+      "command": "uv run python scripts/validation_data/inspect_co2_moisture_references.py annex41 data/raw/validation/iea-annex-41/ebc-annex-41-psr.pdf",
+      "input_raw_file_ids": [
+        "iea-ebc-annex-41-project-summary"
+      ],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Scope definition and analytical isothermal non-buffering moisture verification",
+    "redistribution": "metadata_only",
+    "commercial_use": null,
+    "citation_required": true,
+    "notes": "Do not redistribute the report or underlying exercise files through NexusEP until their specific reuse terms are confirmed. Keep the raw report ignored."
+  },
+  "targeted_models": [
+    "MOIST-1"
+  ]
+}

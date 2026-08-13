@@ -1,5 +1,7 @@
 # Phase 1.3 — Phase 17 recovery provenance
 
+Validation category: **verification** (test provenance only)
+
 ## Recovery search
 
 The search did not find verbatim source for the overwritten Phase 17.3, 17.5,

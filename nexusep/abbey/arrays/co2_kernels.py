@@ -476,6 +476,24 @@ def step_zone_co2_balance(
             schema.ZONE_ID,
         ]
         physics_result[zone_i, schema.PHYSICS_CO2_PPM] = new_co2_ppm
+        ppm_mass_factor_kg_m3 = (
+            AIR_DENSITY_KG_M3 * CO2_TO_AIR_MOLAR_MASS_RATIO / 1.0e6
+        )
+        storage_change_kg_s = (
+            volume_m3
+            * ppm_mass_factor_kg_m3
+            * (new_co2_ppm - old_co2_ppm)
+            / dt_seconds
+        )
+        transport_kg_s = ppm_mass_factor_kg_m3 * (
+            outdoor_flow * (outdoor_co2_ppm - new_co2_ppm)
+            + interzone_weighted_source
+            - interzone_flow * new_co2_ppm
+        )
+        physics_result[
+            zone_i,
+            schema.PHYSICS_CO2_BALANCE_RESIDUAL_KG_S,
+        ] = storage_change_kg_s - co2_gain_kg_s - transport_kg_s
 
     return True
 

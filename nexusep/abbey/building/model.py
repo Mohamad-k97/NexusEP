@@ -109,6 +109,13 @@ class ZoneModel:
     ua_w_per_k: float = 60.0
     thermal_capacity_j_per_k: float = 3_000_000.0
 
+    # Explicit model selection prevents legacy UA and graph geometry from being
+    # mixed silently. New supported runs use graph_boundaries; older callers
+    # remain available only through the named compatibility mode.
+    thermal_envelope_model: str = "legacy_ua_compatibility"
+    envelope_provenance: str = "supplied_legacy_ua_w_per_k"
+    derived_envelope_ua_w_per_k: Optional[float] = None
+
     initial_temp_c: float = 20.0
     initial_co2_ppm: float = 600.0
     
@@ -157,6 +164,15 @@ class ZoneModel:
     def __post_init__(self) -> None:
         if not self.zone_id:
             raise ValueError("ZoneModel.zone_id cannot be empty.")
+
+        if self.thermal_envelope_model not in {
+            "graph_boundaries",
+            "legacy_ua_compatibility",
+        }:
+            raise ValueError(
+                "ZoneModel.thermal_envelope_model must be graph_boundaries or "
+                "legacy_ua_compatibility."
+            )
 
         if not self.building_id:
             raise ValueError("ZoneModel.building_id cannot be empty.")
@@ -476,6 +492,9 @@ class ZoneModel:
             "co2_initial_ppm": self.co2_initial_ppm,
             "co2_generation_per_person_m3_h": self.co2_generation_per_person_m3_h,
             "ua_w_per_k": self.ua_w_per_k,
+            "thermal_envelope_model": self.thermal_envelope_model,
+            "envelope_provenance": self.envelope_provenance,
+            "derived_envelope_ua_w_per_k": self.derived_envelope_ua_w_per_k,
             "thermal_capacity_j_per_k": self.thermal_capacity_j_per_k,
             "initial_temp_c": self.initial_temp_c,
             "initial_co2_ppm": self.initial_co2_ppm,
@@ -547,7 +566,7 @@ class ZoneState:
         return replace(self, **updates)
 
     def with_occupants(self, occupied_person_ids: List[str]) -> "ZoneState":
-        occupants = list(occupied_person_ids)
+        occupants = sorted(set(occupied_person_ids))
 
         return self.copy(
             occupied_person_ids=occupants,

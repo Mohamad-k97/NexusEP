@@ -1,7 +1,7 @@
 """Compatibility entry point for the relocated airflow regression tests."""
 
-from tests.regression.test_airflow_sanity import *  # noqa: F401,F403
+from nexusep.abbey._pytest_compat import run_pytest_module
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_pytest_module("tests/regression/test_airflow_sanity.py"))

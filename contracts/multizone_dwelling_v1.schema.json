@@ -10,6 +10,7 @@
     "use_case",
     "scenario_id",
     "metadata",
+    "site",
     "deterministic_seed",
     "simulation_period",
     "geometry_configuration",
@@ -31,6 +32,9 @@
     },
     "metadata": {
       "$ref": "#/$defs/metadata"
+    },
+    "site": {
+      "$ref": "#/$defs/site"
     },
     "deterministic_seed": {
       "type": "integer",
@@ -97,6 +101,46 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "site": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "latitude_deg",
+        "longitude_deg",
+        "elevation_m",
+        "ground_albedo_fraction"
+      ],
+      "properties": {
+        "latitude_deg": {
+          "type": "number",
+          "minimum": -90.0,
+          "maximum": 90.0,
+          "x-unit": "deg",
+          "x-registry-path": "scenario.site.latitude_deg"
+        },
+        "longitude_deg": {
+          "type": "number",
+          "minimum": -180.0,
+          "maximum": 180.0,
+          "x-unit": "deg",
+          "x-registry-path": "scenario.site.longitude_deg"
+        },
+        "elevation_m": {
+          "type": "number",
+          "minimum": -500.0,
+          "maximum": 10000.0,
+          "x-unit": "m",
+          "x-registry-path": "scenario.site.elevation_m"
+        },
+        "ground_albedo_fraction": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "x-unit": "1",
+          "x-registry-path": "scenario.site.ground_albedo_fraction"
         }
       }
     },

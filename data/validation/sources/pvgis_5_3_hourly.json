@@ -1,0 +1,78 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "pvgis-5.3-hourly",
+  "title": "PVGIS 5.3 hourly radiation and meteorological series",
+  "version": "PVGIS API 5.3; PVGIS-SARAH3/ERA5; calendar year 2020",
+  "publisher": "European Commission Joint Research Centre",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "The API response and official API page do not assign a DOI to this point query."
+  },
+  "license": {
+    "name": "PVGIS usage conditions (free, no restrictions on use)",
+    "spdx_id": null,
+    "terms_url": "https://joint-research-centre.ec.europa.eu/photovoltaic-geographical-information-system-pvgis/general-information/usage-conditions-data-protection_en"
+  },
+  "download_url": "https://re.jrc.ec.europa.eu/api/v5_3/seriescalc?lat=45&lon=8&startyear=2020&endyear=2020&components=1&usehorizon=0&outputformat=json",
+  "retrieval_date": "2026-08-10",
+  "raw_files": [
+    {
+      "file_id": "pvgis-5.3-45n-8e-2020",
+      "path": "data/raw/validation/pvgis/pvgis-5.3-45n-8e-2020.json",
+      "sha256": "8b1c9c1a699a2d1c4bd12710d06091cd3e7ccb16cfc287109a640177c7b2d891",
+      "byte_size": 967529
+    }
+  ],
+  "units": {
+    "Gb(i)": "W/m2 direct irradiance on requested plane",
+    "Gd(i)": "W/m2 diffuse irradiance on requested plane",
+    "Gr(i)": "W/m2 reflected irradiance on requested plane",
+    "H_sun": "degree",
+    "T2m": "degree Celsius",
+    "WS10m": "m/s"
+  },
+  "timezone": "UTC",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "The point-query response does not report per-value measurement uncertainty; it combines satellite-derived irradiance and ERA5 reanalysis meteorology.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "PVGIS-SARAH irradiance is instantaneous at the satellite observation minute, not an hourly interval average.",
+    "The selected seriescalc fields omit relative humidity, atmospheric pressure, and wind direction.",
+    "DNI is derived from horizontal beam irradiance and sun height and is undefined close to the horizon.",
+    "Satellite and reanalysis values are forcing-plausibility evidence rather than exact ground truth."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "reduce-pvgis-hourly",
+      "description": "Select representative raw rows and record normalized fields, units, missing fields, derived fields, and source time semantics.",
+      "script_path": "scripts/validation_data/build_weather_fixture.py",
+      "script_sha256": "51073109de7fe21649fae1654f40b07b1226fd84215f8afb8b447feb8559fac2",
+      "command": "uv run python scripts/validation_data/build_weather_fixture.py pvgis data/raw/validation/pvgis/pvgis-5.3-45n-8e-2020.json data/validation/fixtures/pvgis_hourly_sample.json",
+      "input_raw_file_ids": [
+        "pvgis-5.3-45n-8e-2020"
+      ],
+      "output_fixtures": [
+        {
+          "file_id": "pvgis-hourly-sample",
+          "path": "data/validation/fixtures/pvgis_hourly_sample.json",
+          "sha256": "187399a2b9c4db3adefa0d91967f180bf36375cafd3f0449cea5681ef9bdb076",
+          "byte_size": 8784
+        }
+      ]
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Weather-ingestion verification and forcing-plausibility checks",
+    "redistribution": "permitted",
+    "commercial_use": true,
+    "citation_required": false,
+    "notes": "PVGIS states that its information is free with no restrictions on use; attribution and immutable query metadata are retained for reproducibility."
+  },
+  "targeted_models": [
+    "WEATHER-1",
+    "SOLAR-1"
+  ]
+}

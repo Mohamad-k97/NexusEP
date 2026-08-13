@@ -1,0 +1,67 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "eia-recs-2020",
+  "title": "2020 Residential Energy Consumption Survey public microdata landing page and reuse policy",
+  "version": "2020 final release, January 2024 update; pages retrieved 2026-08-11",
+  "publisher": "U.S. Energy Information Administration",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "EIA does not assign a DOI on the registered 2020 RECS microdata page."
+  },
+  "license": {
+    "name": "United States government work; EIA content generally public domain",
+    "spdx_id": null,
+    "terms_url": "https://www.eia.gov/about/copyrights_reuse.php"
+  },
+  "download_url": "https://www.eia.gov/consumption/residential/data/2020/index.php?view=microdata",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "recs-2020-microdata-page",
+      "path": "data/raw/validation/recs-2020/microdata.html",
+      "sha256": "e8d25dc69ba37d5ea823ce7b299d450f7f4080b61214fc6c6f46fb9ea4101d2b",
+      "byte_size": 67845
+    },
+    {
+      "file_id": "eia-reuse-policy",
+      "path": "data/raw/validation/recs-2020/copyright.html",
+      "sha256": "5893d0406a4a146dec53d9635fd55dd5fac42dc08c37b62f5df34604949cfd57",
+      "byte_size": 64631
+    }
+  ],
+  "units": {
+    "landing_page_metadata": "not applicable",
+    "intended_energy_estimates": "units declared by each RECS microdata variable"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "Microdata and replicate-weight files are not registered, so sampling uncertainty cannot yet be calculated.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "The household microdata and replicate weights were not downloaded or frozen.",
+    "RECS supports appliance presence, dwelling, and energy-use distributions but not minute-level natural action timing.",
+    "The survey represents U.S. occupied primary residences and needs explicit transferability limits for European scenarios."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-recs-pages",
+      "description": "Checksum the official microdata landing page and reuse policy without ingesting survey values.",
+      "script_path": "scripts/validation_data/inspect_daylight_occupant_references.py",
+      "script_sha256": "00ba657f363e9b1618a92c35c9cfa3dbada65a33e1bb2959453c48ab7c15578d",
+      "command": "uv run python scripts/validation_data/inspect_daylight_occupant_references.py eia-recs-2020 data/raw/validation/recs-2020/microdata.html data/raw/validation/recs-2020/copyright.html",
+      "input_raw_file_ids": ["recs-2020-microdata-page", "eia-reuse-policy"],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Plan weighted priors for household composition, equipment presence, lighting, heating, and energy-use distributions.",
+    "redistribution": "metadata_only",
+    "commercial_use": true,
+    "citation_required": true,
+    "notes": "Do not infer action timing from cross-sectional equipment or annual-energy variables."
+  },
+  "targeted_models": ["OCC-1"]
+}

@@ -16,6 +16,10 @@ from nexusep.abbey.arrays.decoder import (
 )
 from nexusep.abbey.arrays.encoder import compile_simulation_to_arrays
 from nexusep.abbey.arrays.timestep import run_array_timestep
+from nexusep.abbey.building.physics.solar import (
+    calculate_solar_position,
+    calculate_surface_solar_irradiance,
+)
 from nexusep.adapters.common import (
     ADAPTER_CONTRACT_VERSION,
     BackendAdapterError,
@@ -102,7 +106,13 @@ class ArrayEngineAdapter:
                 for item in sorted(zones, key=lambda value: value["zone_id"])
             ],
             "native_topology": {
-                "representation": "compiled_zone_ua_without_surface_graph",
+                "representation": "compiled_surface_graph_to_array_coefficients",
+                "compiled_connection_ids": sorted(
+                    item["connection_id"]
+                    for item in cast(
+                        list[dict[str, Any]], self.compiled_graph["connections"]
+                    )
+                ),
                 "zone_ids": sorted(item["zone_id"] for item in zones),
             },
         }
@@ -115,23 +125,36 @@ class ArrayEngineAdapter:
         defaults: list[AppliedDefault] = []
         zones = []
         systems = []
+        graph_connections = cast(
+            list[dict[str, Any]], self.compiled_graph["connections"]
+        )
         for zone in sorted(dwelling.zones, key=lambda item: item.zone_id):
-            exterior_ua = 0.0
-            internal_ua = 0.0
-            for surface in zone.surfaces:
-                if surface.boundary_type == "exterior":
-                    opening_area = sum(item.area_m2 for item in surface.openings)
-                    exterior_ua += (
-                        surface.area_m2 - opening_area
-                    ) * surface.thermal_transmittance_w_m2_k
-                    exterior_ua += sum(
-                        item.area_m2 * item.thermal_transmittance_w_m2_k
-                        for item in surface.openings
-                    )
-                else:
-                    internal_ua += (
-                        surface.area_m2 * surface.thermal_transmittance_w_m2_k
-                    )
+            owned_connections = [
+                item
+                for item in graph_connections
+                if zone.zone_id in item["owner_zone_ids"]
+            ]
+            exterior_ua = sum(
+                float(
+                    item["gross_area_m2"]
+                    if item["connection_type"] == "opening"
+                    else item["net_opaque_area_m2"]
+                )
+                * float(item["thermal_transmittance_w_m2_k"])
+                for item in owned_connections
+                if item["boundary_type"] == "exterior"
+            )
+            internal_ua = sum(
+                float(item["gross_area_m2"])
+                * float(item["thermal_transmittance_w_m2_k"])
+                for item in owned_connections
+                if item["boundary_type"] == "interzone"
+            )
+            zone_heat_capacity_j_k = sum(
+                float(item["heat_capacity_j_k"] or 0.0)
+                for item in owned_connections
+                if item["connection_type"] == "surface"
+            )
             heating = next(
                 item for item in zone.systems if item.system_type == "heating"
             )
@@ -165,9 +188,7 @@ class ArrayEngineAdapter:
                     "outdoor_airflow_m3_s": 0.0,
                     "interzone_airflow_m3_s": 0.0,
                     "infiltration_airflow_m3_s": 0.0,
-                    "heat_capacity_J_K": sum(
-                        item.heat_capacity_j_k for item in zone.surfaces
-                    ),
+                    "heat_capacity_J_K": zone_heat_capacity_j_k,
                     "ua_envelope_W_K": exterior_ua,
                     "ua_internal_W_K": internal_ua,
                     "min_comfort_temp_C": heating.heating_setpoint_c,
@@ -185,9 +206,9 @@ class ArrayEngineAdapter:
                     "has_heating": True,
                     "has_cooling": True,
                     "has_window": any(
-                        item.openable_area_m2 > 0.0
-                        for surface in zone.surfaces
-                        for item in surface.openings
+                        item["connection_type"] == "opening"
+                        and float(item["openable_area_m2"] or 0.0) > 0.0
+                        for item in owned_connections
                     ),
                     "has_lights": True,
                     "has_blinds": True,
@@ -319,6 +340,7 @@ class ArrayEngineAdapter:
                     "wind_direction_deg": weather.wind_direction_deg,
                     "sky_temperature_C": sky_temperature,
                     "rain": bool(weather.rain),
+                    "atmospheric_pressure_pa": weather.atmospheric_pressure_pa,
                 }
             )
             local = timestamp
@@ -466,63 +488,11 @@ class ArrayEngineAdapter:
                 1.0 if occupants_by_zone[zone_id] else 0.0
             )
 
-        availability = {item.system_id: item for item in step_input.system_availability}
         controls = {item.zone_id: item for item in step_input.control_commands}
-        zones = {item.zone_id: item for item in self.scenario.building.dwelling.zones}
         for zone_id, carrier in self._carrier_by_zone.items():
             system_i = registry.system_id(carrier)
             dynamic = state.dynamic.system_state[system_i]
-            static = state.static.system_static[system_i]
             control = controls[zone_id]
-            canonical_systems = {
-                item.system_type: item for item in zones[zone_id].systems
-            }
-
-            def capacity_fraction(
-                system_type: str, zone_systems=canonical_systems
-            ) -> float:
-                item = zone_systems[system_type]
-                return availability[item.system_id].capacity_fraction
-
-            heating = canonical_systems["heating"]
-            cooling = canonical_systems["cooling"]
-            ventilation = canonical_systems["ventilation"]
-            lighting = canonical_systems["lighting"]
-            static[array_schema.SYSTEM_STATIC_HAS_HEATING] = (
-                capacity_fraction("heating") > 0.0
-            )
-            static[array_schema.SYSTEM_STATIC_HAS_COOLING] = (
-                capacity_fraction("cooling") > 0.0
-            )
-            static[array_schema.SYSTEM_STATIC_HAS_LIGHTS] = (
-                capacity_fraction("lighting") > 0.0
-            )
-            static[array_schema.SYSTEM_STATIC_HAS_MECH_VENTILATION] = (
-                capacity_fraction("ventilation") > 0.0
-            )
-            static[array_schema.SYSTEM_STATIC_MAX_HEATING_POWER_W] = (
-                _required_float(heating.max_heating_power_w, "max_heating_power_w")
-                * capacity_fraction("heating")
-                * control.heating_power_fraction
-            )
-            static[array_schema.SYSTEM_STATIC_MAX_COOLING_POWER_W] = (
-                _required_float(cooling.max_cooling_power_w, "max_cooling_power_w")
-                * capacity_fraction("cooling")
-                * control.cooling_power_fraction
-            )
-            static[array_schema.SYSTEM_STATIC_MAX_LIGHTING_POWER_W] = min(
-                control.lighting_power_w,
-                _required_float(lighting.max_lighting_power_w, "max_lighting_power_w")
-                * capacity_fraction("lighting"),
-            )
-            static[array_schema.SYSTEM_STATIC_MAX_MECH_VENT_FLOW_M3_S] = min(
-                control.ventilation_volume_flow_m3_s,
-                _required_float(
-                    ventilation.max_ventilation_volume_flow_m3_s,
-                    "max_ventilation_volume_flow_m3_s",
-                )
-                * capacity_fraction("ventilation"),
-            )
             dynamic[array_schema.SYSTEM_HVAC_MODE] = registry.hvac_mode_id(
                 "heating"
                 if control.heating_on
@@ -560,6 +530,114 @@ class ArrayEngineAdapter:
                 control.ventilation_volume_flow_m3_s
             )
 
+    def _prescribed_hvac_power_by_system_w(
+        self, state: Any, step_input: SimulationStepInput
+    ) -> tuple[list[float], list[float]]:
+        """Apply availability and command fractions without mutating static arrays."""
+
+        heating_w = [0.0] * state.dynamic.system_state.shape[0]
+        cooling_w = [0.0] * state.dynamic.system_state.shape[0]
+        registry = state.metadata["registry"]
+        availability = {item.system_id: item for item in step_input.system_availability}
+        controls = {item.zone_id: item for item in step_input.control_commands}
+        for zone in self.scenario.building.dwelling.zones:
+            systems = {item.system_type: item for item in zone.systems}
+            control = controls[zone.zone_id]
+            carrier_i = registry.system_id(self._carrier_by_zone[zone.zone_id])
+            heating = systems["heating"]
+            cooling = systems["cooling"]
+            heating_w[carrier_i] = (
+                _required_float(heating.max_heating_power_w, "max_heating_power_w")
+                * availability[heating.system_id].capacity_fraction
+                * control.heating_power_fraction
+                if control.heating_on
+                else 0.0
+            )
+            cooling_w[carrier_i] = (
+                _required_float(cooling.max_cooling_power_w, "max_cooling_power_w")
+                * availability[cooling.system_id].capacity_fraction
+                * control.cooling_power_fraction
+                if control.cooling_on
+                else 0.0
+            )
+        return heating_w, cooling_w
+
+    def _control_trace_records(
+        self, state: Any, step_input: SimulationStepInput
+    ) -> dict[str, dict[str, Any]]:
+        """Expose commands separately from immutable equipment capabilities."""
+
+        records = {
+            item["zone_id"]: item for item in decode_system_state_records(state)
+        }
+        controls = {item.zone_id: item for item in step_input.control_commands}
+        availability = {item.system_id: item for item in step_input.system_availability}
+        for zone in self.scenario.building.dwelling.zones:
+            systems = {item.system_type: item for item in zone.systems}
+            command = controls[zone.zone_id]
+            record = records[zone.zone_id]
+            record["command_heating_power_fraction"] = (
+                command.heating_power_fraction
+            )
+            record["command_cooling_power_fraction"] = (
+                command.cooling_power_fraction
+            )
+            record["heating_capacity_fraction"] = availability[
+                systems["heating"].system_id
+            ].capacity_fraction
+            record["cooling_capacity_fraction"] = availability[
+                systems["cooling"].system_id
+            ].capacity_fraction
+        return records
+
+    def _solar_gain_by_array_zone_w(
+        self, state: Any, step_input: SimulationStepInput
+    ) -> list[float]:
+        """Resolve canonical window irradiance before entering array kernels."""
+
+        solar_position = calculate_solar_position(
+            step_input.timestamp,
+            latitude_deg=self.scenario.site.latitude_deg,
+            longitude_deg=self.scenario.site.longitude_deg,
+            elevation_m=self.scenario.site.elevation_m,
+            atmospheric_pressure_pa=step_input.weather.atmospheric_pressure_pa,
+            outdoor_temperature_c=step_input.weather.outdoor_temperature_c,
+        )
+        controls = {item.zone_id: item for item in step_input.control_commands}
+        registry = state.metadata["registry"]
+        gains = [0.0] * state.dynamic.zone_state.shape[0]
+        connections = cast(list[dict[str, Any]], self.compiled_graph["connections"])
+        for connection in connections:
+            if connection["connection_type"] != "opening":
+                continue
+            zone_id = str(connection["source_node_id"])
+            irradiance = calculate_surface_solar_irradiance(
+                solar_zenith_deg=solar_position.zenith_deg,
+                solar_azimuth_deg=solar_position.azimuth_deg,
+                surface_tilt_deg=float(connection["tilt_deg"]),
+                surface_azimuth_deg=float(connection["azimuth_deg"]),
+                direct_normal_radiation_w_m2=(
+                    step_input.weather.direct_normal_radiation_w_m2
+                ),
+                diffuse_horizontal_radiation_w_m2=(
+                    step_input.weather.diffuse_horizontal_radiation_w_m2
+                ),
+                global_horizontal_radiation_w_m2=(
+                    step_input.weather.global_horizontal_radiation_w_m2
+                ),
+                ground_albedo_fraction=(
+                    self.scenario.site.ground_albedo_fraction
+                ),
+            )
+            gains[registry.zone_id(zone_id)] += irradiance.transmitted_gain_w(
+                area_m2=float(connection["gross_area_m2"]),
+                solar_transmittance_fraction=float(
+                    connection["solar_transmittance_fraction"]
+                ),
+                unshaded_fraction=controls[zone_id].shading_open_fraction,
+            )
+        return gains
+
     def run_step(self, step_input: SimulationStepInput, *, include_debug: bool = False):
         validate_step_input_for_scenario(step_input, self.scenario, self.compiled_graph)
         if step_input.internal_gains:
@@ -572,20 +650,36 @@ class ArrayEngineAdapter:
             )
         state = copy.deepcopy(self._base_state)
         self._apply_step(state, step_input)
+        prescribed_heating_power_by_system_w, prescribed_cooling_power_by_system_w = (
+            self._prescribed_hvac_power_by_system_w(state, step_input)
+        )
+        for system_i, (heating_w, cooling_w) in enumerate(
+            zip(
+                prescribed_heating_power_by_system_w,
+                prescribed_cooling_power_by_system_w,
+                strict=True,
+            )
+        ):
+            state.dynamic.system_state[
+                system_i, array_schema.SYSTEM_HEATING_POWER_W
+            ] = heating_w
+            state.dynamic.system_state[
+                system_i, array_schema.SYSTEM_COOLING_POWER_W
+            ] = cooling_w
         encoded_trace = {
             "timestamp": step_input.timestamp.isoformat(),
             "time_index": decode_time_state_record(state)["time_step_index"],
             "dt_minutes": step_input.dt_minutes,
             "weather": decode_weather_state_record(state),
-            "controls": {
-                item["zone_id"]: item
-                for item in decode_system_state_records(state)
-            },
+            "controls": self._control_trace_records(state, step_input),
             "occupants": sorted(
                 decode_person_state_records(state), key=lambda item: item["person_id"]
             ),
             "graph_sha256": self.compiled_graph["graph_sha256"],
         }
+        prescribed_solar_gain_by_zone_w = self._solar_gain_by_array_zone_w(
+            state, step_input
+        )
         state, _, _, _ = run_array_timestep(
             state=state,
             time_index=step_input.timestep_index,
@@ -597,6 +691,13 @@ class ArrayEngineAdapter:
             outdoor_noise_db=step_input.weather.outdoor_noise_db,
             enforce_work_schedule=False,
             run_acoustics=False,
+            prescribed_solar_gain_by_zone_w=prescribed_solar_gain_by_zone_w,
+            prescribed_heating_power_by_system_w=(
+                prescribed_heating_power_by_system_w
+            ),
+            prescribed_cooling_power_by_system_w=(
+                prescribed_cooling_power_by_system_w
+            ),
         )
         zone_records = decode_zone_state_records(state)
         system_records = decode_system_state_records(state)
@@ -664,11 +765,6 @@ class ArrayEngineAdapter:
                     entity_id=None,
                 ),
                 CanonicalWarning(
-                    code="array_engine_unsupported_weather_fields",
-                    message="atmospheric pressure is validated but not consumed by the current array kernel",
-                    entity_id=None,
-                ),
-                CanonicalWarning(
                     code="array_engine_explicit_zero_fan_power",
                     message="ventilation electrical power is zero because canonical v1 has no fan-power field",
                     entity_id=None,
@@ -697,6 +793,26 @@ class ArrayEngineAdapter:
                     "backend_system_carriers": dict(self._carrier_by_zone),
                     "zone_records": zone_records,
                     "system_records": system_records,
+                    "conservation_residuals": {
+                        "thermal_balance_residual_w": float(
+                            state.dynamic.physics_result[
+                                :,
+                                array_schema.PHYSICS_THERMAL_BALANCE_RESIDUAL_W,
+                            ].sum()
+                        ),
+                        "moisture_balance_residual_kg_s": float(
+                            state.dynamic.physics_result[
+                                :,
+                                array_schema.PHYSICS_MOISTURE_BALANCE_RESIDUAL_KG_S,
+                            ].sum()
+                        ),
+                        "co2_mass_balance_residual_kg_s": float(
+                            state.dynamic.physics_result[
+                                :,
+                                array_schema.PHYSICS_CO2_BALANCE_RESIDUAL_KG_S,
+                            ].sum()
+                        ),
+                    },
                     "control_commands": {
                         key: value.model_dump(mode="json")
                         for key, value in controls.items()

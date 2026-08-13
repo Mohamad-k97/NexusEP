@@ -1,0 +1,177 @@
+{
+  "expected": {
+    "derived_fields": [
+      "relative_humidity_fraction",
+      "atmospheric_pressure_pa"
+    ],
+    "missing_canonical_fields": [],
+    "records": [
+      {
+        "atmospheric_pressure_pa": 100430.0,
+        "diffuse_horizontal_radiation_w_m2": 0.0,
+        "direct_normal_radiation_w_m2": 0.0,
+        "global_horizontal_radiation_w_m2": 0.0,
+        "outdoor_temperature_c": 3.0,
+        "relative_humidity_fraction": 0.9281999999999999,
+        "timestamp_utc": "2020-01-01T00:00:00+00:00",
+        "wind_direction_deg": 122.7,
+        "wind_speed_m_s": 1.43
+      },
+      {
+        "atmospheric_pressure_pa": 100390.0,
+        "diffuse_horizontal_radiation_w_m2": 0.0,
+        "direct_normal_radiation_w_m2": 0.0,
+        "global_horizontal_radiation_w_m2": 0.0,
+        "outdoor_temperature_c": 4.32,
+        "relative_humidity_fraction": 0.6717,
+        "timestamp_utc": "2020-01-01T04:00:00+00:00",
+        "wind_direction_deg": 221.1,
+        "wind_speed_m_s": 0.52
+      },
+      {
+        "atmospheric_pressure_pa": 100600.0,
+        "diffuse_horizontal_radiation_w_m2": 39.29,
+        "direct_normal_radiation_w_m2": 609.11,
+        "global_horizontal_radiation_w_m2": 147.27,
+        "outdoor_temperature_c": 4.58,
+        "relative_humidity_fraction": 0.7236,
+        "timestamp_utc": "2020-01-01T08:00:00+00:00",
+        "wind_direction_deg": 47.1,
+        "wind_speed_m_s": 1.16
+      },
+      {
+        "atmospheric_pressure_pa": 100530.0,
+        "diffuse_horizontal_radiation_w_m2": 56.05,
+        "direct_normal_radiation_w_m2": 835.8,
+        "global_horizontal_radiation_w_m2": 332.85,
+        "outdoor_temperature_c": 7.96,
+        "relative_humidity_fraction": 0.6808,
+        "timestamp_utc": "2020-01-01T12:00:00+00:00",
+        "wind_direction_deg": 53.5,
+        "wind_speed_m_s": 3.06
+      }
+    ],
+    "source_timezone": "UTC",
+    "time_semantic": "interval_start_hourly_mean"
+  },
+  "fixture_version": "1.0.0",
+  "source": "NASA POWER hourly API",
+  "source_payload": {
+    "geometry": {
+      "coordinates": [
+        8.0,
+        45.0,
+        218.83
+      ],
+      "type": "Point"
+    },
+    "header": {
+      "api": {
+        "name": "POWER Hourly API",
+        "version": "v2.9.8"
+      },
+      "end": "20200102",
+      "fill_value": -999.0,
+      "sources": [
+        "SYN1DEG",
+        "MERRA2",
+        "POWER"
+      ],
+      "start": "20200101",
+      "time_standard": "UTC",
+      "title": "NASA/POWER Source Native Resolution Hourly Data"
+    },
+    "messages": [],
+    "parameters": {
+      "ALLSKY_SFC_SW_DIFF": {
+        "longname": "All Sky Surface Shortwave Diffuse Irradiance",
+        "units": "W m-2"
+      },
+      "ALLSKY_SFC_SW_DNI": {
+        "longname": "All Sky Surface Shortwave Downward Direct Normal Irradiance",
+        "units": "W m-2"
+      },
+      "ALLSKY_SFC_SW_DWN": {
+        "longname": "All Sky Surface Shortwave Downward Irradiance",
+        "units": "W m-2"
+      },
+      "PS": {
+        "longname": "Surface Pressure",
+        "units": "kPa"
+      },
+      "RH2M": {
+        "longname": "Relative Humidity at 2 Meters",
+        "units": "%"
+      },
+      "T2M": {
+        "longname": "Temperature at 2 Meters",
+        "units": "C"
+      },
+      "WD10M": {
+        "longname": "Wind Direction at 10 Meters",
+        "units": "Degrees"
+      },
+      "WS10M": {
+        "longname": "Wind Speed at 10 Meters",
+        "units": "m/s"
+      }
+    },
+    "properties": {
+      "parameter": {
+        "ALLSKY_SFC_SW_DIFF": {
+          "2020010100": 0.0,
+          "2020010104": 0.0,
+          "2020010108": 39.29,
+          "2020010112": 56.05
+        },
+        "ALLSKY_SFC_SW_DNI": {
+          "2020010100": 0.0,
+          "2020010104": 0.0,
+          "2020010108": 609.11,
+          "2020010112": 835.8
+        },
+        "ALLSKY_SFC_SW_DWN": {
+          "2020010100": 0.0,
+          "2020010104": 0.0,
+          "2020010108": 147.27,
+          "2020010112": 332.85
+        },
+        "PS": {
+          "2020010100": 100.43,
+          "2020010104": 100.39,
+          "2020010108": 100.6,
+          "2020010112": 100.53
+        },
+        "RH2M": {
+          "2020010100": 92.82,
+          "2020010104": 67.17,
+          "2020010108": 72.36,
+          "2020010112": 68.08
+        },
+        "T2M": {
+          "2020010100": 3.0,
+          "2020010104": 4.32,
+          "2020010108": 4.58,
+          "2020010112": 7.96
+        },
+        "WD10M": {
+          "2020010100": 122.7,
+          "2020010104": 221.1,
+          "2020010108": 47.1,
+          "2020010112": 53.5
+        },
+        "WS10M": {
+          "2020010100": 1.43,
+          "2020010104": 0.52,
+          "2020010108": 1.16,
+          "2020010112": 3.06
+        }
+      }
+    },
+    "times": {
+      "data": 0.662,
+      "process": 0.04
+    },
+    "type": "Feature"
+  }
+}

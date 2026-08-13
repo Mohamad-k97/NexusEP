@@ -19,6 +19,7 @@ from nexusep.abbey.building.physics.internal_sources import (
     BuildingInternalSourceResult,
     InternalSourceRecord,
 )
+from nexusep.abbey.building.physics.solar import calculate_solar_position
 from nexusep.abbey.building.physics.weather import WeatherState as ObjectWeatherState
 from nexusep.abbey.building.systems import (
     ZoneControlCommand as ObjectZoneControlCommand,
@@ -108,6 +109,12 @@ class ObjectEngineAdapter:
             },
             "initial_zone_states": zone_states,
             "native_topology": {
+                "compiled_connection_ids": sorted(
+                    item["connection_id"]
+                    for item in cast(
+                        list[dict[str, Any]], self.compiled_graph["connections"]
+                    )
+                ),
                 "zone_connection_ids": sorted(self.physics_graph.zone_connections),
                 "boundary_connection_ids": sorted(
                     self.physics_graph.boundary_connections
@@ -190,6 +197,8 @@ class ObjectEngineAdapter:
                 centroid_y=None,
                 geometry_source="canonical_scenario_v1",
                 ua_w_per_k=ua_w_k,
+                thermal_envelope_model="graph_boundaries",
+                envelope_provenance="pending_canonical_graph_compilation",
                 thermal_capacity_j_per_k=sum(
                     item.heat_capacity_j_k for item in zone.surfaces
                 ),
@@ -307,10 +316,12 @@ class ObjectEngineAdapter:
                     connection_type="external_wall",
                     area_m2=connection["net_opaque_area_m2"],
                     orientation_deg=connection["azimuth_deg"],
+                    tilt_deg=connection["tilt_deg"],
                     is_window=False,
                     is_openable=False,
                     open_fraction=0.0,
                     allow_duplicate=False,
+                    u_value_w_m2k=connection["thermal_transmittance_w_m2_k"],
                 )
             else:
                 boundary_connections[connection["connection_id"]] = BoundaryConnection(
@@ -319,6 +330,7 @@ class ObjectEngineAdapter:
                     connection_type="window",
                     area_m2=connection["gross_area_m2"],
                     orientation_deg=connection["azimuth_deg"],
+                    tilt_deg=connection["tilt_deg"],
                     is_window=True,
                     is_openable=bool(connection["openable_area_m2"]),
                     open_fraction=0.0,
@@ -575,6 +587,14 @@ class ObjectEngineAdapter:
         commands = self._control_commands(step_input)
         specs = self._system_specs(step_input)
         weather = step_input.weather
+        solar_position = calculate_solar_position(
+            weather.timestamp,
+            latitude_deg=self.scenario.site.latitude_deg,
+            longitude_deg=self.scenario.site.longitude_deg,
+            elevation_m=self.scenario.site.elevation_m,
+            atmospheric_pressure_pa=weather.atmospheric_pressure_pa,
+            outdoor_temperature_c=weather.outdoor_temperature_c,
+        )
         object_weather = ObjectWeatherState(
             datetime=weather.timestamp,
             outdoor_temperature_c=weather.outdoor_temperature_c,
@@ -589,6 +609,10 @@ class ObjectEngineAdapter:
             outdoor_noise_db=weather.outdoor_noise_db or 0.0,
             relative_humidity_percent=weather.relative_humidity_fraction * 100.0,
             atmospheric_pressure_pa=weather.atmospheric_pressure_pa,
+            solar_zenith_deg=solar_position.zenith_deg,
+            solar_azimuth_deg=solar_position.azimuth_deg,
+            solar_altitude_deg=solar_position.elevation_deg,
+            ground_albedo_fraction=self.scenario.site.ground_albedo_fraction,
         )
         native_input = BuildingPhysicsStepInput(
             building_model=self.building_model,
@@ -716,6 +740,18 @@ class ObjectEngineAdapter:
                 {
                     "native_source": native_result.source,
                     "native_zone_records": native_result.zone_records,
+                    "conservation_residuals": {
+                        "thermal_balance_residual_w": (
+                            native_result.thermal_step_result.balance_residual_w()
+                        ),
+                        "moisture_balance_residual_kg_s": (
+                            native_result.moisture_step_result.balance_residual_kg_s()
+                        ),
+                        "co2_mass_balance_residual_kg_s": (
+                            native_result.co2_step_result.balance_residual_m3_s()
+                            * CO2_DENSITY_KG_M3
+                        ),
+                    },
                     "action_events": [
                         item.model_dump(mode="json")
                         for item in step_input.action_events

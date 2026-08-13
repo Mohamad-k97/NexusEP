@@ -1,0 +1,36 @@
+{
+  "protocol_version": "1.0.0",
+  "frozen_on": "2026-08-12",
+  "freeze_status": "frozen_after_schema_inspection_and_before_diary_outcome_processing",
+  "validation_category": "calibration_and_behavioral_holdout_validation",
+  "dataset": "BLS American Time Use Survey 2023 respondent and activity microdata",
+  "split": {
+    "unit": "respondent TUCASEID",
+    "algorithm": "first 8 bytes of SHA-256(TUCASEID), unsigned big-endian integer modulo 10",
+    "development_buckets": [0, 1, 2, 3, 4, 5, 6, 7],
+    "holdout_buckets": [8, 9],
+    "group_integrity": "all activity episodes for a respondent remain in one partition"
+  },
+  "model": {
+    "name": "weighted empirical whole-diary population sampler",
+    "seed": 20260812,
+    "generated_population_size": 20000,
+    "fit_inputs": ["development diary episodes", "TUFINLWGT"],
+    "prohibited_inputs": ["holdout diary episodes", "holdout quantiles", "holdout acceptance results"]
+  },
+  "state_mapping": {
+    "sleeping": "TRCODE equals 010101",
+    "home_awake": "TEWHERE equals 1 and activity is not sleeping",
+    "away": "known TEWHERE not equal to 1",
+    "location_not_collected": "sleep is explicitly inferred at home; other missing-location minutes remain unknown and are excluded from the primary home-fraction denominator",
+    "clock_alignment": "The ATUS 04:00-to-04:00 diary is rotated to 00:00-to-24:00 before schedules are exposed to NexusEP."
+  },
+  "metrics": {
+    "quantiles": [0.1, 0.25, 0.5, 0.75, 0.9],
+    "daily_sleep_fraction_quantile_mae_max": 0.05,
+    "observed_location_home_fraction_quantile_mae_max": 0.05,
+    "sleep_episode_duration_quantile_mae_minutes_max": 30.0
+  },
+  "claim_limit": "ATUS represents the U.S. civilian noninstitutionalized population and supplies population priors, not deterministic truth for an Italian household.",
+  "amendment_rule": "Any changed split, state mapping, model family, seed, metric, or threshold requires a new protocol version."
+}

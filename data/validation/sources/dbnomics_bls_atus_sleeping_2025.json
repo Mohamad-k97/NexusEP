@@ -1,0 +1,89 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "dbnomics-bls-atus-sleeping-2025",
+  "title": "American Time Use Survey sleeping aggregate series mirrored by DBnomics",
+  "version": "BLS/tu DBnomics snapshot ea1c4ba01f6ec8395ebd2b8f42b8486a0b0a1725 indexed 2025-06-27",
+  "publisher": "U.S. Bureau of Labor Statistics via DBnomics",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "The BLS LABSTAT aggregate series and DBnomics dataset snapshot do not assign a DOI."
+  },
+  "license": {
+    "name": "DBnomics open database terms with underlying U.S. BLS public-data terms",
+    "spdx_id": "ODbL-1.0",
+    "terms_url": "https://db.nomics.world/about"
+  },
+  "download_url": "https://api.db.nomics.world/v22/series/BLS/tu?q=Sleeping&limit=1000&offset=0&observations=1",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "dbnomics-sleeping-series-page-0",
+      "path": "data/raw/validation/atus-alternative/dbnomics-sleeping-series-0.json",
+      "sha256": "b577afb2379b6371cb1dab7da62b8864df94f20533c6f8582fdbd65fe475557b",
+      "byte_size": 1956725
+    },
+    {
+      "file_id": "dbnomics-sleeping-series-page-1000",
+      "path": "data/raw/validation/atus-alternative/dbnomics-sleeping-series-1000.json",
+      "sha256": "df3b0536c6aa5ce4b5638c2f12813aa5118395b7f09cb133152545ab9ddf3deb",
+      "byte_size": 662409
+    }
+  ],
+  "units": {
+    "period": "calendar year",
+    "average_sleep_duration": "hours per day",
+    "age_and_sex": "categorical BLS LABSTAT strata"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "The mirrored series response used here does not expose standard errors, respondent weights, or diary-level sampling uncertainty.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "The accessible mirror contains aggregate LABSTAT series rather than respondent-level ATUS diary microdata.",
+    "The mirror snapshot supplies values through 2023 and does not include the BLS 2024 release.",
+    "Official BLS 2024 microdata ZIP requests returned an automated-access denial in this execution environment, so no denied response is registered as source data.",
+    "Aggregate means cannot establish within-person event frequency, duration, start-time, transition, or between-person distributions.",
+    "The 2023 all-person sleeping estimate is used only as an untouched plausibility screen for a deterministic object-runner output.",
+    "The array engine is excluded because its fixed-duration sleep execution is not yet conformant with the object engine."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "extract-atus-aggregate-sleep-screen",
+      "description": "Verify one DBnomics snapshot, select the BLS all-person sleeping series and matched age/sex strata, reserve 2023 as an untouched aggregate holdout, run the production object engine for 30 deterministic days, and compare simulated daily sleep with the frozen 30-minute error limit.",
+      "script_path": "scripts/validation_data/run_atus_aggregate_alternative.py",
+      "script_sha256": "c503fddeef991d75ca828dd84f904151d5c1cf4a009d5568d71d5baf7a39c305",
+      "command": "uv run python scripts/validation_data/run_atus_aggregate_alternative.py",
+      "input_raw_file_ids": [
+        "dbnomics-sleeping-series-page-0",
+        "dbnomics-sleeping-series-page-1000"
+      ],
+      "output_fixtures": [
+        {
+          "file_id": "atus-aggregate-sleeping-series",
+          "path": "data/validation/fixtures/atus-aggregate/sleeping-series.csv",
+          "sha256": "89d88b40f4af12f089511836fd999ee546ede8eee6a1b92a0bee3df512238729",
+          "byte_size": 3663
+        },
+        {
+          "file_id": "atus-aggregate-sleep-result",
+          "path": "data/validation/fixtures/atus-aggregate/sleep-alternative-result-v1.json",
+          "sha256": "a6217789c78ebf88d0d2488dd65c02689fc889821ce8696bc1be0e59df511263",
+          "byte_size": 4223
+        }
+      ]
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Aggregate occupant-behavior plausibility screening and validation-tool verification",
+    "redistribution": "derived_only",
+    "commercial_use": null,
+    "citation_required": true,
+    "notes": "Attribute BLS as the underlying provider and DBnomics as the access path. Do not present aggregate estimates as diary microdata or evidence of individual distributions."
+  },
+  "targeted_models": [
+    "OCC-1"
+  ]
+}

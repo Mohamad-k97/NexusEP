@@ -377,7 +377,7 @@ class BuildingPhysicsStepResult:
 
 def run_building_physics_step(
     step_input: BuildingPhysicsStepInput,
-    require_physics_graph: bool = False,
+    require_physics_graph: bool = True,
     write_back_to_building_model: bool = False,
 ) -> BuildingPhysicsStepResult:
     """
@@ -416,6 +416,22 @@ def run_building_physics_step(
 
             zone_ids = step_input.zone_ids()
 
+            if physics_graph is not None:
+                physics_graph.validate()
+                if physics_graph.building_id != building_model.building_id:
+                    raise ValueError(
+                        "physics_graph building_id does not match building_model."
+                    )
+                graph_zone_ids = set(physics_graph.all_zone_ids())
+                model_zone_ids = set(zone_ids)
+                if graph_zone_ids != model_zone_ids:
+                    raise ValueError(
+                        "physics_graph zones do not match building_model zones: "
+                        "graph={}, model={}.".format(
+                            sorted(graph_zone_ids), sorted(model_zone_ids)
+                        )
+                    )
+
         with _measure_if_available(timer, "engine.command_constraints"):
             from nexusep.abbey.building.systems import (
                 constrain_zone_control_command_to_system_spec,
@@ -447,6 +463,19 @@ def run_building_physics_step(
                             "new_value": "default_created",
                             "reason": "missing_zone_system_spec_default_created",
                         }
+                    )
+
+                system_spec = zone_system_specs[zone_id]
+                if (
+                    physics_graph is not None
+                    and bool(getattr(system_spec, "has_operable_window", False))
+                    and not physics_graph.openable_window_connections_for_zone(zone_id)
+                ):
+                    raise ValueError(
+                        "Zone '{}' enables operable windows but the physics graph "
+                        "has no openable window definition for that zone.".format(
+                            zone_id
+                        )
                     )
 
                 command = zone_control_commands.get(zone_id)
@@ -513,6 +542,7 @@ def run_building_physics_step(
                 _make_lighting_control_inputs_from_zone_commands(
                     building_model=building_model,
                     zone_control_commands=zone_control_commands,
+                    zone_system_specs=zone_system_specs,
                 )
             )
 
@@ -1162,6 +1192,7 @@ def _make_window_operation_inputs_from_zone_commands(
 def _make_lighting_control_inputs_from_zone_commands(
     building_model: Any,
     zone_control_commands: Dict[str, Any],
+    zone_system_specs: Dict[str, Any],
 ) -> Any:
     from nexusep.abbey.building.physics.daylight import (
         make_lighting_control_inputs,
@@ -1173,17 +1204,45 @@ def _make_lighting_control_inputs_from_zone_commands(
 
     for zone_id, zone_model in building_model.all_zone_models().items():
         command = zone_control_commands.get(zone_id)
+        system_spec = zone_system_specs.get(zone_id)
+        commanded_power_w = (
+            float(_get_attr_or_key(command, "lighting_power_w", 0.0))
+            if command is not None
+            else 0.0
+        )
+        maximum_power_w = (
+            float(_get_attr_or_key(system_spec, "lighting_power_w", 0.0))
+            if system_spec is not None
+            else 0.0
+        )
+        installed_lux = (
+            float(_get_attr_or_key(system_spec, "installed_lighting_lux", 0.0))
+            if system_spec is not None
+            else 0.0
+        )
+        if installed_lux <= 0.0:
+            installed_lux = float(
+                _get_attr_or_key(zone_model, "visual_comfort_target_lux", 300.0)
+            )
 
-        lights_on = False
+        lights_on = bool(
+            command is not None
+            and _get_attr_or_key(command, "lights_on", False)
+            and commanded_power_w > 0.0
+            and maximum_power_w > 0.0
+        )
+        power_fraction = (
+            min(1.0, commanded_power_w / maximum_power_w) if lights_on else 0.0
+        )
 
-        if command is not None:
-            lights_on = bool(_get_attr_or_key(command, "lights_on", False))
-
+        # ``ZoneControlCommand.lighting_power_w`` is the delivered electrical
+        # power contract.  The daylight model consumes a dimming/lux bridge,
+        # so express the same fraction in its native coordinates.  Using the
+        # installed illuminance as the request makes its linear power model
+        # return the constrained watt command exactly.
         lights_on_by_zone[zone_id] = lights_on
-        dimming_fraction_by_zone[zone_id] = 1.0 if lights_on else 0.0
-        requested_lux_by_zone[zone_id] = float(
-            _get_attr_or_key(zone_model, "visual_comfort_target_lux", 300.0)
-        ) if lights_on else 0.0
+        dimming_fraction_by_zone[zone_id] = power_fraction
+        requested_lux_by_zone[zone_id] = installed_lux * power_fraction
 
     return make_lighting_control_inputs(
         lights_on_by_zone=lights_on_by_zone,

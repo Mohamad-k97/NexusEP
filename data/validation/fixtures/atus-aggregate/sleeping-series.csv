@@ -1,0 +1,47 @@
+series_code,year,age,sex,average_sleep_hours_per_day,split_role
+TUU10101AA01000247,2003,15 years and over,Both sexes,8.57,development
+TUU10101AA01000247,2004,15 years and over,Both sexes,8.55,development
+TUU10101AA01000247,2005,15 years and over,Both sexes,8.62,development
+TUU10101AA01000247,2006,15 years and over,Both sexes,8.63,development
+TUU10101AA01000247,2007,15 years and over,Both sexes,8.57,development
+TUU10101AA01000247,2008,15 years and over,Both sexes,8.6,development
+TUU10101AA01000247,2009,15 years and over,Both sexes,8.67,development
+TUU10101AA01000247,2010,15 years and over,Both sexes,8.67,development
+TUU10101AA01000247,2011,15 years and over,Both sexes,8.71,development
+TUU10101AA01000247,2012,15 years and over,Both sexes,8.73,development
+TUU10101AA01000247,2013,15 years and over,Both sexes,8.74,development
+TUU10101AA01000247,2014,15 years and over,Both sexes,8.8,development
+TUU10101AA01000247,2015,15 years and over,Both sexes,8.83,development
+TUU10101AA01000247,2016,15 years and over,Both sexes,8.79,development
+TUU10101AA01000247,2017,15 years and over,Both sexes,8.8,development
+TUU10101AA01000247,2018,15 years and over,Both sexes,8.82,development
+TUU10101AA01000247,2019,15 years and over,Both sexes,8.84,development
+TUU10101AA01000247,2021,15 years and over,Both sexes,8.95,development
+TUU10101AA01000247,2022,15 years and over,Both sexes,9.02,development
+TUU10101AA01000247,2023,15 years and over,Both sexes,9.07,untouched_holdout
+TUU10101AA01000276,2023,25 to 34 years,Both sexes,8.96,descriptive_stratum_not_fitted
+TUU10101AA01000277,2023,25 to 54 years,Both sexes,8.83,descriptive_stratum_not_fitted
+TUU10101AA01000292,2023,35 to 44 years,Both sexes,8.76,descriptive_stratum_not_fitted
+TUU10101AA01000293,2023,45 to 54 years,Both sexes,8.78,descriptive_stratum_not_fitted
+TUU10101AA01000309,2023,55 to 64 years,Both sexes,8.9,descriptive_stratum_not_fitted
+TUU10101AA01000310,2023,65 years and over,Both sexes,9.15,descriptive_stratum_not_fitted
+TUU10101AA01000326,2023,15 years and over,Men,8.97,descriptive_stratum_not_fitted
+TUU10101AA01000355,2023,25 to 34 years,Men,8.78,descriptive_stratum_not_fitted
+TUU10101AA01000356,2023,25 to 54 years,Men,8.69,descriptive_stratum_not_fitted
+TUU10101AA01000371,2023,35 to 44 years,Men,8.59,descriptive_stratum_not_fitted
+TUU10101AA01000372,2023,45 to 54 years,Men,8.7,descriptive_stratum_not_fitted
+TUU10101AA01000388,2023,55 to 64 years,Men,8.75,descriptive_stratum_not_fitted
+TUU10101AA01000389,2023,65 years and over,Men,9.14,descriptive_stratum_not_fitted
+TUU10101AA01000405,2023,15 years and over,Women,9.17,descriptive_stratum_not_fitted
+TUU10101AA01000434,2023,25 to 34 years,Women,9.14,descriptive_stratum_not_fitted
+TUU10101AA01000435,2023,25 to 54 years,Women,8.98,descriptive_stratum_not_fitted
+TUU10101AA01000450,2023,35 to 44 years,Women,8.92,descriptive_stratum_not_fitted
+TUU10101AA01000451,2023,45 to 54 years,Women,8.85,descriptive_stratum_not_fitted
+TUU10101AA01000467,2023,55 to 64 years,Women,9.04,descriptive_stratum_not_fitted
+TUU10101AA01000468,2023,65 years and over,Women,9.15,descriptive_stratum_not_fitted
+TUU10101AA01017866,2023,18 years and over,Both sexes,9.04,descriptive_stratum_not_fitted
+TUU10101AA01017910,2023,15 to 24 years,Both sexes,9.83,descriptive_stratum_not_fitted
+TUU10101AA01017940,2023,18 years and over,Men,8.94,descriptive_stratum_not_fitted
+TUU10101AA01017984,2023,15 to 24 years,Men,9.76,descriptive_stratum_not_fitted
+TUU10101AA01018014,2023,18 years and over,Women,9.13,descriptive_stratum_not_fitted
+TUU10101AA01018058,2023,15 to 24 years,Women,9.9,descriptive_stratum_not_fitted

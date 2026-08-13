@@ -32,6 +32,7 @@ WINDOW_NOT_SOLVER = "window_model_is_boundary_adapter_not_physics_solver"
 
 WINDOW_STATIC_PROPERTIES = [
     "orientation_deg",
+    "tilt_deg",
     "area_m2",
     "window_u_value_w_m2k",
     "glazing_transmittance",
@@ -52,7 +53,9 @@ WINDOW_DYNAMIC_PROPERTIES = [
 ]
 
 WINDOW_SHARED_OUTPUTS = [
+    "tilt_deg",
     "effective_visible_transmittance",
+    "effective_solar_transmittance",
     "effective_solar_factor",
     "effective_u_value_w_m2k",
     "opening_fraction",
@@ -398,6 +401,7 @@ class WindowStaticParameters:
     zone_id: str
 
     orientation_deg: float
+    tilt_deg: float = 90.0
     area_m2: float = DEFAULT_WINDOW_AREA_M2
 
     window_u_value_w_m2k: float = DEFAULT_WINDOW_U_VALUE_W_M2K
@@ -426,6 +430,10 @@ class WindowStaticParameters:
         self.orientation_deg = normalize_orientation_deg(
             self.orientation_deg
         )
+
+        self.tilt_deg = float(self.tilt_deg)
+        if not 0.0 <= self.tilt_deg <= 180.0:
+            raise ValueError("WindowStaticParameters.tilt_deg must be in [0, 180].")
 
         self.area_m2 = _non_negative_float(
             self.area_m2,
@@ -486,6 +494,7 @@ class WindowStaticParameters:
             "boundary_connection_id": self.boundary_connection_id,
             "zone_id": self.zone_id,
             "orientation_deg": self.orientation_deg,
+            "tilt_deg": self.tilt_deg,
             "area_m2": self.area_m2,
             "window_u_value_w_m2k": self.window_u_value_w_m2k,
             "glazing_transmittance": self.glazing_transmittance,
@@ -2175,9 +2184,11 @@ class WindowBoundaryResult:
 
     orientation_deg: float
     orientation_label: str
+    tilt_deg: float
     area_m2: float
 
     effective_visible_transmittance: float
+    effective_solar_transmittance: float
     effective_solar_factor: float
     effective_u_value_w_m2k: float
 
@@ -2213,6 +2224,14 @@ class WindowBoundaryResult:
         self.orientation_label = str(
             self.orientation_label
         ).strip().lower()
+
+        self.tilt_deg = float(self.tilt_deg)
+        if not 0.0 <= self.tilt_deg <= 180.0:
+            raise ValueError("WindowBoundaryResult.tilt_deg must be in [0, 180].")
+
+        self.effective_solar_transmittance = _clamp_unit_interval(
+            self.effective_solar_transmittance
+        )
 
         self.area_m2 = _non_negative_float(
             self.area_m2,
@@ -2308,8 +2327,10 @@ class WindowBoundaryResult:
             "zone_id": self.zone_id,
             "orientation_deg": self.orientation_deg,
             "orientation_label": self.orientation_label,
+            "tilt_deg": self.tilt_deg,
             "area_m2": self.area_m2,
             "effective_visible_transmittance": self.effective_visible_transmittance,
+            "effective_solar_transmittance": self.effective_solar_transmittance,
             "effective_solar_factor": self.effective_solar_factor,
             "effective_u_value_w_m2k": self.effective_u_value_w_m2k,
             "opening_fraction": self.opening_fraction,
@@ -2540,6 +2561,7 @@ def make_window_static_parameters_from_boundary_connection(
     - area_m2
 
     Optional:
+    - tilt_deg
     - window_u_value_w_m2k
     - glazing_transmittance
     - window_visible_transmittance
@@ -2580,6 +2602,12 @@ def make_window_static_parameters_from_boundary_connection(
     orientation_deg = _required_attr(
         boundary_connection,
         "orientation_deg",
+    )
+
+    tilt_deg = _get_attr_or_default(
+        boundary_connection,
+        "tilt_deg",
+        90.0,
     )
 
     area_m2 = _get_attr_or_default(
@@ -2656,6 +2684,7 @@ def make_window_static_parameters_from_boundary_connection(
         boundary_connection_id=boundary_connection_id,
         zone_id=zone_id,
         orientation_deg=orientation_deg,
+        tilt_deg=tilt_deg,
         area_m2=area_m2,
         window_u_value_w_m2k=window_u_value_w_m2k,
         glazing_transmittance=glazing_transmittance,
@@ -2744,8 +2773,12 @@ def make_window_boundary_result(
         orientation_label=orientation_label(
             window_static_parameters.orientation_deg
         ),
+        tilt_deg=window_static_parameters.tilt_deg,
         area_m2=window_static_parameters.area_m2,
         effective_visible_transmittance=effective_visible_transmittance,
+        effective_solar_transmittance=(
+            covering_effect_result.effective_solar_transmittance
+        ),
         effective_solar_factor=effective_solar_factor,
         effective_u_value_w_m2k=effective_u_value_w_m2k,
         opening_fraction=window_operation_state.opening_fraction,
@@ -4489,7 +4522,7 @@ def front_facing_cosine_alignment_factor(
 
     factor = math.cos(difference_rad)
 
-    if factor < 0.0:
+    if factor <= 1e-12:
         return 0.0
 
     if factor > 1.0:

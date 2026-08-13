@@ -408,6 +408,12 @@ def write_daylight_result_to_zone_state(
     """
     zone_state[zone_i, schema.ZONE_ILLUMINANCE_LUX] = indoor_daylight_lux
     zone_state[zone_i, schema.ZONE_SOLAR_GAIN_W] = solar_gain_w
+    zone_state[zone_i, schema.ZONE_INTERNAL_HEAT_GAIN_W] = (
+        zone_state[zone_i, schema.ZONE_PEOPLE_GAIN_W]
+        + zone_state[zone_i, schema.ZONE_LIGHTING_GAIN_W]
+        + zone_state[zone_i, schema.ZONE_APPLIANCE_GAIN_W]
+        + solar_gain_w
+    )
 
     if physics_result is not None:
         physics_result[zone_i, schema.PHYSICS_ZONE_ID] = zone_state[

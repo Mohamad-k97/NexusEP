@@ -1,0 +1,91 @@
+{
+  "comparison": {
+    "cooling_energy_wh_per_hour": {
+      "absolute_difference": 2.923345618910389e-07,
+      "absolute_tolerance": 0.001,
+      "energyplus": 1499.9999997076654,
+      "nexusep": 1500.0,
+      "passed": true
+    },
+    "cooling_power_w": {
+      "absolute_difference": 2.9233433451736346e-07,
+      "absolute_tolerance": 0.001,
+      "energyplus": 1499.9999997076657,
+      "nexusep": 1500.0,
+      "passed": true
+    },
+    "cooling_zone_heating_power_w_max_abs": {
+      "absolute_difference": 0.0,
+      "absolute_tolerance": 0.001,
+      "energyplus": 0.0,
+      "nexusep": 0.0,
+      "passed": true
+    },
+    "cooling_zone_temperature_c": {
+      "absolute_difference": 0.0,
+      "absolute_tolerance": 1e-06,
+      "energyplus": 24.0,
+      "expected": 24.0,
+      "passed": true
+    },
+    "deadband_cooling_power_w_max_abs": {
+      "absolute_difference": 0.0,
+      "absolute_tolerance": 0.001,
+      "energyplus": 0.0,
+      "nexusep": 0.0,
+      "passed": true
+    },
+    "deadband_heating_power_w_max_abs": {
+      "absolute_difference": 0.0,
+      "absolute_tolerance": 0.001,
+      "energyplus": 0.0,
+      "nexusep": 0.0,
+      "passed": true
+    },
+    "deadband_zone_temperature_c": {
+      "absolute_difference": 1.7512782335415977e-09,
+      "absolute_tolerance": 1e-06,
+      "energyplus": 23.00000000175128,
+      "expected": 23.0,
+      "passed": true
+    },
+    "heating_energy_wh_per_hour": {
+      "absolute_difference": 5.927123538640444e-07,
+      "absolute_tolerance": 0.001,
+      "energyplus": 999.9999994072876,
+      "nexusep": 1000.0,
+      "passed": true
+    },
+    "heating_power_w": {
+      "absolute_difference": 5.927123538640444e-07,
+      "absolute_tolerance": 0.001,
+      "energyplus": 999.9999994072876,
+      "nexusep": 1000.0,
+      "passed": true
+    },
+    "heating_zone_cooling_power_w_max_abs": {
+      "absolute_difference": 0.0,
+      "absolute_tolerance": 0.001,
+      "energyplus": 0.0,
+      "nexusep": 0.0,
+      "passed": true
+    },
+    "heating_zone_temperature_c": {
+      "absolute_difference": 0.0,
+      "absolute_tolerance": 1e-06,
+      "energyplus": 20.0,
+      "expected": 20.0,
+      "passed": true
+    }
+  },
+  "energyplus_executable_sha256": "0cfca98a25385713ca7c36ccce857e2588ea021731f66598fc7e955fbed250b6",
+  "energyplus_version": "EnergyPlus, Version 25.1.0-68a4a7c774",
+  "hour_count": 24,
+  "input_file_sha256": "52f3f05c1b1f732468c71be4fcc0b1e5361ee57611d08364d75cc41c2f81799c",
+  "model_claim": "HVAC-1",
+  "passed": true,
+  "result_id": "energyplus-ideal-loads-25.1.0",
+  "scope": "Ideal sensible delivered load, mode exclusivity, deadband, and one-hour power-to-energy integration only.",
+  "validation_category": "comparative_validation",
+  "weather_file_sha256": "c184b947cd34d41c6d6474d63d66dbb82bc0e6cae4c888edcf837348282bce7f"
+}

@@ -284,6 +284,8 @@ def make_default_family_building() -> BuildingModel:
             height_m=float(item["height"]),
             volume_m3=volume_m3,
             ua_w_per_k=float(item["ua"]),
+            thermal_envelope_model="graph_boundaries",
+            envelope_provenance="pending_default_family_graph_compilation",
             thermal_capacity_j_per_k=float(item["thermal_capacity"]),
             initial_temp_c=float(item["initial_temp"]),
             initial_co2_ppm=float(item["initial_co2"]),
@@ -495,6 +497,21 @@ def make_default_family_physics_graph(
             shading_factor=shading_factor,
             curtain_open=True,
         )
+    def add_external_wall(
+        connection_id: str,
+        zone_id: str,
+        ua_w_per_k: float,
+        orientation_deg: float,
+        u_value_w_m2k: float = 1.2,
+    ) -> None:
+        boundary_connections[connection_id] = BoundaryConnection(
+            connection_id=connection_id,
+            zone_id=zone_id,
+            connection_type="external_wall",
+            area_m2=float(ua_w_per_k) / float(u_value_w_m2k),
+            orientation_deg=orientation_deg,
+            u_value_w_m2k=u_value_w_m2k,
+        )
     # ------------------------------------------------------------
     # Main circulation / access topology.
     # ------------------------------------------------------------
@@ -673,6 +690,28 @@ def make_default_family_physics_graph(
         orientation_deg=270.0,
         max_opening_area_m2=0.7,
     )
+
+    # The graph is the active envelope source. The areas below are a declared
+    # one-time migration from the example factory's legacy aggregate UA inputs;
+    # ZoneModel aggregate area and UA are then derived back from these edges.
+    orientation_by_role = {
+        "living_room": 180.0,
+        "bedroom_1": 90.0,
+        "bedroom_2": 270.0,
+        "kitchen": 135.0,
+        "bathroom": 0.0,
+        "laundry": 0.0,
+        "office": 270.0,
+        "entrance": 0.0,
+    }
+    for role, orientation_deg in orientation_by_role.items():
+        zone_id = require_zone(role)
+        add_external_wall(
+            connection_id="external_wall_" + role,
+            zone_id=zone_id,
+            ua_w_per_k=building_model.get_zone_model(zone_id).ua_w_per_k,
+            orientation_deg=orientation_deg,
+        )
     return BuildingPhysicsGraph(
         building_model=building_model,
         zone_connections=zone_connections,

@@ -1,5 +1,7 @@
 # Phase 1.5 — deterministic object-runner reference
 
+Validation category: **verification** (repeatability, not empirical agreement)
+
 The trusted reference is `AbbeySimulation` using a byte-for-byte snapshot of
 the current local ABBEY config:
 

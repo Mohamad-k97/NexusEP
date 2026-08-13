@@ -37,7 +37,6 @@ def zone_row(case_out, zone_id, step=None):
         not subset.empty,
         "No zone row found for " + str(zone_id),
     )
-
     return subset.iloc[-1].to_dict()
 
 
@@ -237,7 +236,6 @@ def test_closed_unoccupied_room_drifts_toward_outdoor_temperature():
         "Heating should be off in passive drift test.",
     )
 
-    print("PASS: test_closed_unoccupied_room_drifts_toward_outdoor_temperature")
 
 
 def test_occupied_closed_room_warms_or_cools_more_slowly_than_unoccupied():
@@ -318,7 +316,6 @@ def test_occupied_closed_room_warms_or_cools_more_slowly_than_unoccupied():
         "Occupied room should expose sensible internal heat.",
     )
 
-    print("PASS: test_occupied_closed_room_warms_or_cools_more_slowly_than_unoccupied")
 
 
 def test_cooking_heats_kitchen_compared_with_no_cooking_baseline():
@@ -416,7 +413,6 @@ def test_cooking_heats_kitchen_compared_with_no_cooking_baseline():
         "Cooking case should expose appliance energy in zone energy accounting.",
     )
 
-    print("PASS: test_cooking_heats_kitchen_compared_with_no_cooking_baseline")
 
 
 def test_temperature_changes_are_directional_not_exact():
@@ -492,18 +488,3 @@ def test_temperature_changes_are_directional_not_exact():
             + str(cold_temp)
         ),
     )
-
-    print("PASS: test_temperature_changes_are_directional_not_exact")
-
-
-def main():
-    test_closed_unoccupied_room_drifts_toward_outdoor_temperature()
-    test_occupied_closed_room_warms_or_cools_more_slowly_than_unoccupied()
-    test_cooking_heats_kitchen_compared_with_no_cooking_baseline()
-    test_temperature_changes_are_directional_not_exact()
-
-    print("Phase 16.1 passive thermal sanity tests passed.")
-
-
-if __name__ == "__main__":
-    main()

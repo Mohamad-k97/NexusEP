@@ -45,7 +45,6 @@ from nexusep.abbey.building import (
     BuildingPhysicsPerformanceModel,
     make_default_family_building,
     make_default_family_physics_graph,
-    default_family_space_role_map,
     apply_control_action_bridge,
 )
 
@@ -209,8 +208,41 @@ class AbbeySimulation:
     ) -> "AbbeySimulation":
         config = load_jsonc(config_path)
 
+        default_building_created = False
+        if use_building_performance and building_model is None:
+            building_model = make_default_family_building()
+            default_building_created = True
+        if use_building_performance and building_physics_graph is None:
+            if not default_building_created:
+                raise ValueError(
+                    "building_physics_graph is required for a supplied building_model"
+                )
+            building_physics_graph = make_default_family_physics_graph(
+                building_model=building_model,
+            )
+
         observation = observation or DwellingObservation()
         default_space_id = observation.default_zone_id
+        default_building_id = ""
+        default_dwelling_id = ""
+        if building_model is not None:
+            default_building_id = building_model.building_id
+            dwelling_ids = list(building_model.dwellings)
+            if len(dwelling_ids) != 1 and locations is None:
+                raise ValueError(
+                    "locations with explicit dwelling_id are required for "
+                    "multi-dwelling buildings"
+                )
+            if dwelling_ids:
+                default_dwelling_id = dwelling_ids[0]
+            zone_ids = list(building_model.all_zone_ids())
+            if default_space_id not in zone_ids and zone_ids:
+                living_ids = [
+                    zone.zone_id
+                    for zone in building_model.all_zone_models().values()
+                    if zone.zone_use in {"living", "living_room"}
+                ]
+                default_space_id = sorted(living_ids or zone_ids)[0]
 
         # ------------------------------------------------------------
         # People
@@ -260,8 +292,8 @@ class AbbeySimulation:
 
                 locations[occupant_id] = OccupantLocation(
                     occupant_id=occupant_id,
-                    dwelling_id="dwelling_1",
-                    building_id="dummy_building_1",
+                    dwelling_id=default_dwelling_id,
+                    building_id=default_building_id,
                     is_home=getattr(person_i, "is_home", True),
                     current_space_id=default_space_id,
                     current_space_role="idle",
@@ -284,7 +316,7 @@ class AbbeySimulation:
                     continue
 
                 dwelling_id = locations[occupant_id].dwelling_id
-                building_id = getattr(locations[occupant_id], "building_id", "dummy_building_1")
+                building_id = locations[occupant_id].building_id
 
                 assignments[occupant_id] = SpaceAssignment(
                     occupant_id=occupant_id,
@@ -318,14 +350,6 @@ class AbbeySimulation:
         # ------------------------------------------------------------
         # Building performance path
         # ------------------------------------------------------------
-
-        if use_building_performance and building_model is None:
-            building_model = make_default_family_building()
-
-        if use_building_performance and building_physics_graph is None:
-            building_physics_graph = make_default_family_physics_graph(
-                building_model=building_model,
-            )
 
         if use_building_performance and building_performance_model is None:
             building_performance_model = BuildingPhysicsPerformanceModel(
@@ -602,7 +626,6 @@ class AbbeySimulation:
             return self.locations
 
         all_zone_ids = set(self.building_model.all_zone_ids())
-        role_map = default_family_space_role_map(dwelling_id="dwelling_1")
 
         out = {}
 
@@ -611,12 +634,16 @@ class AbbeySimulation:
             current_space_id = getattr(new_location, "current_space_id", None)
 
             if current_space_id not in all_zone_ids:
-                mapped_space_id = role_map.get(current_space_id, current_space_id)
+                assignment = self.assignments.get(occupant_id)
+                mapped_space_id = current_space_id
+                if assignment is not None:
+                    mapped_space_id = assignment.resolve(
+                        role=getattr(new_location, "current_space_role", "idle"),
+                        available_space_ids=all_zone_ids,
+                    )
 
                 if mapped_space_id in all_zone_ids:
                     new_location = new_location.copy(
-                        building_id=getattr(new_location, "building_id", "dummy_building_1"),
-                        dwelling_id=getattr(new_location, "dwelling_id", "dwelling_1"),
                         current_space_id=mapped_space_id,
                     )
 
@@ -686,9 +713,17 @@ class AbbeySimulation:
             self.building_performance_model.physics_graph = self.building_physics_graph
 
         building_locations = self._locations_for_building_performance()
-        role_to_zone_id = default_family_space_role_map(
-            dwelling_id="dwelling_1",
-        )
+        role_to_zone_id = {
+            zone_id: zone_id for zone_id in self.building_model.all_zone_ids()
+        }
+        for assignment in self.assignments.values():
+            role_to_zone_id.update(
+                {
+                    role: zone_id
+                    for role, zone_id in assignment.role_to_space_id.items()
+                    if zone_id in role_to_zone_id
+                }
+            )
         action_events = self._get_current_action_events_for_building_bridge(
             chunk_records=chunk_records,
         )

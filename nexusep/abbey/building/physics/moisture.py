@@ -18,11 +18,12 @@ Dependency rule:
     agents/actions provide clean moisture source inputs later.
 """
 
+import copy
+import math
 from dataclasses import dataclass, replace
 from typing import Any, Dict, List
-import math
-import copy
 
+import numpy as np
 
 MOISTURE_MODEL_FAMILY = "zone_level_moisture_balance"
 MOISTURE_STATE_VARIABLE = "humidity_ratio_kg_water_per_kg_dry_air"
@@ -98,6 +99,7 @@ MOISTURE_TRANSPORT_TARGET_OUTDOOR = "outdoor"
 MOISTURE_TRANSPORT_TARGET_INTERZONE = "interzone"
 
 MOISTURE_TIMESTEP_METHOD = "semi_implicit_humidity_ratio_mass_balance"
+MOISTURE_BUILDING_TIMESTEP_METHOD = "coupled_implicit_humidity_ratio_mass_balance"
 DEFAULT_MOISTURE_DT_MINUTES = 15.0
 
 MOISTURE_MODEL_INTERFACE_MODE = "runner_facing_moisture_model"
@@ -1390,6 +1392,33 @@ class ZoneMoistureUpdateResult:
             relative_humidity_percent=self.new_relative_humidity_percent,
         )
 
+    def storage_change_kg_s(self) -> float:
+        """Water-vapour storage change in the zone dry-air control volume."""
+
+        return (
+            self.dry_air_mass_kg
+            * (self.new_humidity_ratio_kg_kg - self.old_humidity_ratio_kg_kg)
+            / self.dt_seconds
+        )
+
+    def transport_rate_kg_s(self) -> float:
+        """Net water-vapour rate entering through all dry-air flow targets."""
+
+        return sum(
+            target.dry_air_mass_flow_kg_s
+            * (target.humidity_ratio_kg_kg - self.new_humidity_ratio_kg_kg)
+            for target in self.targets
+        )
+
+    def balance_residual_kg_s(self) -> float:
+        """Storage minus internal generation and airflow transport."""
+
+        return (
+            self.storage_change_kg_s()
+            - self.moisture_generation_kg_s
+            - self.transport_rate_kg_s()
+        )
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "zone_id": self.zone_id,
@@ -1399,6 +1428,9 @@ class ZoneMoistureUpdateResult:
             "new_relative_humidity_percent": self.new_relative_humidity_percent,
             "dry_air_mass_kg": self.dry_air_mass_kg,
             "moisture_generation_kg_s": self.moisture_generation_kg_s,
+            "storage_change_kg_s": self.storage_change_kg_s(),
+            "transport_rate_kg_s": self.transport_rate_kg_s(),
+            "balance_residual_kg_s": self.balance_residual_kg_s(),
             "temperature_c": self.temperature_c,
             "atmospheric_pressure_pa": self.atmospheric_pressure_pa,
             "dt_seconds": self.dt_seconds,
@@ -1464,6 +1496,27 @@ class BuildingMoistureStepResult:
     def relative_humidity_by_zone_percent(self) -> Dict[str, float]:
         return self.updated_moisture_state.relative_humidity_by_zone_percent()
 
+    def total_storage_change_kg_s(self) -> float:
+        return sum(
+            result.storage_change_kg_s() for result in self.zone_results.values()
+        )
+
+    def total_generation_kg_s(self) -> float:
+        return sum(
+            result.moisture_generation_kg_s
+            for result in self.zone_results.values()
+        )
+
+    def total_transport_rate_kg_s(self) -> float:
+        return sum(
+            result.transport_rate_kg_s() for result in self.zone_results.values()
+        )
+
+    def balance_residual_kg_s(self) -> float:
+        return sum(
+            result.balance_residual_kg_s() for result in self.zone_results.values()
+        )
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "updated_moisture_state": self.updated_moisture_state.to_dict(),
@@ -1471,6 +1524,10 @@ class BuildingMoistureStepResult:
             "relative_humidity_by_zone_percent": self.relative_humidity_by_zone_percent(),
             "dt_minutes": self.dt_minutes,
             "method": self.method,
+            "total_storage_change_kg_s": self.total_storage_change_kg_s(),
+            "total_generation_kg_s": self.total_generation_kg_s(),
+            "total_transport_rate_kg_s": self.total_transport_rate_kg_s(),
+            "balance_residual_kg_s": self.balance_residual_kg_s(),
             "zone_results": {
                 zone_id: result.to_dict()
                 for zone_id, result in self.zone_results.items()
@@ -2188,43 +2245,101 @@ def step_building_moisture_state(
         atmospheric_pressure_pa
     )
 
-    updated_zone_states = {}
-    zone_results = {}
+    dt_seconds = _positive_float(
+        float(dt_minutes) * 60.0,
+        "dt_seconds",
+        "building_moisture_state",
+    )
+    zone_ids = moisture_state.zone_ids()
+    zone_index = {zone_id: index for index, zone_id in enumerate(zone_ids)}
+    coefficient_matrix = np.zeros((len(zone_ids), len(zone_ids)), dtype=float)
+    right_hand_side = np.zeros(len(zone_ids), dtype=float)
+    temperatures_c = {}
 
-    for zone_id in moisture_state.zone_ids():
+    for zone_id, index in zone_index.items():
         zone_state = moisture_state.get_zone_state(zone_id)
-
-        zone_parameters = building_moisture_parameters.get_zone_parameters(
-            zone_id
-        )
-
-        transport_targets = (
-            moisture_transport_result
-            .get_targets_for_zone(zone_id)
-            .targets
-        )
-
-        moisture_generation_kg_s = _moisture_generation_kg_s_for_zone(
+        zone_parameters = building_moisture_parameters.get_zone_parameters(zone_id)
+        generation_kg_s = _moisture_generation_kg_s_for_zone(
             moisture_source_inputs=moisture_source_inputs,
             zone_id=zone_id,
         )
-
-        temperature_c = _zone_air_temperature_from_thermal_state(
+        storage_kg_s = zone_parameters.dry_air_mass_kg / dt_seconds
+        coefficient_matrix[index, index] = storage_kg_s
+        right_hand_side[index] = (
+            storage_kg_s * zone_state.humidity_ratio_kg_kg + generation_kg_s
+        )
+        temperatures_c[zone_id] = _zone_air_temperature_from_thermal_state(
             thermal_state=thermal_state,
             zone_id=zone_id,
             default_temperature_c=DEFAULT_INITIAL_AIR_TEMPERATURE_C,
         )
 
-        result = update_zone_moisture_state(
-            zone_moisture_state=zone_state,
-            zone_moisture_parameters=zone_parameters,
-            transport_targets=transport_targets,
-            moisture_generation_kg_s=moisture_generation_kg_s,
+        for target in moisture_transport_result.get_targets_for_zone(zone_id).targets:
+            mass_flow_kg_s = target.dry_air_mass_flow_kg_s
+            coefficient_matrix[index, index] += mass_flow_kg_s
+            if target.target_type == MOISTURE_TRANSPORT_TARGET_INTERZONE:
+                if target.source_zone_id not in zone_index:
+                    raise KeyError(
+                        "Interzone moisture target "
+                        + target.target_id
+                        + " references a zone missing from BuildingMoistureState: "
+                        + target.source_zone_id
+                    )
+                coefficient_matrix[index, zone_index[target.source_zone_id]] -= (
+                    mass_flow_kg_s
+                )
+            else:
+                right_hand_side[index] += (
+                    mass_flow_kg_s * target.humidity_ratio_kg_kg
+                )
+
+    solved_humidity_ratio = np.linalg.solve(coefficient_matrix, right_hand_side)
+    updated_zone_states = {}
+    zone_results = {}
+
+    for zone_id, index in zone_index.items():
+        zone_state = moisture_state.get_zone_state(zone_id)
+        zone_parameters = building_moisture_parameters.get_zone_parameters(zone_id)
+        generation_kg_s = _moisture_generation_kg_s_for_zone(
+            moisture_source_inputs=moisture_source_inputs,
+            zone_id=zone_id,
+        )
+        targets = []
+        for target in moisture_transport_result.get_targets_for_zone(zone_id).targets:
+            if target.target_type == MOISTURE_TRANSPORT_TARGET_INTERZONE:
+                targets.append(
+                    target.copy(
+                        humidity_ratio_kg_kg=float(
+                            solved_humidity_ratio[zone_index[target.source_zone_id]]
+                        )
+                    )
+                )
+            else:
+                targets.append(target)
+        new_humidity_ratio = float(solved_humidity_ratio[index])
+        temperature_c = temperatures_c[zone_id]
+        result = ZoneMoistureUpdateResult(
+            zone_id=zone_id,
+            old_humidity_ratio_kg_kg=zone_state.humidity_ratio_kg_kg,
+            new_humidity_ratio_kg_kg=new_humidity_ratio,
+            old_relative_humidity_percent=relative_humidity_from_humidity_ratio(
+                humidity_ratio_kg_kg=zone_state.humidity_ratio_kg_kg,
+                temperature_c=temperature_c,
+                atmospheric_pressure_pa=atmospheric_pressure_pa,
+            ),
+            new_relative_humidity_percent=relative_humidity_from_humidity_ratio(
+                humidity_ratio_kg_kg=new_humidity_ratio,
+                temperature_c=temperature_c,
+                atmospheric_pressure_pa=atmospheric_pressure_pa,
+            ),
+            dry_air_mass_kg=zone_parameters.dry_air_mass_kg,
+            moisture_generation_kg_s=generation_kg_s,
             temperature_c=temperature_c,
             atmospheric_pressure_pa=atmospheric_pressure_pa,
-            dt_minutes=dt_minutes,
+            targets=targets,
+            dt_seconds=dt_seconds,
+            method=MOISTURE_BUILDING_TIMESTEP_METHOD,
         )
-
         updated_zone_states[zone_id] = result.to_zone_moisture_state()
         zone_results[zone_id] = result
 
@@ -2236,7 +2351,7 @@ def step_building_moisture_state(
         updated_moisture_state=updated_moisture_state,
         zone_results=zone_results,
         dt_minutes=dt_minutes,
-        method=MOISTURE_TIMESTEP_METHOD,
+        method=MOISTURE_BUILDING_TIMESTEP_METHOD,
     )
 
 def make_outdoor_moisture_transport_target(

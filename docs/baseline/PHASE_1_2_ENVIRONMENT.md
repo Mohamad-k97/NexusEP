@@ -1,5 +1,7 @@
 # Phase 1.2 — reproducible Python environment
 
+Validation category: **verification** (environment provenance only)
+
 ## Supported interpreter
 
 The supported line is **CPython 3.12.x, 64-bit**. `pyproject.toml` enforces

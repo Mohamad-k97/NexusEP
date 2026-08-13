@@ -1253,6 +1253,27 @@ def step_building_thermal_semi_implicit_fast(
             schema.PHYSICS_VENTILATION_FLOW_M3_S,
         ] = ventilation_flow_m3_s
 
+        air_residual_w = (
+            c_air_over_dt
+            * (new_air_temperature_c - old_air_temperature_c)
+            - convective_gain_w
+            - h_air_mass
+            * (old_mass_temperature_c - new_air_temperature_c)
+            - (h_envelope + h_ventilation)
+            * (outdoor_temperature_c - new_air_temperature_c)
+        )
+        mass_residual_w = (
+            c_mass_over_dt
+            * (new_mass_temperature_c - old_mass_temperature_c)
+            - radiative_gain_w
+            - h_air_mass
+            * (new_air_temperature_c - new_mass_temperature_c)
+        )
+        physics_result[
+            zone_i,
+            schema.PHYSICS_THERMAL_BALANCE_RESIDUAL_W,
+        ] = air_residual_w + mass_residual_w
+
     return zone_state, physics_result
 
 def run_thermal_step(

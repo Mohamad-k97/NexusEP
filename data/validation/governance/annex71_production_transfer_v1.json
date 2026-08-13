@@ -1,0 +1,53 @@
+{
+  "protocol_version": "1.0.0",
+  "frozen_on": "2026-08-12",
+  "freeze_status": "predeclared_thresholds_retained_but_later_period_unsealed_by_mapper_diagnostics",
+  "validation_category": "calibration_and_empirical_temporal_transfer",
+  "claim_limit": "This protocol is not a blind validation. The later User-1 target period has been inspected while correcting the production mapper and is now a post-hoc diagnostic, not an untouched validation.",
+  "source_phases": {
+    "coheating_allocation": {
+      "start": "2018-12-10T19:00:00+01:00",
+      "end_exclusive": "2018-12-19T10:00:00+01:00",
+      "purpose": "allocate the independently published 107 W/K whole-house heat-transfer coefficient to the four official air bodies"
+    },
+    "user1_calibration": {
+      "start": "2018-12-19T10:00:00+01:00",
+      "end_exclusive": "2019-01-10T00:00:00+01:00",
+      "purpose": "fit only the effective thermal capacity after sensitivity screening"
+    },
+    "user1_temporal_transfer": {
+      "start": "2019-01-10T00:00:00+01:00",
+      "end_exclusive": "2019-02-01T10:00:00+01:00",
+      "purpose": "untouched temporal transfer; no parameter, preprocessing, or threshold changes permitted"
+    }
+  },
+  "fixed_inputs": {
+    "whole_house_heat_transfer_coefficient_w_k": 107.0,
+    "window_u_value_w_m2_k": 1.2,
+    "window_solar_transmittance_fraction": 0.543,
+    "air_density_kg_m3_at_source_reference_conditions": 1.204,
+    "interzone_exchange_w_k": {
+      "ground_kitchen_open_door_effective": 200.0,
+      "ground_sleeping_closed_partitions": 45.0,
+      "ground_attic_closed_ceiling_and_trap": 42.8706
+    },
+    "envelope_allocation": "The published 107 W/K whole-house HTC is distributed in proportion to per-air-body median heat-input/temperature-difference ratios during low-solar near-steady coheat intervals."
+  },
+  "candidate_parameters": [
+    {
+      "name": "total_effective_capacity_j_k",
+      "lower": 5000000.0,
+      "upper": 150000000.0,
+      "nominal": 42000000.0,
+      "fit": true
+    }
+  ],
+  "acceptance": {
+    "warmup_hours": 24,
+    "pooled_temperature_rmse_c_max": 1.0,
+    "pooled_absolute_temperature_bias_c_max": 0.5,
+    "maximum_thermal_balance_residual_w": 1e-7,
+    "fallback_permitted": false
+  },
+  "amendment_rule": "Thresholds remain recorded for forensic comparison. No result from the inspected later period may be promoted to blind, holdout, or untouched validation evidence."
+}

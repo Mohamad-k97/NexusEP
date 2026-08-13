@@ -65,7 +65,6 @@ class PersonState:
     is_sleeping: bool = False
 
     # Stable/semi-stable behavioral traits
-    has_job: bool = True
     base_laziness: float = 0.40
     money_sensitivity: float = 0.60
     comfort_sensitivity: float = 0.70
@@ -84,9 +83,7 @@ class PersonState:
     assigned_work_zone_id: str = ""    # empty = use fallback/default
     assigned_idle_zone_id: str = ""    # empty = use fallback/default
     
-    # Household  role
-    household_id: str = "household_1"
-    can_cook: bool = True
+    # Household role
     is_main_cook: bool = True
     cooking_priority: int = 1
 
@@ -568,12 +565,32 @@ class ExecutionState:
         )
 
     def add_foreground_action(self, action: ActionState) -> "ExecutionState":
+        if not isinstance(action, ActionState):
+            raise TypeError("foreground action must be an ActionState")
+        if action.background_process:
+            raise ValueError("background processes cannot be added as foreground actions")
+        if not action.is_active():
+            return self
+        if action.blocks_actor and self.actor_is_blocked(action.actor_id):
+            raise ValueError(
+                f"actor {action.actor_id!r} already has a blocking foreground action"
+            )
         return replace(
             self,
             foreground_actions=[*self.foreground_actions, action],
         )
 
     def add_background_process(self, process: ActionState) -> "ExecutionState":
+        if not isinstance(process, ActionState):
+            raise TypeError("background process must be an ActionState")
+        if not process.background_process:
+            raise ValueError("foreground actions cannot be added as background processes")
+        if not process.is_active():
+            return self
+        if self.background_process_running(process.name):
+            raise ValueError(
+                f"background process {process.name!r} is already running"
+            )
         return replace(
             self,
             background_processes=[*self.background_processes, process],

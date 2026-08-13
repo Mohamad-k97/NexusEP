@@ -572,8 +572,9 @@ WEATHER_WIND_SPEED_M_S = 6
 WEATHER_WIND_DIRECTION_DEG = 7
 WEATHER_SKY_TEMPERATURE_C = 8
 WEATHER_RAIN_FLAG = 9
+WEATHER_ATMOSPHERIC_PRESSURE_PA = 10
 
-N_WEATHER_STATE_COLS = 10
+N_WEATHER_STATE_COLS = 11
 
 
 # =============================================================================
@@ -632,8 +633,11 @@ PHYSICS_NOISE_DB = 6
 PHYSICS_HEATING_DEMAND_W = 7
 PHYSICS_COOLING_DEMAND_W = 8
 PHYSICS_VENTILATION_FLOW_M3_S = 9
+PHYSICS_THERMAL_BALANCE_RESIDUAL_W = 10
+PHYSICS_MOISTURE_BALANCE_RESIDUAL_KG_S = 11
+PHYSICS_CO2_BALANCE_RESIDUAL_KG_S = 12
 
-N_PHYSICS_RESULT_COLS = 10
+N_PHYSICS_RESULT_COLS = 13
 
 
 # =============================================================================
@@ -832,11 +836,19 @@ def validate_schema():
 
     _assert_count(PROCESS_MOISTURE_GAIN_KG_S, N_PROCESS_STATE_COLS, "process_state")
 
-    _assert_count(WEATHER_RAIN_FLAG, N_WEATHER_STATE_COLS, "weather_state")
+    _assert_count(
+        WEATHER_ATMOSPHERIC_PRESSURE_PA,
+        N_WEATHER_STATE_COLS,
+        "weather_state",
+    )
     _assert_count(TIME_IS_WEEKEND, N_TIME_STATE_COLS, "time_state")
 
     _assert_count(GAIN_ELECTRIC_POWER_W, N_INTERNAL_GAIN_COLS, "internal_gains")
-    _assert_count(PHYSICS_VENTILATION_FLOW_M3_S, N_PHYSICS_RESULT_COLS, "physics_result")
+    _assert_count(
+        PHYSICS_CO2_BALANCE_RESIDUAL_KG_S,
+        N_PHYSICS_RESULT_COLS,
+        "physics_result",
+    )
 
     _assert_count(PERSON_LOG_MOISTURE_GAIN_KG_S, N_PERSON_LOG_COLS, "person_log")
     _assert_count(ZONE_LOG_COOLING_DEMAND_W, N_ZONE_LOG_COLS, "zone_log")

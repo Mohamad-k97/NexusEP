@@ -86,21 +86,14 @@ def test_opt_in_failover_records_engine_error_and_quarantined_path(monkeypatch):
     assert result.performance_path == BUILDING_PERFORMANCE_PATH_LEGACY_FALLBACK_AFTER_ENGINE_ERROR
     assert result.legacy_fallback_used is True
     assert "phase17-opt-in-failure" in result.legacy_fallback_reason
+    assert result.legacy_fallback_exception_category == "RuntimeError"
     assert result.physics_engine_error == result.legacy_fallback_reason
     assert result.building_record["legacy_fallback_used"] is True
-
-
-def main():
-    monkeypatch = pytest.MonkeyPatch()
-    try:
-        test_engine_errors_propagate_when_fallback_is_not_explicitly_allowed(monkeypatch)
-        monkeypatch.undo()
-        test_disabling_engine_marks_the_explicit_legacy_path()
-        test_opt_in_failover_records_engine_error_and_quarantined_path(monkeypatch)
-    finally:
-        monkeypatch.undo()
-    print("Phase 17.5 legacy fallback quarantine tests passed.")
-
-
-if __name__ == "__main__":
-    main()
+    assert result.building_record["legacy_fallback_exception_category"] == "RuntimeError"
+    assert all(row["legacy_fallback_used"] is True for row in result.zone_records)
+    assert all(
+        row["legacy_fallback_exception_category"] == "RuntimeError"
+        for row in result.zone_records
+    )
+    assert all(row["legacy_fallback_used"] is True for row in result.dwelling_records)
+    assert result.physics_engine_result is None

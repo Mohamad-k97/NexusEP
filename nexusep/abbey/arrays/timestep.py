@@ -87,12 +87,14 @@ from nexusep.abbey.arrays.logger import (
 
 try:
     from nexusep.abbey.arrays.system_kernels import (
-        update_system_control_state,
+        add_system_power_to_dwelling_building,
         enforce_system_constraints,
+        update_system_control_state,
     )
 except ImportError:
     update_system_control_state = None
     enforce_system_constraints = None
+    add_system_power_to_dwelling_building = None
 
 
 try:
@@ -458,6 +460,8 @@ def run_system_update_if_available(
     internal_gains,
     add_power_totals=True,
     add_lighting_gains=True,
+    prescribed_heating_power_by_system_w=None,
+    prescribed_cooling_power_by_system_w=None,
 ):
     """
     Use Phase 10 system_kernels if available.
@@ -475,9 +479,42 @@ def run_system_update_if_available(
         dwelling_state=dwelling_state,
         building_state=building_state,
         internal_gains=internal_gains,
-        add_power_totals=add_power_totals,
+        add_power_totals=False,
         add_lighting_gains=add_lighting_gains,
     )
+
+    prescribed_pairs = (
+        (
+            prescribed_heating_power_by_system_w,
+            schema.SYSTEM_HEATING_POWER_W,
+            "prescribed_heating_power_by_system_w",
+        ),
+        (
+            prescribed_cooling_power_by_system_w,
+            schema.SYSTEM_COOLING_POWER_W,
+            "prescribed_cooling_power_by_system_w",
+        ),
+    )
+    for values, column, label in prescribed_pairs:
+        if values is None:
+            continue
+        if len(values) != system_state.shape[0]:
+            raise ValueError(label + " must have one value per system")
+        for system_i, value in enumerate(values):
+            power_w = float(value)
+            if not np.isfinite(power_w) or power_w < 0.0:
+                raise ValueError(label + " must be finite and non-negative")
+            system_state[system_i, column] = power_w
+
+    if add_power_totals:
+        if add_system_power_to_dwelling_building is None:
+            raise RuntimeError("system power aggregation is unavailable")
+        add_system_power_to_dwelling_building(
+            system_state=system_state,
+            zone_state=zone_state,
+            dwelling_state=dwelling_state,
+            building_state=building_state,
+        )
 
     return True
 
@@ -537,6 +574,9 @@ def run_array_timestep_arrays(
     enforce_work_schedule=True,
     run_acoustics=True,
     refresh_perception_after_physics=False,
+    prescribed_solar_gain_by_zone_w=None,
+    prescribed_heating_power_by_system_w=None,
+    prescribed_cooling_power_by_system_w=None,
 ):
     """
     Run one complete ABBEY array timestep.
@@ -664,6 +704,12 @@ def run_array_timestep_arrays(
         internal_gains=internal_gains,
         add_power_totals=True,
         add_lighting_gains=True,
+        prescribed_heating_power_by_system_w=(
+            prescribed_heating_power_by_system_w
+        ),
+        prescribed_cooling_power_by_system_w=(
+            prescribed_cooling_power_by_system_w
+        ),
     )
 
     # -------------------------------------------------------------------------
@@ -692,6 +738,25 @@ def run_array_timestep_arrays(
         physics_result=physics_result,
         internal_gains=internal_gains,
     )
+
+    if prescribed_solar_gain_by_zone_w is not None:
+        if len(prescribed_solar_gain_by_zone_w) != zone_state.shape[0]:
+            raise ValueError(
+                "prescribed_solar_gain_by_zone_w must have one value per zone"
+            )
+        for zone_i in range(zone_state.shape[0]):
+            solar_gain_w = float(prescribed_solar_gain_by_zone_w[zone_i])
+            if not np.isfinite(solar_gain_w) or solar_gain_w < 0.0:
+                raise ValueError(
+                    "prescribed_solar_gain_by_zone_w must be finite and non-negative"
+                )
+            zone_state[zone_i, schema.ZONE_SOLAR_GAIN_W] = solar_gain_w
+            zone_state[zone_i, schema.ZONE_INTERNAL_HEAT_GAIN_W] = (
+                zone_state[zone_i, schema.ZONE_PEOPLE_GAIN_W]
+                + zone_state[zone_i, schema.ZONE_LIGHTING_GAIN_W]
+                + zone_state[zone_i, schema.ZONE_APPLIANCE_GAIN_W]
+                + solar_gain_w
+            )
 
     sync_internal_gains_from_zone_state(
         zone_state=zone_state,
@@ -869,6 +934,9 @@ def run_array_timestep(
     enforce_work_schedule=True,
     run_acoustics=True,
     refresh_perception_after_physics = False,
+    prescribed_solar_gain_by_zone_w=None,
+    prescribed_heating_power_by_system_w=None,
+    prescribed_cooling_power_by_system_w=None,
 ):
     """
     Run one complete timestep using a SimulationArrayState.
@@ -934,6 +1002,13 @@ def run_array_timestep(
         enforce_work_schedule=enforce_work_schedule,
         run_acoustics=run_acoustics,
         refresh_perception_after_physics=refresh_perception_after_physics,
+        prescribed_solar_gain_by_zone_w=prescribed_solar_gain_by_zone_w,
+        prescribed_heating_power_by_system_w=(
+            prescribed_heating_power_by_system_w
+        ),
+        prescribed_cooling_power_by_system_w=(
+            prescribed_cooling_power_by_system_w
+        ),
         
     )
 

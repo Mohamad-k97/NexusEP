@@ -90,7 +90,6 @@ def set_zone_state(
         ),
     )
 
-
 def make_person_and_location(zone_id):
     people = {
         "person_1": {
@@ -277,7 +276,6 @@ def test_engine_updated_zone_states_become_zone_observations():
             + str(zone_id),
         )
 
-    print("PASS: test_engine_updated_zone_states_become_zone_observations")
 
 
 def test_dwelling_observation_default_zone_remains_stable():
@@ -309,7 +307,6 @@ def test_dwelling_observation_default_zone_remains_stable():
         "Dwelling scalar co2_ppm should match default zone.",
     )
 
-    print("PASS: test_dwelling_observation_default_zone_remains_stable")
 
 
 def test_observation_contains_control_and_occupancy_fields():
@@ -367,7 +364,6 @@ def test_observation_contains_control_and_occupancy_fields():
         "Occupied kitchen should expose person_1 in occupied_person_ids.",
     )
 
-    print("PASS: test_observation_contains_control_and_occupancy_fields")
 
 
 def test_observation_get_zone_resolves_simple_and_dwelling_aware_ids():
@@ -406,7 +402,6 @@ def test_observation_get_zone_resolves_simple_and_dwelling_aware_ids():
         "Simple kitchen lookup should resolve dwelling-aware observation.",
     )
 
-    print("PASS: test_observation_get_zone_resolves_simple_and_dwelling_aware_ids")
 
 
 def test_runner_observation_and_systems_are_updated_after_one_step():
@@ -477,7 +472,6 @@ def test_runner_observation_and_systems_are_updated_after_one_step():
         "SystemState default_space_id should match observation default_zone_id.",
     )
 
-    print("PASS: test_runner_observation_and_systems_are_updated_after_one_step")
 
 
 def test_agent_perception_reads_updated_observation_next_step():
@@ -551,20 +545,3 @@ def test_agent_perception_reads_updated_observation_next_step():
         0.0 <= float(updated_person.acoustic_discomfort) <= 1.0,
         "Agent perception should produce bounded acoustic_discomfort.",
     )
-
-    print("PASS: test_agent_perception_reads_updated_observation_next_step")
-
-
-def main():
-    test_engine_updated_zone_states_become_zone_observations()
-    test_dwelling_observation_default_zone_remains_stable()
-    test_observation_contains_control_and_occupancy_fields()
-    test_observation_get_zone_resolves_simple_and_dwelling_aware_ids()
-    test_runner_observation_and_systems_are_updated_after_one_step()
-    test_agent_perception_reads_updated_observation_next_step()
-
-    print("Phase 17.4 observation contract tests passed.")
-
-
-if __name__ == "__main__":
-    main()

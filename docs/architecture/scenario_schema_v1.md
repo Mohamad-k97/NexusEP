@@ -27,8 +27,9 @@ shapes belong in a separate compatibility importer.
 
 ## Covered sections
 
-The root model covers schema version and use case, metadata, deterministic
-random seed, fixed simulation period, enabled geometry features, the building /
+The root model covers schema version and use case, metadata, an explicit site
+location and ground albedo, deterministic random seed, fixed simulation
+period, enabled geometry features, the building /
 dwelling / zone hierarchy, surfaces and openings, occupants and schedules,
 systems and their control setpoints/capacities, weather source and timestep
 weather, and output configuration.
@@ -37,6 +38,12 @@ Models are frozen and collection fields normalize to tuples. Numeric fields
 reject NaN and infinity and carry field-specific bounds. Datetimes remain
 timezone-aware. Paths become resolved `Path` values before the model is handed
 to callers.
+
+Site latitude, longitude, and elevation are required whenever the canonical
+model is loaded. Solar position is derived from the aware timestep timestamp
+and these coordinates; no backend may invent a location. Surface irradiance
+uses each opening's inherited tilt and azimuth, with the declared ground
+albedo contributing only through the plane-of-array calculation.
 
 ## Validation layers
 
@@ -50,4 +57,3 @@ to callers.
 
 All failures occur before engine initialization. Structural and semantic errors
 are aggregated as stable JSON paths with error types and messages.
-

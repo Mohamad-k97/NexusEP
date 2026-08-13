@@ -1,0 +1,63 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "ptb-absorption-database-overview",
+  "title": "PTB Room Acoustics Absorption Coefficient Database overview",
+  "version": "Undated legacy database overview retrieved 2026-08-11",
+  "publisher": "Physikalisch-Technische Bundesanstalt",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "The official database overview does not assign a DOI."
+  },
+  "license": {
+    "name": "PTB page states the listed data can be downloaded and used as desired; no SPDX license is declared",
+    "spdx_id": null,
+    "terms_url": "https://www.ptb.de/cms/en/ptb/fachabteilungen/abt1/fb-16/ag-163/absorption-coefficient-database.html"
+  },
+  "download_url": "https://www.ptb.de/cms/en/ptb/fachabteilungen/abt1/fb-16/ag-163/absorption-coefficient-database.html",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "ptb-absorption-database-overview-html",
+      "path": "data/raw/validation/ptb-absorption-database/overview.html",
+      "sha256": "e21ec9fb98045542f8bba21046940564ae2d628c63a799f5a6780f7e48a860b9",
+      "byte_size": 51326
+    }
+  ],
+  "units": {
+    "overview_metadata": "not applicable",
+    "future_absorption_coefficient": "dimensionless by octave-band centre frequency",
+    "future_scattering_coefficient": "dimensionless when available"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "Only the overview page was registered; material records and their measurement methods or uncertainties were not acquired.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "The linked Excel/ZIP database was not downloaded or checksum-pinned.",
+    "PTB states that room-acoustics research and support for this legacy database have stopped.",
+    "NexusEP has no octave-band absorption, scattering, reverberation, or reflection model, so these data are scientifically mismatched to ACOUST-0.",
+    "Any future use must register the actual database version, sheets, material mapping, measurement method, uncertainty, and preprocessing."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-ptb-absorption-overview",
+      "description": "Verify the official overview markers and checksum without downloading or using the material-property database.",
+      "script_path": "scripts/validation_data/inspect_future_acoustic_references.py",
+      "script_sha256": "daa8df48f9a604ecac5f22cc75e84f0dfdb0c091431d6df53302645603d4adbd",
+      "command": "uv run python scripts/validation_data/inspect_future_acoustic_references.py ptb data/raw/validation/ptb-absorption-database/overview.html",
+      "input_raw_file_ids": ["ptb-absorption-database-overview-html"],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Future source discovery for frequency-dependent material absorption and scattering models.",
+    "redistribution": "metadata_only",
+    "commercial_use": null,
+    "citation_required": true,
+    "notes": "No current NexusEP acoustic result may use this metadata-only record as physical validation evidence."
+  },
+  "targeted_models": ["ACOUST-0"]
+}

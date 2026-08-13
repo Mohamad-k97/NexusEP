@@ -1,0 +1,64 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "iea-ebc-annex-79-2024",
+  "title": "IEA EBC Annex 79 final report and occupant-behavior model guideline",
+  "version": "Final report October 2024 and guideline retrieved 2026-08-11",
+  "publisher": "IEA Energy in Buildings and Communities Programme",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "The final report identifies ISBN 978-1-4884-0041-4 but no DOI."
+  },
+  "license": {
+    "name": "IEA EBC publication copyright retained",
+    "spdx_id": null,
+    "terms_url": "https://annex79.iea-ebc.org/publications"
+  },
+  "download_url": "https://annex79.iea-ebc.org/publications",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "annex-79-final-report",
+      "path": "data/raw/validation/iea-annex-79/final-report.pdf",
+      "sha256": "ed6901360858d4f8f46ae19de21ec25eb8f32d388d0cc09b1ee2a22d1a45d01c",
+      "byte_size": 6958522
+    },
+    {
+      "file_id": "annex-79-occupant-model-guideline",
+      "path": "data/raw/validation/iea-annex-79/occupant-model-guideline.pdf",
+      "sha256": "573d6e0c06997dd2e38f7aec856a7df5be4c01b5706420fa8d11bcb551889a3d",
+      "byte_size": 474898
+    }
+  ],
+  "units": {"guidance_documents": "not applicable"},
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_applicable",
+    "description": "The registered publications synthesize methods and case studies; they are not a single measurement series.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "The reports guide documentation and evaluation but do not establish a NexusEP calibration result.",
+    "Linked databases and individual case studies require separate source, license, uncertainty, and split records.",
+    "Many reported applications remain proof-of-concept; real-building transfer must be tested independently."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-annex-79-publications",
+      "description": "Verify both retrieved PDFs and checksums without redistributing extracted content.",
+      "script_path": "scripts/validation_data/inspect_daylight_occupant_references.py",
+      "script_sha256": "00ba657f363e9b1618a92c35c9cfa3dbada65a33e1bb2959453c48ab7c15578d",
+      "command": "uv run python scripts/validation_data/inspect_daylight_occupant_references.py iea-ebc-annex-79-2024 data/raw/validation/iea-annex-79/final-report.pdf data/raw/validation/iea-annex-79/occupant-model-guideline.pdf",
+      "input_raw_file_ids": ["annex-79-final-report", "annex-79-occupant-model-guideline"],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Methodological guidance for transparent occupant-model documentation, diversity, and domain-specific evaluation.",
+    "redistribution": "metadata_only",
+    "commercial_use": null,
+    "citation_required": true,
+    "notes": "Keep source PDFs in ignored raw storage and register any later empirical dataset separately."
+  },
+  "targeted_models": ["OCC-1"]
+}

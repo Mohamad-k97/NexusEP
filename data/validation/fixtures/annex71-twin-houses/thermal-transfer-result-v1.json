@@ -1,0 +1,109 @@
+{
+  "artifact_version": "1.0.0",
+  "validation_category": "empirical_validation_alternative",
+  "phase": "4.9-alternative",
+  "study_id": "annex71-n2-living-thermal-transfer-v1",
+  "source": {
+    "title": "IEA EBC Annex 71 Twin House Main Experiment",
+    "doi": "10.24406/fordatis/76.2",
+    "license": "CC BY-SA 4.0",
+    "download_url": "https://fordatis.fraunhofer.de/bitstream/fordatis/161.2/4/03_Data_Main_Experiment.zip",
+    "archive_sha256": "832754489e0c513c8cb09b7e43d61a9f5249ff5502a781a672cae6d588a876a1"
+  },
+  "scope": "Forensic N2 living-room hourly single-node mapping diagnostic; not a production-engine or official blind/open validation",
+  "record_count": 1998,
+  "fixture": {
+    "path": "data/validation/fixtures/annex71-twin-houses/n2-living-main-experiment-hourly.csv",
+    "sha256": "9f6109f11fe65545a5d9f682e27a8a736a847efaedf215a36cf535aefe6c6969",
+    "byte_size": 217754
+  },
+  "study": {
+    "fit_success": true,
+    "fit_message": "Both `ftol` and `xtol` termination conditions are satisfied.",
+    "parameter_order": [
+      "capacity_j_k",
+      "envelope_conductance_w_k",
+      "heat_input_scale",
+      "effective_solar_aperture_m2"
+    ],
+    "fitted_parameters": {
+      "capacity_j_k": 99999999.99999999,
+      "envelope_conductance_w_k": 30.000000000000004,
+      "heat_input_scale": 0.9924155320130985,
+      "effective_solar_aperture_m2": 5.385033676851169
+    },
+    "physical_bounds": {
+      "capacity_j_k": {
+        "lower": 1000000.0,
+        "upper": 100000000.0
+      },
+      "envelope_conductance_w_k": {
+        "lower": 30.0,
+        "upper": 1000.0
+      },
+      "heat_input_scale": {
+        "lower": 0.5,
+        "upper": 1.5
+      },
+      "effective_solar_aperture_m2": {
+        "lower": 0.0,
+        "upper": 30.0
+      }
+    },
+    "minimum_fractional_distance_from_bound": 3.6625914214438155e-18,
+    "parameter_bounds_gate_passed": false,
+    "forcing_shift_audit": {
+      "calibration_mean_south_solar_w_m2": 56.29632721202003,
+      "holdout_mean_south_solar_w_m2": 183.06125,
+      "holdout_to_calibration_solar_ratio": 3.251744102427235,
+      "calibration_operated_opening_hours": 22,
+      "holdout_operated_opening_hours": 489
+    },
+    "calibration": {
+      "start_timestamp": "2018-12-07T20:00:00+01:00",
+      "end_timestamp_inclusive": "2019-01-26T16:00:00+01:00",
+      "count": 1197,
+      "bias_c": -0.09803249573524879,
+      "mae_c": 0.6466268055337909,
+      "rmse_c": 0.8401122070512819,
+      "maximum_abs_error_c": 3.6430337314829195,
+      "correlation": 0.24885312226644588
+    },
+    "untouched_holdout": {
+      "start_timestamp": "2019-01-26T17:00:00+01:00",
+      "end_timestamp_inclusive": "2019-03-01T00:00:00+01:00",
+      "count": 800,
+      "bias_c": 2.816020273669316,
+      "mae_c": 2.94349946248477,
+      "rmse_c": 3.6007626124566294,
+      "maximum_abs_error_c": 7.6350885406992965,
+      "correlation": 0.2751365512382124
+    },
+    "predeclared_acceptance": {
+      "rmse_c_less_than_or_equal_1_0": false,
+      "absolute_bias_c_less_than_or_equal_0_5": false,
+      "passed": false
+    },
+    "protocol_audit": {
+      "implementation_under_test": "single_node_thermal_update_helper",
+      "production_object_adapter_exercised": false,
+      "production_array_adapter_exercised": false,
+      "official_blind_open_protocol_followed": false,
+      "official_experimental_periods_followed": false,
+      "split_method": "arbitrary_chronological_60_40",
+      "unmapped_operated_openings_present": true,
+      "full_multizone_topology_mapped": false,
+      "valid_empirical_thermal_claim": false,
+      "classification": "mapping_diagnostic_rejected",
+      "reasons": [
+        "The helper is not the production multizone air/mass engine.",
+        "The arbitrary split crosses changing solar and opening-operation regimes.",
+        "Interzone, envelope, mass-node, and operated-opening inputs are not mapped.",
+        "Measured target temperatures were exposed during fitting, so this is not the official blind/open workflow."
+      ]
+    },
+    "scientific_validation_gate_passed": false
+  },
+  "blocked_gate_classification": "blocked and rejected with alternative",
+  "reproduce": "uv run python scripts/validation_data/run_annex71_thermal_transfer.py"
+}

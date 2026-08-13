@@ -1,5 +1,7 @@
 # Phase 1.0 — frozen baseline
 
+Validation category: **verification** (repository provenance only)
+
 Captured before recovery work on **2026-08-05T17:01:06.2484253+02:00** in
 `C:\Works\NexusEP\NexusEP`. The Windows time zone was `W. Europe Standard
 Time` (Europe/Rome; UTC+02:00 at capture time).

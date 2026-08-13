@@ -1,0 +1,68 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "nist-qico2-tn-2213",
+  "title": "Indoor Carbon Dioxide Metric Analysis Tool",
+  "version": "NIST Technical Note 2213, 2022",
+  "publisher": "National Institute of Standards and Technology",
+  "doi": {
+    "status": "assigned",
+    "value": "10.6028/NIST.TN.2213",
+    "absence_reason": null
+  },
+  "license": {
+    "name": "United States government work; NIST Technical Series publication",
+    "spdx_id": null,
+    "terms_url": "https://www.nist.gov/services-resources/software/quick-indoor-co2-qico2-tool"
+  },
+  "download_url": "https://nvlpubs.nist.gov/nistpubs/TechnicalNotes/NIST.TN.2213.pdf",
+  "retrieval_date": "2026-08-10",
+  "raw_files": [
+    {
+      "file_id": "nist-qico2-technical-note",
+      "path": "data/raw/validation/nist-qico2/nist-tn-2213-qico2.pdf",
+      "sha256": "4bc74cb11f616d953436235e89d863f83d402c0d6407cceb927ab5364a8c051b",
+      "byte_size": 2931696
+    }
+  ],
+  "units": {
+    "co2_concentration": "parts per million by volume",
+    "space_volume": "litre in equations; user-interface units are converted",
+    "outdoor_airflow": "litre per second",
+    "co2_generation": "litre per second",
+    "time": "second"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_applicable",
+    "description": "The registered equations provide analytical single-zone calculations rather than measured observations.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "The QICO2 single-zone model assumes equal balanced inflow and outflow and ignores air-density differences.",
+    "It excludes within-zone gradients, multizone transport, and infection-risk calculations.",
+    "Occupant CO2 generation is an input whose uncertainty must be handled separately in empirical use."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-nist-qico2-report",
+      "description": "Verify the exact public NIST QICO2 technical-note PDF by signature, byte size, and SHA-256 without creating a derived dataset.",
+      "script_path": "scripts/validation_data/inspect_co2_moisture_references.py",
+      "script_sha256": "08e4c4e3b2a49dc43759b51e280840a87e1fe32ad8c4cc0d95456fe0da8d3f0c",
+      "command": "uv run python scripts/validation_data/inspect_co2_moisture_references.py qico2 data/raw/validation/nist-qico2/nist-tn-2213-qico2.pdf",
+      "input_raw_file_ids": [
+        "nist-qico2-technical-note"
+      ],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Analytical verification of balanced single-zone CO2 concentration and storage",
+    "redistribution": "permitted",
+    "commercial_use": true,
+    "citation_required": true,
+    "notes": "The source is a United States government publication. NexusEP requires attribution for scientific traceability."
+  },
+  "targeted_models": [
+    "CO2-1"
+  ]
+}

@@ -1772,7 +1772,7 @@ def print_run_summary(sim, run_folder, building_output_paths):
     else:
         print(bridge_df["reason"].value_counts(dropna=False).head(20))
 
-    print("\nABBEY v0.4 run done ✅")
+    print("\nPASS: ABBEY v0.4 run completed")
 
 
 # ============================================================

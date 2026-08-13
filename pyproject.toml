@@ -20,7 +20,8 @@ dependencies = [
     "matplotlib",
     "lxml",
     "pydantic",
-    "pyarrow"
+    "pyarrow",
+    "pvlib==0.15.2",
 ]
 
 [project.optional-dependencies]
@@ -46,5 +47,10 @@ exclude = ["artifacts*", "benchmarks*", "data*", "docs*", "outputs*", "tests*"]
 testpaths = ["tests"]
 addopts = "-ra --basetemp=artifacts/test-temp"
 markers = [
+    "unit: isolated functions and state transitions",
+    "contract: canonical schemas, units, IDs, graphs, and adapters",
+    "integration: complete multi-component timesteps and short runs",
+    "annual: 8,760-hour correctness and aggregation coverage",
+    "benchmark: performance measurement, never scientific correctness",
     "slow: long-running integration or annual simulation coverage",
 ]

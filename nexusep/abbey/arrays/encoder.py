@@ -534,6 +534,14 @@ def _weather_dict_to_row(weather):
         _read_any(weather, ["rain", "rain_flag", "is_raining"], False),
         False,
     )
+    row[schema.WEATHER_ATMOSPHERIC_PRESSURE_PA] = _to_float(
+        _read_any(
+            weather,
+            ["atmospheric_pressure_pa", "pressure_pa"],
+            101325.0,
+        ),
+        101325.0,
+    )
 
     return row
 

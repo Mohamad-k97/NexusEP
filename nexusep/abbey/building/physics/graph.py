@@ -205,6 +205,7 @@ class BoundaryConnection:
 
     area_m2: Optional[float] = None
     orientation_deg: Optional[float] = None
+    tilt_deg: Optional[float] = None
 
     is_window: bool = False
     is_openable: bool = False
@@ -212,6 +213,7 @@ class BoundaryConnection:
     allow_duplicate: bool = False
 
     # Window / facade / solar properties
+    u_value_w_m2k: Optional[float] = None
     window_u_value_w_m2k: Optional[float] = None
     glazing_transmittance: Optional[float] = None
     window_visible_transmittance: Optional[float] = None
@@ -270,8 +272,38 @@ class BoundaryConnection:
         if self.orientation_deg is not None:
             self.orientation_deg = normalize_orientation_deg(self.orientation_deg)
 
+        if self.tilt_deg is not None:
+            self.tilt_deg = float(self.tilt_deg)
+            if not 0.0 <= self.tilt_deg <= 180.0:
+                raise ValueError(
+                    "BoundaryConnection '{}' has tilt_deg outside [0, 180].".format(
+                        self.connection_id
+                    )
+                )
+
         if self.connection_type == "window":
             self.is_window = True
+
+        if self.connection_type == "external_wall":
+            if self.area_m2 is None or self.area_m2 <= 0.0:
+                raise ValueError(
+                    "External-wall boundary connection '{}' must have positive "
+                    "area_m2.".format(self.connection_id)
+                )
+            if self.u_value_w_m2k is None:
+                raise ValueError(
+                    "External-wall boundary connection '{}' must have "
+                    "u_value_w_m2k.".format(self.connection_id)
+                )
+
+        if self.u_value_w_m2k is not None:
+            self.u_value_w_m2k = float(self.u_value_w_m2k)
+            if self.u_value_w_m2k < 0.0:
+                raise ValueError(
+                    "Boundary connection '{}' has negative u_value_w_m2k.".format(
+                        self.connection_id
+                    )
+                )
 
         if self.is_window:
             self._validate_window_inputs()
@@ -345,9 +377,21 @@ class BoundaryConnection:
         """
 
         if self.is_window or self.connection_type == "window":
-            return self.window_sound_reduction_db
+            open_fraction = self.open_fraction if self.is_openable else 0.0
+            return self.window_sound_reduction_db * (1.0 - open_fraction)
 
         return 0.0
+
+    def effective_outdoor_noise_transmission_factor(self) -> float:
+        """Interpolate the placeholder transmission factor toward one when open."""
+
+        base = self.outside_noise_transmission_factor
+
+        if not (self.is_window or self.connection_type == "window"):
+            return base
+
+        open_fraction = self.open_fraction if self.is_openable else 0.0
+        return base + open_fraction * (1.0 - base)
 
     def _validate_window_inputs(self) -> None:
         if self.orientation_deg is None:
@@ -472,6 +516,7 @@ class BuildingPhysicsGraph:
             raise ValueError("BuildingPhysicsGraph.building_model cannot be None.")
 
         if self.validate_on_init:
+            self._derive_zone_envelopes_from_graph()
             self.validate()
 
     @property
@@ -484,6 +529,74 @@ class BuildingPhysicsGraph:
         self._validate_boundary_connections()
         self._validate_duplicate_zone_connections()
         self._validate_duplicate_boundary_connections()
+        self._validate_envelope_models()
+
+    def _derive_zone_envelopes_from_graph(self) -> None:
+        """Materialize aggregate thermal fields from graph boundary conductances."""
+
+        for zone_id, zone in self._zone_models().items():
+            if zone.thermal_envelope_model != "graph_boundaries":
+                continue
+            boundaries = [
+                connection
+                for connection in self.boundary_connections.values()
+                if connection.zone_id == zone_id
+                and connection.connection_type == "external_wall"
+            ]
+            opaque_area_m2 = sum(
+                float(connection.area_m2 or 0.0) for connection in boundaries
+            )
+            opaque_ua_w_per_k = sum(
+                float(connection.area_m2 or 0.0)
+                * float(connection.u_value_w_m2k or 0.0)
+                for connection in boundaries
+            )
+            zone.external_wall_area_m2 = opaque_area_m2
+            zone.u_value_external_wall_w_m2k = (
+                opaque_ua_w_per_k / opaque_area_m2 if opaque_area_m2 else 0.0
+            )
+            zone.derived_envelope_ua_w_per_k = opaque_ua_w_per_k
+            zone.envelope_provenance = (
+                "derived_from_BuildingPhysicsGraph.external_wall_boundaries"
+            )
+
+    def _validate_envelope_models(self) -> None:
+        for zone_id, zone in self._zone_models().items():
+            if not zone.is_conditioned:
+                continue
+            if zone.thermal_envelope_model == "legacy_ua_compatibility":
+                if float(zone.ua_w_per_k) <= 0.0:
+                    raise ValueError(
+                        "Conditioned zone '{}' selected legacy_ua_compatibility "
+                        "but ua_w_per_k is not positive.".format(zone_id)
+                    )
+                continue
+            boundaries = [
+                connection
+                for connection in self.boundary_connections.values()
+                if connection.zone_id == zone_id
+                and connection.connection_type == "external_wall"
+            ]
+            if not boundaries:
+                raise ValueError(
+                    "Conditioned zone '{}' selected graph_boundaries but has no "
+                    "explicit exterior-wall boundary.".format(zone_id)
+                )
+            derived_ua = sum(
+                float(connection.area_m2 or 0.0)
+                * float(connection.u_value_w_m2k or 0.0)
+                for connection in boundaries
+            )
+            if derived_ua <= 0.0:
+                raise ValueError(
+                    "Conditioned zone '{}' has no usable exterior-wall "
+                    "conductance in the physics graph.".format(zone_id)
+                )
+            if abs(derived_ua - float(zone.derived_envelope_ua_w_per_k or 0.0)) > 1e-9:
+                raise ValueError(
+                    "Conditioned zone '{}' derived envelope UA does not match "
+                    "the graph boundary conductance sum.".format(zone_id)
+                )
 
     def _zone_models(self) -> Dict[str, ZoneModel]:
         return self.building_model.all_zone_models()

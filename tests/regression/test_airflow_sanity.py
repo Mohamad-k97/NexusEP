@@ -37,7 +37,6 @@ def test_window_airflow_is_not_thousands():
         wind_direction_deg=180.0,
         atmospheric_pressure_pa=101325.0,
     )
-
     window_static = WindowStaticParameters(
         boundary_connection_id="w1",
         zone_id="bedroom_1",
@@ -71,7 +70,6 @@ def test_window_airflow_is_not_thousands():
         "Window airflow should be non-negative.",
     )
 
-    print("PASS: test_window_airflow_is_not_thousands")
 
 
 def test_zone_airflow_cap_protects_thermal_path():
@@ -102,16 +100,3 @@ def test_zone_airflow_cap_protects_thermal_path():
         record.mixing_exchange_m3_h < 5000.0,
         "Thermal/CO2 path should not receive raw huge window airflow.",
     )
-
-    print("PASS: test_zone_airflow_cap_protects_thermal_path")
-
-
-def main():
-    test_window_airflow_is_not_thousands()
-    test_zone_airflow_cap_protects_thermal_path()
-
-    print("Airflow sanity tests passed.")
-
-
-if __name__ == "__main__":
-    main()

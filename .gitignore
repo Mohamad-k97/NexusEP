@@ -69,6 +69,10 @@ artifacts/test-temp/
 # Data and outputs
 data/raw/
 data/processed/
+data/validation/downloads/
+data/validation/raw/
+data/validation/working/
+data/validation/cache/
 outputs/
 results/
 cache/
@@ -100,4 +104,7 @@ cache/
 !data/processed/.gitkeep
 !data/databases/.gitkeep
 !data/weather/.gitkeep
+
+# Validation-data manifests, preprocessing code, and licensed small fixtures
+# below data/validation/ remain versioned. Raw and working copies do not.
 !outputs/.gitkeep

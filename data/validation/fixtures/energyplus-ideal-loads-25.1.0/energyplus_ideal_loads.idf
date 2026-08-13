@@ -1,0 +1,240 @@
+!- Open comparative fixture for NexusEP HVAC-1.
+!- This is an original, minimal EnergyPlus case; it is not an ASHRAE input.
+
+Version,25.1;
+
+SimulationControl,
+  No,                       !- Do Zone Sizing Calculation
+  No,                       !- Do System Sizing Calculation
+  No,                       !- Do Plant Sizing Calculation
+  No,                       !- Run Simulation for Sizing Periods
+  Yes;                      !- Run Simulation for Weather File Run Periods
+
+Building,
+  NexusEP Ideal Loads Check,
+  0.0,
+  Suburbs,
+  0.04,
+  0.4,
+  MinimalShadowing,
+  25,
+  6;
+
+Timestep,4;
+
+GlobalGeometryRules,
+  UpperLeftCorner,
+  CounterClockWise,
+  Relative;
+
+RunPeriod,
+  Comparative Day,
+  1,
+  2,
+  2017,
+  1,
+  2,
+  2017,
+  Monday,
+  No,
+  No,
+  No,
+  No,
+  No;
+
+ScheduleTypeLimits,
+  Any Number;
+
+ScheduleTypeLimits,
+  Temperature,
+  -60,
+  200,
+  Continuous,
+  Temperature;
+
+Schedule:Compact,
+  Always On,
+  Any Number,
+  Through: 12/31,
+  For: AllDays,
+  Until: 24:00,1.0;
+
+Schedule:Compact,
+  Heating Setpoint,
+  Temperature,
+  Through: 12/31,
+  For: AllDays,
+  Until: 24:00,20.0;
+
+Schedule:Compact,
+  Cooling Setpoint,
+  Temperature,
+  Through: 12/31,
+  For: AllDays,
+  Until: 24:00,24.0;
+
+Material,
+  Adiabatic Layer,
+  MediumRough,
+  0.001,
+  1.0,
+  1.0,
+  100.0,
+  0.9,
+  0.7,
+  0.7;
+
+Construction,
+  Adiabatic Construction,
+  Adiabatic Layer;
+
+Zone,
+  Heating Zone,
+  0.0,0.0,0.0,0.0,
+  1,
+  1,
+  3.0,
+  300.0,
+  100.0;
+
+Zone,
+  Cooling Zone,
+  0.0,20.0,0.0,0.0,
+  1,
+  1,
+  3.0,
+  300.0,
+  100.0;
+
+Zone,
+  Deadband Zone,
+  0.0,40.0,0.0,0.0,
+  1,
+  1,
+  3.0,
+  300.0,
+  100.0;
+
+BuildingSurface:Detailed,Heating South,Wall,Adiabatic Construction,Heating Zone,,Adiabatic,,NoSun,NoWind,0.5,4,0,0,3,0,0,0,10,0,0,10,0,3;
+BuildingSurface:Detailed,Heating East,Wall,Adiabatic Construction,Heating Zone,,Adiabatic,,NoSun,NoWind,0.5,4,10,0,3,10,0,0,10,10,0,10,10,3;
+BuildingSurface:Detailed,Heating North,Wall,Adiabatic Construction,Heating Zone,,Adiabatic,,NoSun,NoWind,0.5,4,10,10,3,10,10,0,0,10,0,0,10,3;
+BuildingSurface:Detailed,Heating West,Wall,Adiabatic Construction,Heating Zone,,Adiabatic,,NoSun,NoWind,0.5,4,0,10,3,0,10,0,0,0,0,0,0,3;
+BuildingSurface:Detailed,Heating Roof,Roof,Adiabatic Construction,Heating Zone,,Adiabatic,,NoSun,NoWind,0.0,4,0,10,3,0,0,3,10,0,3,10,10,3;
+BuildingSurface:Detailed,Heating Floor,Floor,Adiabatic Construction,Heating Zone,,Adiabatic,,NoSun,NoWind,1.0,4,0,10,0,10,10,0,10,0,0,0,0,0;
+
+BuildingSurface:Detailed,Cooling South,Wall,Adiabatic Construction,Cooling Zone,,Adiabatic,,NoSun,NoWind,0.5,4,0,0,3,0,0,0,10,0,0,10,0,3;
+BuildingSurface:Detailed,Cooling East,Wall,Adiabatic Construction,Cooling Zone,,Adiabatic,,NoSun,NoWind,0.5,4,10,0,3,10,0,0,10,10,0,10,10,3;
+BuildingSurface:Detailed,Cooling North,Wall,Adiabatic Construction,Cooling Zone,,Adiabatic,,NoSun,NoWind,0.5,4,10,10,3,10,10,0,0,10,0,0,10,3;
+BuildingSurface:Detailed,Cooling West,Wall,Adiabatic Construction,Cooling Zone,,Adiabatic,,NoSun,NoWind,0.5,4,0,10,3,0,10,0,0,0,0,0,0,3;
+BuildingSurface:Detailed,Cooling Roof,Roof,Adiabatic Construction,Cooling Zone,,Adiabatic,,NoSun,NoWind,0.0,4,0,10,3,0,0,3,10,0,3,10,10,3;
+BuildingSurface:Detailed,Cooling Floor,Floor,Adiabatic Construction,Cooling Zone,,Adiabatic,,NoSun,NoWind,1.0,4,0,10,0,10,10,0,10,0,0,0,0,0;
+
+BuildingSurface:Detailed,Deadband South,Wall,Adiabatic Construction,Deadband Zone,,Adiabatic,,NoSun,NoWind,0.5,4,0,0,3,0,0,0,10,0,0,10,0,3;
+BuildingSurface:Detailed,Deadband East,Wall,Adiabatic Construction,Deadband Zone,,Adiabatic,,NoSun,NoWind,0.5,4,10,0,3,10,0,0,10,10,0,10,10,3;
+BuildingSurface:Detailed,Deadband North,Wall,Adiabatic Construction,Deadband Zone,,Adiabatic,,NoSun,NoWind,0.5,4,10,10,3,10,10,0,0,10,0,0,10,3;
+BuildingSurface:Detailed,Deadband West,Wall,Adiabatic Construction,Deadband Zone,,Adiabatic,,NoSun,NoWind,0.5,4,0,10,3,0,10,0,0,0,0,0,0,3;
+BuildingSurface:Detailed,Deadband Roof,Roof,Adiabatic Construction,Deadband Zone,,Adiabatic,,NoSun,NoWind,0.0,4,0,10,3,0,0,3,10,0,3,10,10,3;
+BuildingSurface:Detailed,Deadband Floor,Floor,Adiabatic Construction,Deadband Zone,,Adiabatic,,NoSun,NoWind,1.0,4,0,10,0,10,10,0,10,0,0,0,0,0;
+
+OtherEquipment,
+  Constant Heat Loss,
+  None,
+  Heating Zone,
+  Always On,
+  EquipmentLevel,
+  -1000.0,
+  ,
+  ,
+  0.0,
+  0.0,
+  0.0;
+
+OtherEquipment,
+  Constant Sensible Gain,
+  None,
+  Cooling Zone,
+  Always On,
+  EquipmentLevel,
+  1500.0,
+  ,
+  ,
+  0.0,
+  0.0,
+  0.0;
+
+HVACTemplate:Thermostat,
+  Ideal Thermostat,
+  Heating Setpoint,
+  ,
+  Cooling Setpoint,
+  ;
+
+HVACTemplate:Zone:IdealLoadsAirSystem,
+  Heating Zone,
+  Ideal Thermostat,
+  Always On,
+  50.0,
+  13.0,
+  0.0156,
+  0.0077,
+  NoLimit,
+  ,
+  ,
+  NoLimit,
+  ,
+  ,
+  ,
+  ,
+  None,
+  ,
+  ,
+  None;
+
+HVACTemplate:Zone:IdealLoadsAirSystem,
+  Cooling Zone,
+  Ideal Thermostat,
+  Always On,
+  50.0,
+  13.0,
+  0.0156,
+  0.0077,
+  NoLimit,
+  ,
+  ,
+  NoLimit,
+  ,
+  ,
+  ,
+  ,
+  None,
+  ,
+  ,
+  None;
+
+HVACTemplate:Zone:IdealLoadsAirSystem,
+  Deadband Zone,
+  Ideal Thermostat,
+  Always On,
+  50.0,
+  13.0,
+  0.0156,
+  0.0077,
+  NoLimit,
+  ,
+  ,
+  NoLimit,
+  ,
+  ,
+  ,
+  ,
+  None,
+  ,
+  ,
+  None;
+
+Output:Variable,*,Zone Air Temperature,Hourly;
+Output:Variable,*,Zone Ideal Loads Zone Sensible Heating Rate,Hourly;
+Output:Variable,*,Zone Ideal Loads Zone Sensible Cooling Rate,Hourly;
+Output:Variable,*,Zone Ideal Loads Zone Sensible Heating Energy,Hourly;
+Output:Variable,*,Zone Ideal Loads Zone Sensible Cooling Energy,Hourly;
+OutputControl:Files,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes,Yes;

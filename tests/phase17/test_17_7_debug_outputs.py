@@ -81,18 +81,3 @@ def test_debug_export_writes_core_timestep_csvs_only_to_requested_folder(tmp_pat
         "legacy_fallback_used",
         "old_indoor_temp_c",
     }.issubset(zone_df.columns)
-
-
-def main():
-    import tempfile
-
-    test_debug_schema_keeps_diagnostics_beyond_minimal_schema()
-    with tempfile.TemporaryDirectory() as folder:
-        test_debug_export_writes_core_timestep_csvs_only_to_requested_folder(
-            Path(folder)
-        )
-    print("Phase 17.7 debug output tests passed.")
-
-
-if __name__ == "__main__":
-    main()

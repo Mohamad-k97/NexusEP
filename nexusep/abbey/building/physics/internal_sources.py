@@ -3782,6 +3782,7 @@ def make_thermal_gains_from_internal_sources(
         appliance_gains_by_zone_w[zone_id] = (
             zone_kind_values.get(INTERNAL_SOURCE_KIND_APPLIANCE, 0.0)
             + zone_kind_values.get(INTERNAL_SOURCE_KIND_ACTIVITY, 0.0)
+            + zone_kind_values.get(INTERNAL_SOURCE_KIND_GENERIC, 0.0)
         )
 
         lighting_gains_by_zone_w[zone_id] = zone_kind_values.get(

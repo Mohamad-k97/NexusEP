@@ -1,10 +1,8 @@
 {
   "classification_counts": {
-    "contract_violation": 11,
-    "exact_match": 165,
+    "exact_match": 181,
     "expected_model_difference": 22,
-    "missing_feature": 8,
-    "tolerance_match": 2
+    "tolerance_match": 5
   },
   "comparisons": [
     {
@@ -201,22 +199,24 @@
     },
     {
       "absolute_difference": null,
-      "array_value": null,
-      "classification": "missing_feature",
+      "array_value": [
+        "opening:bedroom_window_north",
+        "opening:living_window_south",
+        "surface:bedroom_exterior_north",
+        "surface:living_exterior_south",
+        "surface_pair:bedroom_to_living|living_to_bedroom"
+      ],
+      "classification": "exact_match",
       "entity_id": null,
-      "object_value": {
-        "boundary_connection_ids": [
-          "opening:bedroom_window_north",
-          "opening:living_window_south",
-          "surface:bedroom_exterior_north",
-          "surface:living_exterior_south"
-        ],
-        "zone_connection_ids": [
-          "surface_pair:bedroom_to_living|living_to_bedroom"
-        ]
-      },
-      "quantity": "native_surface_graph",
-      "rationale": "the array backend has compiled UA values but no surface-graph kernel",
+      "object_value": [
+        "opening:bedroom_window_north",
+        "opening:living_window_south",
+        "surface:bedroom_exterior_north",
+        "surface:living_exterior_south",
+        "surface_pair:bedroom_to_living|living_to_bedroom"
+      ],
+      "quantity": "compiled_graph_connection_ids",
+      "rationale": "both adapters must consume every deterministic compiled connection",
       "relative_difference": null,
       "scope": "topology",
       "timestep_index": null,
@@ -274,14 +274,14 @@
       }
     },
     {
-      "absolute_difference": null,
-      "array_value": null,
-      "classification": "missing_feature",
+      "absolute_difference": 0.0,
+      "array_value": 101325.0,
+      "classification": "exact_match",
       "entity_id": null,
       "object_value": 101325.0,
       "quantity": "atmospheric_pressure_pa",
-      "rationale": "array pressure consumption is not implemented",
-      "relative_difference": null,
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
       "scope": "weather_mapping",
       "timestep_index": 0,
       "tolerance": {
@@ -704,14 +704,14 @@
       }
     },
     {
-      "absolute_difference": 1.3337826605449656,
+      "absolute_difference": 2.12718184394247,
       "array_value": 19.162578257924906,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 20.496360918469872,
+      "object_value": 21.289760101867376,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.06507412051585484,
+      "relative_difference": 0.09991572632872879,
       "scope": "step_output",
       "timestep_index": 0,
       "tolerance": {
@@ -738,14 +738,14 @@
       }
     },
     {
-      "absolute_difference": 34.34003676733482,
+      "absolute_difference": 34.34003676733494,
       "array_value": 686.554192229039,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 720.8942289963738,
+      "object_value": 720.894228996374,
       "quantity": "co2_ppm",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.047635333154411416,
+      "relative_difference": 0.04763533315441157,
       "scope": "step_output",
       "timestep_index": 0,
       "tolerance": {
@@ -857,14 +857,14 @@
       }
     },
     {
-      "absolute_difference": 1.977584655473727,
+      "absolute_difference": 2.842884097397217,
       "array_value": 20.580002149151085,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 22.557586804624812,
+      "object_value": 23.422886246548302,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.08766827199212097,
+      "relative_difference": 0.12137206608413414,
       "scope": "step_output",
       "timestep_index": 0,
       "tolerance": {
@@ -959,14 +959,14 @@
       }
     },
     {
-      "absolute_difference": 80.0,
+      "absolute_difference": 0.0,
       "array_value": 80.0,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "living_zone",
-      "object_value": 160.0,
+      "object_value": 80.0,
       "quantity": "lighting_power_w",
       "rationale": "the same physical command and power output contract applies",
-      "relative_difference": 0.5,
+      "relative_difference": 0.0,
       "scope": "step_output",
       "timestep_index": 0,
       "tolerance": {
@@ -976,14 +976,14 @@
       }
     },
     {
-      "absolute_difference": 80.0,
+      "absolute_difference": 0.0,
       "array_value": 1343.157894736842,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "living_zone",
-      "object_value": 1423.157894736842,
+      "object_value": 1343.157894736842,
       "quantity": "total_electrical_power_w",
       "rationale": "the same physical command and power output contract applies",
-      "relative_difference": 0.05621301775147929,
+      "relative_difference": 0.0,
       "scope": "step_output",
       "timestep_index": 0,
       "tolerance": {
@@ -993,14 +993,14 @@
       }
     },
     {
-      "absolute_difference": 80.0,
+      "absolute_difference": 0.0,
       "array_value": 1343.157894736842,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "living_zone",
-      "object_value": 1423.157894736842,
+      "object_value": 1343.157894736842,
       "quantity": "electrical_energy_wh",
       "rationale": "cumulative energy drift is evaluated separately from power",
-      "relative_difference": 0.05621301775147929,
+      "relative_difference": 0.0,
       "scope": "cumulative_drift",
       "timestep_index": 0,
       "tolerance": {
@@ -1100,14 +1100,14 @@
       }
     },
     {
-      "absolute_difference": null,
-      "array_value": null,
-      "classification": "missing_feature",
+      "absolute_difference": 0.0,
+      "array_value": 101300.0,
+      "classification": "exact_match",
       "entity_id": null,
       "object_value": 101300.0,
       "quantity": "atmospheric_pressure_pa",
-      "rationale": "array pressure consumption is not implemented",
-      "relative_difference": null,
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
       "scope": "weather_mapping",
       "timestep_index": 1,
       "tolerance": {
@@ -1530,14 +1530,14 @@
       }
     },
     {
-      "absolute_difference": 1.0999605629779161,
+      "absolute_difference": 0.20382016509393353,
       "array_value": 17.387172642651386,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 18.487133205629302,
+      "object_value": 17.59099280774532,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.059498709223503615,
+      "relative_difference": 0.011586620910002956,
       "scope": "step_output",
       "timestep_index": 1,
       "tolerance": {
@@ -1547,14 +1547,14 @@
       }
     },
     {
-      "absolute_difference": 0.0252202988485018,
-      "array_value": 0.3967323424461118,
+      "absolute_difference": 0.020913027323466726,
+      "array_value": 0.3967323594087376,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 0.4219526412946136,
+      "object_value": 0.4176453867322043,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.0597704490511593,
+      "relative_difference": 0.050073646178872395,
       "scope": "step_output",
       "timestep_index": 1,
       "tolerance": {
@@ -1632,14 +1632,14 @@
       }
     },
     {
-      "absolute_difference": 45.0,
+      "absolute_difference": 0.0,
       "array_value": 45.0,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "bedroom_zone",
-      "object_value": 90.0,
+      "object_value": 45.0,
       "quantity": "lighting_power_w",
       "rationale": "the same physical command and power output contract applies",
-      "relative_difference": 0.5,
+      "relative_difference": 0.0,
       "scope": "step_output",
       "timestep_index": 1,
       "tolerance": {
@@ -1649,14 +1649,14 @@
       }
     },
     {
-      "absolute_difference": 45.0,
+      "absolute_difference": 0.0,
       "array_value": 45.0,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "bedroom_zone",
-      "object_value": 90.0,
+      "object_value": 45.0,
       "quantity": "total_electrical_power_w",
       "rationale": "the same physical command and power output contract applies",
-      "relative_difference": 0.5,
+      "relative_difference": 0.0,
       "scope": "step_output",
       "timestep_index": 1,
       "tolerance": {
@@ -1666,14 +1666,14 @@
       }
     },
     {
-      "absolute_difference": 45.0,
+      "absolute_difference": 0.0,
       "array_value": 613.421052631579,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "bedroom_zone",
-      "object_value": 658.421052631579,
+      "object_value": 613.421052631579,
       "quantity": "electrical_energy_wh",
       "rationale": "cumulative energy drift is evaluated separately from power",
-      "relative_difference": 0.0683453237410072,
+      "relative_difference": 0.0,
       "scope": "cumulative_drift",
       "timestep_index": 1,
       "tolerance": {
@@ -1683,14 +1683,14 @@
       }
     },
     {
-      "absolute_difference": 1.5289380570106754,
+      "absolute_difference": 2.276840331634233,
       "array_value": 17.29228803596766,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 15.763349978956983,
+      "object_value": 15.015447704333425,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.08841733689784202,
+      "relative_difference": 0.13166796244073917,
       "scope": "step_output",
       "timestep_index": 1,
       "tolerance": {
@@ -1700,14 +1700,14 @@
       }
     },
     {
-      "absolute_difference": 0.06280811262225289,
-      "array_value": 0.3746365274381963,
+      "absolute_difference": 0.07237283847925874,
+      "array_value": 0.37463179530787094,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 0.3118284148159434,
+      "object_value": 0.3022589568286122,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.1676507975656867,
+      "relative_difference": 0.1931839192126846,
       "scope": "step_output",
       "timestep_index": 1,
       "tolerance": {
@@ -1819,14 +1819,14 @@
       }
     },
     {
-      "absolute_difference": 80.0,
+      "absolute_difference": 0.0,
       "array_value": 1343.157894736842,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "living_zone",
-      "object_value": 1423.157894736842,
+      "object_value": 1343.157894736842,
       "quantity": "electrical_energy_wh",
       "rationale": "cumulative energy drift is evaluated separately from power",
-      "relative_difference": 0.05621301775147929,
+      "relative_difference": 0.0,
       "scope": "cumulative_drift",
       "timestep_index": 1,
       "tolerance": {
@@ -1926,14 +1926,14 @@
       }
     },
     {
-      "absolute_difference": null,
-      "array_value": null,
-      "classification": "missing_feature",
+      "absolute_difference": 0.0,
+      "array_value": 101275.0,
+      "classification": "exact_match",
       "entity_id": null,
       "object_value": 101275.0,
       "quantity": "atmospheric_pressure_pa",
-      "rationale": "array pressure consumption is not implemented",
-      "relative_difference": null,
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
       "scope": "weather_mapping",
       "timestep_index": 2,
       "tolerance": {
@@ -2356,14 +2356,14 @@
       }
     },
     {
-      "absolute_difference": 1.4240586879691683,
+      "absolute_difference": 2.154755105250185,
       "array_value": 20.11095245425562,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 21.53501114222479,
+      "object_value": 22.265707559505806,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.06612760395451778,
+      "relative_difference": 0.09677460729651345,
       "scope": "step_output",
       "timestep_index": 2,
       "tolerance": {
@@ -2373,14 +2373,14 @@
       }
     },
     {
-      "absolute_difference": 0.13319411240483858,
-      "array_value": 0.405383531966362,
+      "absolute_difference": 0.13549100326906388,
+      "array_value": 0.4053689183303027,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 0.5385776443712006,
+      "object_value": 0.5408599215993666,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.24730716879335973,
+      "relative_difference": 0.25051034077068607,
       "scope": "step_output",
       "timestep_index": 2,
       "tolerance": {
@@ -2492,14 +2492,14 @@
       }
     },
     {
-      "absolute_difference": 45.0,
+      "absolute_difference": 0.0,
       "array_value": 1276.578947368421,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "bedroom_zone",
-      "object_value": 1321.578947368421,
+      "object_value": 1276.578947368421,
       "quantity": "electrical_energy_wh",
       "rationale": "cumulative energy drift is evaluated separately from power",
-      "relative_difference": 0.034050179211469536,
+      "relative_difference": 0.0,
       "scope": "cumulative_drift",
       "timestep_index": 2,
       "tolerance": {
@@ -2509,14 +2509,14 @@
       }
     },
     {
-      "absolute_difference": 0.04703284535827379,
+      "absolute_difference": 0.05189165320047451,
       "array_value": 18.36306010570663,
       "classification": "tolerance_match",
       "entity_id": "living_zone",
-      "object_value": 18.316027260348356,
+      "object_value": 18.311168452506156,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.0025612749229992197,
+      "relative_difference": 0.0028258717720119155,
       "scope": "step_output",
       "timestep_index": 2,
       "tolerance": {
@@ -2526,14 +2526,14 @@
       }
     },
     {
-      "absolute_difference": 0.14518592350199022,
-      "array_value": 0.38292754114313465,
+      "absolute_difference": 0.14660591230369535,
+      "array_value": 0.3829136194532742,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 0.5281134646451249,
+      "object_value": 0.5295195317569695,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.2749142622211885,
+      "relative_difference": 0.2768659199732451,
       "scope": "step_output",
       "timestep_index": 2,
       "tolerance": {
@@ -2645,14 +2645,14 @@
       }
     },
     {
-      "absolute_difference": 80.0,
+      "absolute_difference": 0.0,
       "array_value": 1343.157894736842,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "living_zone",
-      "object_value": 1423.157894736842,
+      "object_value": 1343.157894736842,
       "quantity": "electrical_energy_wh",
       "rationale": "cumulative energy drift is evaluated separately from power",
-      "relative_difference": 0.05621301775147929,
+      "relative_difference": 0.0,
       "scope": "cumulative_drift",
       "timestep_index": 2,
       "tolerance": {
@@ -2752,14 +2752,14 @@
       }
     },
     {
-      "absolute_difference": null,
-      "array_value": null,
-      "classification": "missing_feature",
+      "absolute_difference": 0.0,
+      "array_value": 101250.0,
+      "classification": "exact_match",
       "entity_id": null,
       "object_value": 101250.0,
       "quantity": "atmospheric_pressure_pa",
-      "rationale": "array pressure consumption is not implemented",
-      "relative_difference": null,
+      "rationale": "both engines must receive the same normalized weather",
+      "relative_difference": 0.0,
       "scope": "weather_mapping",
       "timestep_index": 3,
       "tolerance": {
@@ -3182,14 +3182,14 @@
       }
     },
     {
-      "absolute_difference": 0.7363695672078805,
+      "absolute_difference": 0.7146884444148398,
       "array_value": 18.61636992546558,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 19.35273949267346,
+      "object_value": 19.33105836988042,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.03804988784593801,
+      "relative_difference": 0.0369709940728538,
       "scope": "step_output",
       "timestep_index": 3,
       "tolerance": {
@@ -3199,14 +3199,14 @@
       }
     },
     {
-      "absolute_difference": 0.11301460225023618,
-      "array_value": 0.41878107671675624,
+      "absolute_difference": 0.11162865718765719,
+      "array_value": 0.41874481305775596,
       "classification": "expected_model_difference",
       "entity_id": "bedroom_zone",
-      "object_value": 0.5317956789669924,
+      "object_value": 0.5303734702454131,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.21251508186333118,
+      "relative_difference": 0.21047179666811885,
       "scope": "step_output",
       "timestep_index": 3,
       "tolerance": {
@@ -3318,14 +3318,14 @@
       }
     },
     {
-      "absolute_difference": 45.0,
+      "absolute_difference": 0.0,
       "array_value": 1276.578947368421,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "bedroom_zone",
-      "object_value": 1321.578947368421,
+      "object_value": 1276.578947368421,
       "quantity": "electrical_energy_wh",
       "rationale": "cumulative energy drift is evaluated separately from power",
-      "relative_difference": 0.034050179211469536,
+      "relative_difference": 0.0,
       "scope": "cumulative_drift",
       "timestep_index": 3,
       "tolerance": {
@@ -3335,14 +3335,14 @@
       }
     },
     {
-      "absolute_difference": 0.13505322102750483,
+      "absolute_difference": 0.4459795930588619,
       "array_value": 17.58391612753453,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 17.718969348562034,
+      "object_value": 17.137936534475667,
       "quantity": "air_temperature_c",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.007621956919207885,
+      "relative_difference": 0.02536292767914797,
       "scope": "step_output",
       "timestep_index": 3,
       "tolerance": {
@@ -3352,14 +3352,14 @@
       }
     },
     {
-      "absolute_difference": 0.1316324444606805,
-      "array_value": 0.3922038999213198,
+      "absolute_difference": 0.13166718008782574,
+      "array_value": 0.3921765807339769,
       "classification": "expected_model_difference",
       "entity_id": "living_zone",
-      "object_value": 0.5238363443820003,
+      "object_value": 0.5238437608218026,
       "quantity": "relative_humidity_fraction",
       "rationale": "backend physical solvers differ and neither is canonical truth",
-      "relative_difference": 0.25128543651543467,
+      "relative_difference": 0.2513481880193956,
       "scope": "step_output",
       "timestep_index": 3,
       "tolerance": {
@@ -3471,14 +3471,14 @@
       }
     },
     {
-      "absolute_difference": 80.0,
+      "absolute_difference": 0.0,
       "array_value": 1421.282894736842,
-      "classification": "contract_violation",
+      "classification": "exact_match",
       "entity_id": "living_zone",
-      "object_value": 1501.282894736842,
+      "object_value": 1421.282894736842,
       "quantity": "electrical_energy_wh",
       "rationale": "cumulative energy drift is evaluated separately from power",
-      "relative_difference": 0.05328775827691229,
+      "relative_difference": 0.0,
       "scope": "cumulative_drift",
       "timestep_index": 3,
       "tolerance": {
@@ -3527,50 +3527,62 @@
       "tolerance": null
     },
     {
-      "absolute_difference": null,
-      "array_value": null,
-      "classification": "missing_feature",
+      "absolute_difference": 4.263256414560601e-12,
+      "array_value": 4.263256414560601e-12,
+      "classification": "tolerance_match",
       "entity_id": null,
-      "object_value": null,
-      "quantity": "thermal_balance_residual",
-      "rationale": "neither canonical adapter exposes a comparable thermal residual",
-      "relative_difference": null,
+      "object_value": 1.1937117960769683e-12,
+      "quantity": "thermal_balance_residual_w",
+      "rationale": "maximum absolute per-step residual in each engine must be near zero",
+      "relative_difference": 4.263256414560601e-12,
       "scope": "conservation",
       "timestep_index": null,
-      "tolerance": null
+      "tolerance": {
+        "absolute": 1e-08,
+        "rationale": "backward-Euler heat balance should close near floating-point precision",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 1.3213713977167085e-19,
+      "array_value": 6.776263578034403e-20,
+      "classification": "tolerance_match",
+      "entity_id": null,
+      "object_value": 1.3213713977167085e-19,
+      "quantity": "moisture_balance_residual_kg_s",
+      "rationale": "maximum absolute per-step residual in each engine must be near zero",
+      "relative_difference": 1.3213713977167085e-19,
+      "scope": "conservation",
+      "timestep_index": null,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "well-mixed constituent balances should close near floating-point precision",
+        "relative": 0.0
+      }
+    },
+    {
+      "absolute_difference": 1.9481757786848908e-20,
+      "array_value": 1.9481757786848908e-20,
+      "classification": "tolerance_match",
+      "entity_id": null,
+      "object_value": 1.248187751073937e-20,
+      "quantity": "co2_mass_balance_residual_kg_s",
+      "rationale": "maximum absolute per-step residual in each engine must be near zero",
+      "relative_difference": 1.9481757786848908e-20,
+      "scope": "conservation",
+      "timestep_index": null,
+      "tolerance": {
+        "absolute": 1e-12,
+        "rationale": "well-mixed constituent balances should close near floating-point precision",
+        "relative": 0.0
+      }
     },
     {
       "absolute_difference": null,
-      "array_value": null,
-      "classification": "missing_feature",
-      "entity_id": null,
-      "object_value": null,
-      "quantity": "moisture_balance_residual",
-      "rationale": "neither canonical adapter exposes a comparable moisture residual",
-      "relative_difference": null,
-      "scope": "conservation",
-      "timestep_index": null,
-      "tolerance": null
-    },
-    {
-      "absolute_difference": null,
-      "array_value": null,
-      "classification": "missing_feature",
-      "entity_id": null,
-      "object_value": null,
-      "quantity": "co2_mass_balance_residual",
-      "rationale": "neither canonical adapter exposes a comparable CO2 residual",
-      "relative_difference": null,
-      "scope": "conservation",
-      "timestep_index": null,
-      "tolerance": null
-    },
-    {
-      "absolute_difference": null,
-      "array_value": "643847585b8c15ddbd199fd3e9a475056255ec447a71520d8dd6559668ec67f5",
+      "array_value": "100706a649cf84544ee2939fad681ee883e54e9a7430f62348b1eef154e84834",
       "classification": "exact_match",
       "entity_id": "object",
-      "object_value": "643847585b8c15ddbd199fd3e9a475056255ec447a71520d8dd6559668ec67f5",
+      "object_value": "100706a649cf84544ee2939fad681ee883e54e9a7430f62348b1eef154e84834",
       "quantity": "repeat_run",
       "rationale": "SHA-256 hashes of fresh structured runs must be identical",
       "relative_difference": null,
@@ -3580,10 +3592,10 @@
     },
     {
       "absolute_difference": null,
-      "array_value": "09918d628048c2fda6f0e5fa0ba9f9343a35fc5b8d981426c7c5968a6402e754",
+      "array_value": "97a7d5113ac8c1eff2da42e3a10c43c44c5323c96b25b32e40415d922d4d0eb8",
       "classification": "exact_match",
       "entity_id": "array",
-      "object_value": "09918d628048c2fda6f0e5fa0ba9f9343a35fc5b8d981426c7c5968a6402e754",
+      "object_value": "97a7d5113ac8c1eff2da42e3a10c43c44c5323c96b25b32e40415d922d4d0eb8",
       "quantity": "repeat_run",
       "rationale": "SHA-256 hashes of fresh structured runs must be identical",
       "relative_difference": null,
@@ -3635,6 +3647,11 @@
       "rationale": "cumulative drift is checked separately from instantaneous power",
       "relative": 1e-06
     },
+    "mass_balance_residual_kg_s": {
+      "absolute": 1e-12,
+      "rationale": "well-mixed constituent balances should close near floating-point precision",
+      "relative": 0.0
+    },
     "power_w": {
       "absolute": 1e-06,
       "rationale": "commands and decoded power use the same watt contract",
@@ -3644,6 +3661,11 @@
       "absolute": 0.005,
       "rationale": "half a percentage point of relative humidity",
       "relative": 1e-06
+    },
+    "thermal_balance_residual_w": {
+      "absolute": 1e-08,
+      "rationale": "backward-Euler heat balance should close near floating-point precision",
+      "relative": 0.0
     }
   }
 }

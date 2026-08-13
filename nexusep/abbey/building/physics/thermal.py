@@ -21,9 +21,15 @@ Boundary/source dependencies:
     - ZoneModel provides thermal parameters
 """
 
-from dataclasses import dataclass, replace, field
-from typing import Any, Dict, List, Optional
 import copy
+from dataclasses import dataclass, field, replace
+from typing import Any, Dict, List, Optional
+
+import numpy as np
+
+from nexusep.abbey.building.physics.solar import (
+    calculate_surface_solar_irradiance,
+)
 
 
 THERMAL_MODEL_FAMILY = "reduced_order_rc"
@@ -107,6 +113,9 @@ THERMAL_PHASE8_WINDOW_COMPATIBILITY_MODE = "phase8_window_boundary_optional"
 
 THERMAL_SOLAR_GAIN_SOURCE_WINDOW_BOUNDARY = (
     "BuildingWindowBoundaryResult + WeatherState"
+)
+THERMAL_SOLAR_GAIN_SOURCE_PLANE_OF_ARRAY = (
+    "NREL_SPA_position + isotropic_plane_of_array + WindowBoundaryResult"
 )
 
 THERMAL_VENTILATION_SOURCE_AIRFLOW_NETWORK = (
@@ -1847,7 +1856,7 @@ class WindowSolarGainRecord:
     direct_normal_radiation_w_m2: float = 0.0
     diffuse_horizontal_radiation_w_m2: float = 0.0
 
-    solar_gain_w: float = 0.0
+    solar_gain_w: Optional[float] = None
 
     source: str = "BoundaryConnection + WeatherState"
 
@@ -1892,7 +1901,7 @@ class WindowSolarGainRecord:
             self.zone_id,
         )
 
-        if self.solar_gain_w <= 0.0:
+        if self.solar_gain_w is None:
             self.solar_gain_w = (
                 self.window_area_m2
                 * self.solar_heat_gain_coefficient
@@ -2053,6 +2062,8 @@ class ZoneSemiImplicitThermalUpdateResult:
     new_air_temperature_c: float
     new_mass_temperature_c: float
 
+    air_capacitance_j_k: float = 0.0
+    mass_capacitance_j_k: float = 0.0
     convective_gain_w: float = 0.0
     radiative_gain_w: float = 0.0
 
@@ -2069,6 +2080,28 @@ class ZoneSemiImplicitThermalUpdateResult:
             mass_temperature_c=self.new_mass_temperature_c,
         )
 
+    def building_balance_terms(self) -> Dict[str, float]:
+        """Return terms that close when summed over the coupled building."""
+
+        storage_w = (
+            self.air_capacitance_j_k
+            * (self.new_air_temperature_c - self.old_air_temperature_c)
+            + self.mass_capacitance_j_k
+            * (self.new_mass_temperature_c - self.old_mass_temperature_c)
+        ) / self.dt_seconds
+        external_gain_w = sum(
+            target.h_w_k
+            * (target.temperature_c - self.new_air_temperature_c)
+            for target in self.air_node_targets
+            if target.target_type
+            not in {THERMAL_PATH_AIR_MASS, THERMAL_PATH_INTERZONE}
+        )
+        return {
+            "storage_w": storage_w,
+            "external_gain_w": external_gain_w,
+            "source_gain_w": self.convective_gain_w + self.radiative_gain_w,
+        }
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "zone_id": self.zone_id,
@@ -2076,6 +2109,8 @@ class ZoneSemiImplicitThermalUpdateResult:
             "old_mass_temperature_c": self.old_mass_temperature_c,
             "new_air_temperature_c": self.new_air_temperature_c,
             "new_mass_temperature_c": self.new_mass_temperature_c,
+            "air_capacitance_j_k": self.air_capacitance_j_k,
+            "mass_capacitance_j_k": self.mass_capacitance_j_k,
             "convective_gain_w": self.convective_gain_w,
             "radiative_gain_w": self.radiative_gain_w,
             "air_node_targets": [
@@ -2103,6 +2138,19 @@ class BuildingSemiImplicitThermalStepResult:
     dt_minutes: float = DEFAULT_THERMAL_DT_MINUTES
     solution_method: str = THERMAL_SOLUTION_METHOD
 
+    def balance_residual_w(self) -> float:
+        """Whole-building storage minus external and source heat gains."""
+
+        return sum(
+            terms["storage_w"]
+            - terms["external_gain_w"]
+            - terms["source_gain_w"]
+            for terms in (
+                result.building_balance_terms()
+                for result in self.zone_results.values()
+            )
+        )
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "updated_state": self.updated_state.to_dict(),
@@ -2112,6 +2160,7 @@ class BuildingSemiImplicitThermalStepResult:
             },
             "dt_minutes": self.dt_minutes,
             "solution_method": self.solution_method,
+            "balance_residual_w": self.balance_residual_w(),
         }
 
 @dataclass
@@ -4240,7 +4289,9 @@ def update_zone_thermal_state_semi_implicit(
     - exchange with air node
     - radiative gains
 
-    The mass node uses the newly updated air temperature as its target.
+    The air and mass nodes are solved together. This retains the stable
+    backward-Euler discretization while ensuring that internal air/mass heat
+    exchange is equal and opposite within the timestep.
     """
 
     if not isinstance(zone_state, ZoneThermalState):
@@ -4314,13 +4365,42 @@ def update_zone_thermal_state_semi_implicit(
     for target in adjacent_air_targets:
         air_targets.append(target)
 
-    new_air_temperature_c = semi_implicit_temperature_update(
-        capacity_j_k=zone_parameters.c_air_j_k,
-        old_temperature_c=zone_state.air_temperature_c,
-        targets=air_targets,
-        gain_w=convective_gain_w,
-        dt_seconds=dt_seconds,
+    c_air_over_dt = zone_parameters.c_air_j_k / dt_seconds
+    c_mass_over_dt = zone_parameters.c_mass_j_k / dt_seconds
+    h_air_mass_w_k = zone_parameters.h_air_mass_w_k
+
+    fixed_air_targets = air_targets[1:]
+    fixed_air_h_w_k = sum(target.h_w_k for target in fixed_air_targets)
+    air_rhs_w = (
+        c_air_over_dt * zone_state.air_temperature_c
+        + sum(
+            target.h_w_k * target.temperature_c
+            for target in fixed_air_targets
+        )
+        + float(convective_gain_w)
     )
+    mass_rhs_w = (
+        c_mass_over_dt * zone_state.mass_temperature_c
+        + float(radiative_gain_w)
+    )
+
+    air_diagonal_w_k = c_air_over_dt + h_air_mass_w_k + fixed_air_h_w_k
+    mass_diagonal_w_k = c_mass_over_dt + h_air_mass_w_k
+    determinant = (
+        air_diagonal_w_k * mass_diagonal_w_k
+        - h_air_mass_w_k * h_air_mass_w_k
+    )
+    if determinant <= 0.0:
+        raise ValueError("Coupled thermal update matrix became non-positive.")
+
+    new_air_temperature_c = (
+        air_rhs_w * mass_diagonal_w_k
+        + h_air_mass_w_k * mass_rhs_w
+    ) / determinant
+    new_mass_temperature_c = (
+        air_diagonal_w_k * mass_rhs_w
+        + h_air_mass_w_k * air_rhs_w
+    ) / determinant
 
     mass_targets = [
         ThermalTemperatureTarget(
@@ -4331,20 +4411,14 @@ def update_zone_thermal_state_semi_implicit(
         )
     ]
 
-    new_mass_temperature_c = semi_implicit_temperature_update(
-        capacity_j_k=zone_parameters.c_mass_j_k,
-        old_temperature_c=zone_state.mass_temperature_c,
-        targets=mass_targets,
-        gain_w=radiative_gain_w,
-        dt_seconds=dt_seconds,
-    )
-
     return ZoneSemiImplicitThermalUpdateResult(
         zone_id=zone_state.zone_id,
         old_air_temperature_c=zone_state.air_temperature_c,
         old_mass_temperature_c=zone_state.mass_temperature_c,
         new_air_temperature_c=new_air_temperature_c,
         new_mass_temperature_c=new_mass_temperature_c,
+        air_capacitance_j_k=zone_parameters.c_air_j_k,
+        mass_capacitance_j_k=zone_parameters.c_mass_j_k,
         convective_gain_w=convective_gain_w,
         radiative_gain_w=radiative_gain_w,
         air_node_targets=air_targets,
@@ -4357,19 +4431,11 @@ def calculate_window_boundary_solar_gains(
     weather_state: Any,
 ) -> BuildingSolarGainResult:
     """
-    Calculate solar gains from the shared Phase 8 window boundary result.
+    Calculate solar gains from the shared window boundary result.
 
-    Important:
-        WindowBoundaryResult.effective_solar_factor already includes:
-        - SHGC
-        - shading
-        - curtain/blind solar reduction
-        - solar direction/exposure factor
-
-    Therefore WindowSolarGainRecord receives:
-        solar_heat_gain_coefficient = 1.0
-
-    to avoid applying SHGC twice.
+    Canonical runs provide SPA solar position and use DNI/DHI/GHI resolved on
+    each window plane.  Legacy callers without solar position remain on the
+    explicitly labelled GHI/exposure compatibility path.
     """
 
     if not is_building_window_boundary_result_like(window_boundary_result):
@@ -4412,9 +4478,46 @@ def calculate_window_boundary_solar_gains(
 
     records = []
 
+    solar_zenith_deg = _get_attr_or_default(
+        weather_state, "solar_zenith_deg", None
+    )
+    solar_azimuth_deg = _get_attr_or_default(
+        weather_state, "solar_azimuth_deg", None
+    )
+    ground_albedo_fraction = _get_attr_or_default(
+        weather_state, "ground_albedo_fraction", 0.0
+    )
+    has_solar_position = (
+        solar_zenith_deg is not None and solar_azimuth_deg is not None
+    )
+
     for window_id, window_result in window_boundary_result.window_results_by_id.items():
         if window_result.area_m2 <= 0.0:
             continue
+
+        if has_solar_position:
+            irradiance = calculate_surface_solar_irradiance(
+                solar_zenith_deg=float(solar_zenith_deg),
+                solar_azimuth_deg=float(solar_azimuth_deg),
+                surface_tilt_deg=window_result.tilt_deg,
+                surface_azimuth_deg=window_result.orientation_deg,
+                direct_normal_radiation_w_m2=dni,
+                diffuse_horizontal_radiation_w_m2=dhi,
+                global_horizontal_radiation_w_m2=ghi,
+                ground_albedo_fraction=float(ground_albedo_fraction),
+            )
+            solar_gain_w = irradiance.transmitted_gain_w(
+                area_m2=window_result.area_m2,
+                solar_transmittance_fraction=(
+                    window_result.effective_solar_transmittance
+                ),
+            )
+            effective_solar_factor = 1.0
+            source = THERMAL_SOLAR_GAIN_SOURCE_PLANE_OF_ARRAY
+        else:
+            solar_gain_w = None
+            effective_solar_factor = window_result.effective_solar_factor
+            source = THERMAL_SOLAR_GAIN_SOURCE_WINDOW_BOUNDARY
 
         records.append(
             WindowSolarGainRecord(
@@ -4422,11 +4525,12 @@ def calculate_window_boundary_solar_gains(
                 boundary_connection_id=window_id,
                 window_area_m2=window_result.area_m2,
                 solar_heat_gain_coefficient=1.0,
-                effective_solar_factor=window_result.effective_solar_factor,
+                effective_solar_factor=effective_solar_factor,
                 global_horizontal_radiation_w_m2=ghi,
                 direct_normal_radiation_w_m2=dni,
                 diffuse_horizontal_radiation_w_m2=dhi,
-                source=THERMAL_SOLAR_GAIN_SOURCE_WINDOW_BOUNDARY,
+                solar_gain_w=solar_gain_w,
+                source=source,
             )
         )
 
@@ -4619,7 +4723,8 @@ def step_building_thermal_state_semi_implicit(
     This is the Phase 4.10 timestep kernel.
 
     Important:
-    - Uses old-state adjacent-zone temperatures for this simple version.
+    - Solves every air/mass node and interzone link in one coupled linear
+      system, so internal heat transfers conserve energy.
     - Keeps thermal.py independent from agents/controllers.
     - Agent/control/action outputs must be converted into BuildingThermalGains
       or ventilation/HVAC input objects before calling this function.
@@ -4648,51 +4753,158 @@ def step_building_thermal_state_semi_implicit(
         )
     )
 
-    updated_zone_states = {}
-    zone_results = {}
+    dt_seconds = float(dt_minutes) * 60.0
+    if dt_seconds <= 0.0:
+        raise ValueError("dt_minutes must be positive.")
 
-    for zone_id in building_parameters.zone_ids():
-        if not thermal_state.has_zone(zone_id):
-            continue
+    zone_ids = [
+        zone_id
+        for zone_id in building_parameters.zone_ids()
+        if thermal_state.has_zone(zone_id)
+    ]
+    zone_index = {zone_id: index for index, zone_id in enumerate(zone_ids)}
+    node_count = 2 * len(zone_ids)
+    matrix = np.zeros((node_count, node_count), dtype=np.float64)
+    rhs = np.zeros(node_count, dtype=np.float64)
+    air_targets_by_zone: Dict[str, List[ThermalTemperatureTarget]] = {}
 
+    for zone_id, index in zone_index.items():
+        air_index = 2 * index
+        mass_index = air_index + 1
         zone_state = thermal_state.get_zone_state(zone_id)
         zone_parameters = building_parameters.get_zone_parameters(zone_id)
-
         zone_gains = building_gains.get_zone_gains(zone_id)
 
-        adjacent_targets = _make_adjacent_air_temperature_targets(
-            zone_id=zone_id,
-            thermal_state=thermal_state,
-            interzone_network=interzone_network,
-        )
-
-        ventilation_h_w_k = None
-
+        ventilation_h_w_k = zone_parameters.h_ventilation_w_k
         if (
             ventilation_exchange is not None
             and zone_id in ventilation_exchange.zone_ventilation
         ):
-            ventilation_h_w_k = (
-                ventilation_exchange
-                .zone_ventilation[zone_id]
-                .h_ventilation_w_k
+            ventilation_h_w_k = _non_negative_float(
+                ventilation_exchange.zone_ventilation[zone_id].h_ventilation_w_k,
+                "ventilation_h_w_k",
+                zone_id,
             )
 
-        result = update_zone_thermal_state_semi_implicit(
-            zone_state=zone_state,
-            zone_parameters=zone_parameters,
-            outdoor_temperature_c=outdoor_temperature_c,
-            adjacent_air_targets=adjacent_targets,
-            ventilation_h_w_k=ventilation_h_w_k,
-            additional_outside_h_w_k=additional_outside_conductance_by_zone_w_k.get(
-                zone_id,
-                0.0,
+        additional_outside_h_w_k = _non_negative_float(
+            additional_outside_conductance_by_zone_w_k.get(zone_id, 0.0),
+            "additional_outside_h_w_k",
+            zone_id,
+        )
+        envelope_h_w_k = (
+            zone_parameters.h_external_w_k + additional_outside_h_w_k
+        )
+        outside_h_w_k = envelope_h_w_k + ventilation_h_w_k
+        h_air_mass_w_k = zone_parameters.h_air_mass_w_k
+        c_air_over_dt = zone_parameters.c_air_j_k / dt_seconds
+        c_mass_over_dt = zone_parameters.c_mass_j_k / dt_seconds
+
+        matrix[air_index, air_index] = (
+            c_air_over_dt + h_air_mass_w_k + outside_h_w_k
+        )
+        matrix[air_index, mass_index] = -h_air_mass_w_k
+        matrix[mass_index, air_index] = -h_air_mass_w_k
+        matrix[mass_index, mass_index] = c_mass_over_dt + h_air_mass_w_k
+
+        rhs[air_index] = (
+            c_air_over_dt * zone_state.air_temperature_c
+            + outside_h_w_k * outdoor_temperature_c
+            + zone_gains.convective_gain_w()
+        )
+        rhs[mass_index] = (
+            c_mass_over_dt * zone_state.mass_temperature_c
+            + zone_gains.radiative_gain_w()
+        )
+        air_targets_by_zone[zone_id] = [
+            ThermalTemperatureTarget(
+                target_id=zone_id + "__mass_coupled",
+                target_type=THERMAL_PATH_AIR_MASS,
+                temperature_c=zone_state.mass_temperature_c,
+                h_w_k=h_air_mass_w_k,
             ),
+            ThermalTemperatureTarget(
+                target_id="outside_envelope_plus_windows",
+                target_type=THERMAL_PATH_OUTSIDE,
+                temperature_c=outdoor_temperature_c,
+                h_w_k=envelope_h_w_k,
+            ),
+            ThermalTemperatureTarget(
+                target_id="outside_ventilation",
+                target_type=THERMAL_PATH_VENTILATION,
+                temperature_c=outdoor_temperature_c,
+                h_w_k=ventilation_h_w_k,
+            ),
+        ]
+
+    if interzone_network is not None:
+        for link in interzone_network.links.values():
+            if (
+                link.zone_a_id not in zone_index
+                or link.zone_b_id not in zone_index
+            ):
+                continue
+            zone_a_air_index = 2 * zone_index[link.zone_a_id]
+            zone_b_air_index = 2 * zone_index[link.zone_b_id]
+            matrix[zone_a_air_index, zone_a_air_index] += link.h_w_k
+            matrix[zone_b_air_index, zone_b_air_index] += link.h_w_k
+            matrix[zone_a_air_index, zone_b_air_index] -= link.h_w_k
+            matrix[zone_b_air_index, zone_a_air_index] -= link.h_w_k
+            state_a = thermal_state.get_zone_state(link.zone_a_id)
+            state_b = thermal_state.get_zone_state(link.zone_b_id)
+            air_targets_by_zone[link.zone_a_id].append(
+                ThermalTemperatureTarget(
+                    target_id=link.link_id + "__" + link.zone_b_id,
+                    target_type=THERMAL_PATH_INTERZONE,
+                    temperature_c=state_b.air_temperature_c,
+                    h_w_k=link.h_w_k,
+                )
+            )
+            air_targets_by_zone[link.zone_b_id].append(
+                ThermalTemperatureTarget(
+                    target_id=link.link_id + "__" + link.zone_a_id,
+                    target_type=THERMAL_PATH_INTERZONE,
+                    temperature_c=state_a.air_temperature_c,
+                    h_w_k=link.h_w_k,
+                )
+            )
+
+    solution = np.linalg.solve(matrix, rhs) if node_count else np.empty(0)
+    updated_zone_states = {}
+    zone_results = {}
+    for zone_id, index in zone_index.items():
+        air_index = 2 * index
+        mass_index = air_index + 1
+        zone_state = thermal_state.get_zone_state(zone_id)
+        zone_gains = building_gains.get_zone_gains(zone_id)
+        new_air_temperature_c = float(solution[air_index])
+        new_mass_temperature_c = float(solution[mass_index])
+        result = ZoneSemiImplicitThermalUpdateResult(
+            zone_id=zone_id,
+            old_air_temperature_c=zone_state.air_temperature_c,
+            old_mass_temperature_c=zone_state.mass_temperature_c,
+            new_air_temperature_c=new_air_temperature_c,
+            new_mass_temperature_c=new_mass_temperature_c,
+            air_capacitance_j_k=building_parameters.get_zone_parameters(
+                zone_id
+            ).c_air_j_k,
+            mass_capacitance_j_k=building_parameters.get_zone_parameters(
+                zone_id
+            ).c_mass_j_k,
             convective_gain_w=zone_gains.convective_gain_w(),
             radiative_gain_w=zone_gains.radiative_gain_w(),
-            dt_minutes=dt_minutes,
+            air_node_targets=air_targets_by_zone[zone_id],
+            mass_node_targets=[
+                ThermalTemperatureTarget(
+                    target_id=zone_id + "__air_coupled",
+                    target_type=THERMAL_PATH_AIR_MASS,
+                    temperature_c=new_air_temperature_c,
+                    h_w_k=building_parameters.get_zone_parameters(
+                        zone_id
+                    ).h_air_mass_w_k,
+                )
+            ],
+            dt_seconds=dt_seconds,
         )
-
         updated_zone_states[zone_id] = result.to_zone_thermal_state()
         zone_results[zone_id] = result
 

@@ -1,5 +1,7 @@
 # Contract v1 conformance report
 
+Validation category: **verification**
+
 ## Result
 
 Both canonical adapters pass the same Phase 2.15 structural and semantic test

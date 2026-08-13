@@ -1,0 +1,79 @@
+{
+  "governance_version": "1.0.0",
+  "validation_category": "verification_and_validation_status_reporting",
+  "assessed_on": "2026-08-12",
+  "policy": "The original Phase 4 requirement remains blocked unless an alternative tests the same claim and passes the predeclared criteria. A runnable but failing or scientifically narrower substitute is recorded as rejected, never promoted to a pass.",
+  "evaluations": [
+    {
+      "gate_id": "controlled-thermal-blind",
+      "original_requirement": "A controlled thermal dataset is validated blindly.",
+      "original_status": "blocked",
+      "alternative_name": "IEA EBC Annex 71 Twin House four-air-body production diagnostic",
+      "alternative_scope": "The four published N2 air bodies, coheat allocation, measured User-1 forcing, deterministic graph, and object production adapter are exercised. The target period was inspected during mapper repair, so this is post-hoc and not blind validation.",
+      "equivalent_claim": false,
+      "execution_status": "rejected",
+      "test_command": "uv run python scripts/validation_data/run_annex71_production_transfer.py",
+      "evidence_paths": [
+        "data/validation/fixtures/annex71-twin-houses/production-transfer-result-v1.json",
+        "docs/validation/results/annex71_production_transfer_v1.md",
+        "data/validation/fixtures/annex71-twin-houses/thermal-transfer-result-v1.json",
+        "docs/validation/results/annex71_thermal_transfer_v1.md"
+      ],
+      "rejection_or_limit": "The former helper rejection is preserved. Its production replacement fixes forcing alignment, internal-gain routing, topology, and multizone execution, but the later targets were inspected while debugging and the reduced-order fit still reaches its capacity bound. It cannot satisfy a blind-validation claim.",
+      "alternative_classification": "blocked and rejected with alternative"
+    },
+    {
+      "gate_id": "nzertf-integrated",
+      "original_requirement": "Integrated performance is tested against NZERTF.",
+      "original_status": "blocked",
+      "alternative_name": "Annex 71 measured channels plus DOE BOPTEST and the registered EnergyPlus ideal-load case",
+      "alternative_scope": "The sources were assessed as possible substitutes for integrated temperature, humidity, HVAC, ventilation, occupant-load, and energy evidence.",
+      "equivalent_claim": false,
+      "execution_status": "rejected",
+      "test_command": "uv run pytest -q tests/integration/test_phase4_blocked_alternatives.py",
+      "evidence_paths": [
+        "data/validation/fixtures/annex71-twin-houses/thermal-transfer-result-v1.json",
+        "data/validation/fixtures/energyplus-ideal-loads-25.1.0/comparison.json",
+        "docs/validation/phase4_completion_gate.md"
+      ],
+      "rejection_or_limit": "Annex 71 is currently only a rejected helper-model mapping diagnostic; BOPTEST is a simulated control benchmark rather than measured empirical evidence; the EnergyPlus case covers only ideal sensible load accounting.",
+      "alternative_classification": "blocked and rejected with alternative"
+    },
+    {
+      "gate_id": "occupant-distributions",
+      "original_requirement": "Occupant models reproduce distributions.",
+      "original_status": "blocked",
+      "alternative_name": "BLS ATUS 2023 weighted respondent-diary population model",
+      "alternative_scope": "Complete survey-weighted development diaries are sampled as correlated schedules and compared with a respondent-isolated holdout for daily sleep, known-location home presence, and sleep-episode duration distributions.",
+      "equivalent_claim": true,
+      "execution_status": "passed",
+      "test_command": "uv run python scripts/validation_data/run_atus_population_validation.py",
+      "evidence_paths": [
+        "data/validation/fixtures/atus-2023-microdata/population-holdout-result-v1.json",
+        "docs/validation/results/atus_population_holdout_v1.md",
+        "data/validation/fixtures/atus-aggregate/sleep-alternative-result-v1.json",
+        "docs/validation/results/atus_aggregate_sleep_alternative_v1.md"
+      ],
+      "rejection_or_limit": "The former aggregate-only alternative remains rejected for provenance. The respondent-level replacement passes its predeclared distribution and determinism gates. Its claim is limited to U.S. population schedule priors; it does not establish Italian-household truth or validate condition-dependent action choices.",
+      "alternative_classification": "blocked but passed with alternative"
+    },
+    {
+      "gate_id": "unseen-calibrated-parameters",
+      "original_requirement": "Calibrated parameters succeed on unseen data.",
+      "original_status": "blocked",
+      "alternative_name": "Annex 71 coheat/User-1 production parameter transfer diagnostic",
+      "alternative_scope": "The published HTC is allocated from coheat observations and effective capacity is fitted on an early User-1 period before a later-period production-engine diagnostic.",
+      "equivalent_claim": false,
+      "execution_status": "rejected",
+      "test_command": "uv run python scripts/validation_data/run_annex71_production_transfer.py",
+      "evidence_paths": [
+        "data/validation/fixtures/annex71-twin-houses/production-transfer-result-v1.json",
+        "docs/validation/results/annex71_production_transfer_v1.md",
+        "data/validation/fixtures/annex71-twin-houses/thermal-transfer-result-v1.json",
+        "docs/validation/results/annex71_thermal_transfer_v1.md"
+      ],
+      "rejection_or_limit": "The production engine is now exercised and the former mapper defects are fixed, but the later targets were inspected during repair and the effective capacity remains bound-seeking. The run is a post-hoc diagnostic, not unseen-parameter validation.",
+      "alternative_classification": "blocked and rejected with alternative"
+    }
+  ]
+}

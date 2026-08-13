@@ -96,14 +96,3 @@ def test_adapter_building_status_matches_step_result():
     assert record["legacy_fallback_used"] is result.legacy_fallback_used
     assert record["legacy_fallback_reason"] is result.legacy_fallback_reason
     assert record["physics_engine_source"] == result.physics_engine_result.source
-
-
-def main():
-    test_engine_result_is_adapted_without_replacing_engine_payloads()
-    test_adapter_produces_one_public_record_per_engine_zone()
-    test_adapter_building_status_matches_step_result()
-    print("Phase 17.3 engine-to-performance adapter tests passed.")
-
-
-if __name__ == "__main__":
-    main()

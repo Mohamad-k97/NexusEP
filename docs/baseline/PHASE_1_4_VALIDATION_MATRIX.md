@@ -1,5 +1,7 @@
 # Phase 1.4 — surviving validation baseline
 
+Validation category: **verification**
+
 All surviving Phase 16–18 entry points ran individually in fresh subprocesses
 before aggregate pytest. Each process used CPython 3.12.2 from `.venv`, the
 repository root as its working directory, `PYTHONHASHSEED=0`, `TZ=Europe/Rome`,
@@ -53,4 +55,3 @@ in 17.32 seconds (20.6 seconds process wall time).
 There were no environment failures, corrupted tests, regressions, or unsupported
 behaviors in this run. No command changed Git status, created or modified a file
 outside its isolated artifact directory, or changed a protected user-file hash.
-

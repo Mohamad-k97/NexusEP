@@ -119,13 +119,3 @@ def test_fast_moisture_kernel_matches_reference():
         print("diff:")
         print(physics_fast - physics_ref)
         raise AssertionError("Fast moisture physics_result mismatch.")
-
-    print("Fast moisture kernel matches reference.")
-
-
-def main():
-    test_fast_moisture_kernel_matches_reference()
-
-
-if __name__ == "__main__":
-    main()

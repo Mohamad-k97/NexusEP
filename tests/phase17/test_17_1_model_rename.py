@@ -53,7 +53,6 @@ def test_building_package_imports_work():
         BuildingPhysicsPerformanceModel is not None,
         "BuildingPhysicsPerformanceModel import from nexusep.abbey.building failed.",
     )
-
     assert_true(
         SimpleBuildingPerformanceModel is not None,
         "SimpleBuildingPerformanceModel compatibility import failed.",
@@ -64,7 +63,6 @@ def test_building_package_imports_work():
         "SimpleBuildingPerformanceModel should be a compatibility alias.",
     )
 
-    print("PASS: test_building_package_imports_work")
 
 
 def test_direct_performance_imports_work():
@@ -83,7 +81,6 @@ def test_direct_performance_imports_work():
         "Direct old/new performance imports should resolve to the same class.",
     )
 
-    print("PASS: test_direct_performance_imports_work")
 
 
 def run_one_step_with_model_class(model_class):
@@ -174,7 +171,6 @@ def test_new_model_returns_building_performance_step_result():
         label="BuildingPhysicsPerformanceModel",
     )
 
-    print("PASS: test_new_model_returns_building_performance_step_result")
 
 
 def test_old_model_name_still_returns_building_performance_step_result():
@@ -187,7 +183,6 @@ def test_old_model_name_still_returns_building_performance_step_result():
         label="SimpleBuildingPerformanceModel alias",
     )
 
-    print("PASS: test_old_model_name_still_returns_building_performance_step_result")
 
 
 def test_runner_initializes_with_new_model_by_default():
@@ -220,7 +215,6 @@ def test_runner_initializes_with_new_model_by_default():
         "Runner should initialize building_physics_graph.",
     )
 
-    print("PASS: test_runner_initializes_with_new_model_by_default")
 
 
 def test_runner_one_step_external_call_style_still_works():
@@ -266,20 +260,3 @@ def test_runner_one_step_external_call_style_still_works():
         zone_record.get("legacy_fallback_used") is False,
         "Runner one-step should not use legacy fallback.",
     )
-
-    print("PASS: test_runner_one_step_external_call_style_still_works")
-
-
-def main():
-    test_building_package_imports_work()
-    test_direct_performance_imports_work()
-    test_new_model_returns_building_performance_step_result()
-    test_old_model_name_still_returns_building_performance_step_result()
-    test_runner_initializes_with_new_model_by_default()
-    test_runner_one_step_external_call_style_still_works()
-
-    print("Phase 17.1 model rename tests passed.")
-
-
-if __name__ == "__main__":
-    main()

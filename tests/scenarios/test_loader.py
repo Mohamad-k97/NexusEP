@@ -302,6 +302,7 @@ def test_versioned_model_covers_all_required_sections() -> None:
         "use_case",
         "scenario_id",
         "metadata",
+        "site",
         "deterministic_seed",
         "simulation_period",
         "geometry_configuration",

@@ -7,9 +7,10 @@ Loads JSONC config files:
 - validates required top-level sections
 """
 
-import json
 from pathlib import Path
 from typing import Any, Union
+
+from nexusep.jsonc import loads_strict_json, strip_jsonc
 
 
 REQUIRED_TOP_LEVEL_SECTIONS = [
@@ -25,6 +26,50 @@ REQUIRED_TOP_LEVEL_SECTIONS = [
     "idle_movement_profiles",
 ]
 
+ALLOWED_TOP_LEVEL_SECTIONS = {
+    "_meta",
+    "action_friction",
+    "actions",
+    "circadian",
+    "decision",
+    "dirty_clothes",
+    "external_schedules",
+    "fatigue",
+    "household_care",
+    "household_cooking",
+    "household_dirty_clothes",
+    "household_inspection",
+    "hunger",
+    "idle_movement_profiles",
+    "perception",
+    "sickness",
+    "simulation_calendar",
+    "sleep_pressure",
+    "space_exit_rules",
+}
+
+ALLOWED_ACTION_FIELDS = {
+    "action_cooldowns_on_start",
+    "activity_intensity",
+    "background_process",
+    "blocks_actor",
+    "can_be_interrupted",
+    "can_continue_without_actor",
+    "can_fill_remaining_time",
+    "can_repeat",
+    "category",
+    "duration_minutes",
+    "effort",
+    "execution_type",
+    "person_effects",
+    "post_action_zone_role",
+    "power_w",
+    "requires_awake",
+    "requires_home",
+    "system_effects",
+    "target_zone_role",
+}
+
 
 def strip_jsonc_comments(text: str) -> str:
     """
@@ -32,53 +77,7 @@ def strip_jsonc_comments(text: str) -> str:
     inside quoted strings.
     """
 
-    result = []
-    i = 0
-    in_string = False
-    escape = False
-
-    while i < len(text):
-        char = text[i]
-        next_char = text[i + 1] if i + 1 < len(text) else ""
-
-        if in_string:
-            result.append(char)
-
-            if escape:
-                escape = False
-            elif char == "\\":
-                escape = True
-            elif char == '"':
-                in_string = False
-
-            i += 1
-            continue
-
-        if char == '"':
-            in_string = True
-            result.append(char)
-            i += 1
-            continue
-
-        # Line comment
-        if char == "/" and next_char == "/":
-            i += 2
-            while i < len(text) and text[i] not in "\r\n":
-                i += 1
-            continue
-
-        # Block comment
-        if char == "/" and next_char == "*":
-            i += 2
-            while i + 1 < len(text) and not (text[i] == "*" and text[i + 1] == "/"):
-                i += 1
-            i += 2
-            continue
-
-        result.append(char)
-        i += 1
-
-    return "".join(result)
+    return strip_jsonc(text, trailing_commas=False)
 
 
 def validate_abbey_config(config: dict[str, Any]) -> None:
@@ -91,12 +90,16 @@ def validate_abbey_config(config: dict[str, Any]) -> None:
         for section in REQUIRED_TOP_LEVEL_SECTIONS
         if section not in config
     ]
-    print(missing)
-
     if missing:
         raise KeyError(
             "Missing required ABBEY config sections: "
             + ", ".join(missing)
+        )
+
+    unknown_sections = sorted(set(config) - ALLOWED_TOP_LEVEL_SECTIONS)
+    if unknown_sections:
+        raise KeyError(
+            "Unknown ABBEY config sections: " + ", ".join(unknown_sections)
         )
 
     if "_meta" not in config["actions"]:
@@ -131,6 +134,9 @@ def validate_abbey_config(config: dict[str, Any]) -> None:
     for action_name in action_names:
         action_cfg = config["actions"][action_name]
 
+        if not isinstance(action_cfg, dict):
+            raise TypeError(f"Action '{action_name}' must be an object.")
+
         missing_fields = [
             field
             for field in required_action_fields
@@ -143,6 +149,13 @@ def validate_abbey_config(config: dict[str, Any]) -> None:
                 + ", ".join(missing_fields)
             )
 
+        unknown_fields = sorted(set(action_cfg) - ALLOWED_ACTION_FIELDS)
+        if unknown_fields:
+            raise KeyError(
+                f"Action '{action_name}' has unknown fields: "
+                + ", ".join(unknown_fields)
+            )
+
 
 def load_jsonc(path: Union[str, Path]) -> dict[str, Any]:
     """
@@ -150,20 +163,20 @@ def load_jsonc(path: Union[str, Path]) -> dict[str, Any]:
     """
 
     path = Path(path)
-    import os
     if not path.exists():
         raise FileNotFoundError(f"ABBEY config file not found: {path}")
 
     text = path.read_text(encoding="utf-8")
-    clean_text = strip_jsonc_comments(text)
-
     try:
-        config = json.loads(clean_text)
-    except json.JSONDecodeError as exc:
+        config = loads_strict_json(text, source=path, jsonc=True)
+    except ValueError as exc:
         raise ValueError(
-            f"Invalid JSONC after comment stripping: {path}\n"
+            f"Invalid JSONC configuration: {path}\n"
             f"{exc}"
         ) from exc
+
+    if not isinstance(config, dict):
+        raise TypeError(f"ABBEY config root must be an object: {path}")
 
     validate_abbey_config(config)
 

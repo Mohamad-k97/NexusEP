@@ -64,14 +64,3 @@ def test_active_building_engine_does_not_call_the_old_dummy_model():
     sim.step()
 
     assert sim.building_records[-1]["performance_path"] == "engine"
-
-
-def main():
-    test_runner_initializes_the_engine_backed_model_and_graph()
-    test_one_runner_step_stores_engine_outputs_across_public_collections()
-    test_active_building_engine_does_not_call_the_old_dummy_model()
-    print("Phase 17.6 runner integration tests passed.")
-
-
-if __name__ == "__main__":
-    main()

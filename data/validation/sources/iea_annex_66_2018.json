@@ -1,0 +1,58 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "iea-ebc-annex-66-2018",
+  "title": "IEA EBC Annex 66 Final Report: Definition and Simulation of Occupant Behavior in Buildings",
+  "version": "Final report, May 2018",
+  "publisher": "IEA Energy in Buildings and Communities Programme",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "The report identifies ISBN 978-0-9996964-7-7 but no DOI."
+  },
+  "license": {
+    "name": "Copyright retained by the Regents of the University of California, LBNL, and Tsinghua University",
+    "spdx_id": null,
+    "terms_url": "https://www.iea-ebc.org/projects/project?AnnexID=66"
+  },
+  "download_url": "https://www.iea-ebc.org/Data/publications/EBC_Annex%2066_Occupant_Behavior_Final_Report.pdf",
+  "retrieval_date": "2026-08-11",
+  "raw_files": [
+    {
+      "file_id": "annex-66-final-report",
+      "path": "data/raw/validation/iea-annex-66/final-report.pdf",
+      "sha256": "83ba9c8d92c65c42d1451a1855175e943b42a31be2afe342d7a20f9a1e55ea4d",
+      "byte_size": 5359035
+    }
+  ],
+  "units": {"guidance_document": "not applicable"},
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_applicable",
+    "description": "The report is methodological guidance, not one homogeneous measurement dataset.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "Annex 66 supplies definitions and application guidance, not a NexusEP calibration result.",
+    "Any linked empirical dataset requires its own immutable source and license record.",
+    "Model form and metrics must be chosen for the declared application rather than assumed universal."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "inspect-annex-66-report",
+      "description": "Verify the retrieved PDF container and checksum without redistributing extracted report content.",
+      "script_path": "scripts/validation_data/inspect_daylight_occupant_references.py",
+      "script_sha256": "00ba657f363e9b1618a92c35c9cfa3dbada65a33e1bb2959453c48ab7c15578d",
+      "command": "uv run python scripts/validation_data/inspect_daylight_occupant_references.py iea-ebc-annex-66-2018 data/raw/validation/iea-annex-66/final-report.pdf",
+      "input_raw_file_ids": ["annex-66-final-report"],
+      "output_fixtures": []
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Methodological guidance for occupant-model scope, diversity, and fit-for-purpose evaluation.",
+    "redistribution": "metadata_only",
+    "commercial_use": null,
+    "citation_required": true,
+    "notes": "Keep the downloaded report under ignored raw storage and cite the publisher."
+  },
+  "targeted_models": ["OCC-1"]
+}

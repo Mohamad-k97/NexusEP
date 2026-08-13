@@ -1,0 +1,83 @@
+{
+  "manifest_version": "1.0.0",
+  "source_id": "bls-atus-2023-microdata",
+  "title": "American Time Use Survey 2023 public-use respondent and activity files",
+  "version": "2023 annual public-use release",
+  "publisher": "U.S. Bureau of Labor Statistics",
+  "doi": {
+    "status": "not_assigned",
+    "value": null,
+    "absence_reason": "BLS does not assign a DOI to the annual ATUS public-use files."
+  },
+  "license": {
+    "name": "United States government work",
+    "spdx_id": null,
+    "terms_url": "https://www.bls.gov/opub/copyright-information.htm"
+  },
+  "download_url": "https://www.bls.gov/tus/data/datafiles-2023.htm",
+  "retrieval_date": "2026-08-12",
+  "raw_files": [
+    {
+      "file_id": "atusresp-2023-zip",
+      "path": "data/raw/validation/atus-2023-microdata/atusresp-2023.zip",
+      "sha256": "5b24084ffd4c618c14e096429f99f0efa87e1393d7902c6007f96dd8725ba90c",
+      "byte_size": 655043
+    },
+    {
+      "file_id": "atusact-2023-zip",
+      "path": "data/raw/validation/atus-2023-microdata/atusact-2023.zip",
+      "sha256": "c7f497f8ac91254b9ddf771f8de475dded5bc7ea39806a019e8cdee920989b33",
+      "byte_size": 2655513
+    }
+  ],
+  "units": {
+    "TUACTDUR24": "minutes per activity episode",
+    "TUFINLWGT": "final respondent survey weight",
+    "TUDIARYDAY": "categorical day code, Sunday 1 through Saturday 7",
+    "TEWHERE": "categorical location code",
+    "diary_clock": "local civil time, diary window 04:00 to 04:00"
+  },
+  "timezone": "not_applicable",
+  "measurement_uncertainty": {
+    "status": "not_reported",
+    "description": "The result applies final survey weights but does not calculate replicate-weight sampling intervals or diary-reporting error.",
+    "by_variable": {}
+  },
+  "known_gaps": [
+    "ATUS represents the U.S. civilian noninstitutionalized population and is not an Italian-household measurement source.",
+    "BLS does not collect location for sleeping, grooming, and some personal activities; sleeping is explicitly inferred at home and other missing locations remain masked.",
+    "The current model does not condition schedules on household composition or demographic covariates.",
+    "The result validates schedule distributions, not causal responses of windows, HVAC, lights, or appliances to environmental conditions."
+  ],
+  "preprocessing": [
+    {
+      "step_id": "fit-and-score-weighted-diary-model",
+      "description": "Verify both ZIP checksums, join respondent weights to complete activity diaries, rotate 04:00 diaries to a midnight clock, isolate respondents by stable hash, fit whole-diary probabilities on development records, and score the holdout.",
+      "script_path": "scripts/validation_data/run_atus_population_validation.py",
+      "script_sha256": "f9a00dab7f42f4fc03ad6e7be4f234a765d6a436d83363b1b3c70a6adf7a9f77",
+      "command": "uv run python scripts/validation_data/run_atus_population_validation.py",
+      "input_raw_file_ids": [
+        "atusresp-2023-zip",
+        "atusact-2023-zip"
+      ],
+      "output_fixtures": [
+        {
+          "file_id": "atus-2023-population-holdout-result",
+          "path": "data/validation/fixtures/atus-2023-microdata/population-holdout-result-v1.json",
+          "sha256": "71d4a4656e0266bff7fbeb7db509d1af7425ce745a03a4bb29293fd2ea614b24",
+          "byte_size": 3317
+        }
+      ]
+    }
+  ],
+  "permitted_use": {
+    "purpose": "Population-prior calibration and behavioral schedule validation research",
+    "redistribution": "permitted",
+    "commercial_use": true,
+    "citation_required": true,
+    "notes": "Retain BLS attribution and do not interpret weighted population priors as individual-household truth."
+  },
+  "targeted_models": [
+    "OCC-1"
+  ]
+}

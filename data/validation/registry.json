@@ -1,0 +1,34 @@
+{
+  "registry_version": "1.0.0",
+  "validation_category": "verification",
+  "source_manifests": [
+    "data/validation/sources/nrel_spa_2008.json",
+    "data/validation/sources/pvgis_5_3_hourly.json",
+    "data/validation/sources/nasa_power_hourly.json",
+    "data/validation/sources/nsrdb_api_contract.json",
+    "data/validation/sources/nist_airnet_1989.json",
+    "data/validation/sources/nist_contam_3_4_r1.json",
+    "data/validation/sources/nist_qico2_tn_2213.json",
+    "data/validation/sources/iea_ebc_annex_41_psr_2013.json",
+    "data/validation/sources/energyplus_25_1_0.json",
+    "data/validation/sources/nist_nzertf_reference_2017.json",
+    "data/validation/sources/cie_171_2006.json",
+    "data/validation/sources/bre_idmp_2001.json",
+    "data/validation/sources/atus_2025_catalog.json",
+    "data/validation/sources/eia_recs_2020.json",
+    "data/validation/sources/iea_annex_66_2018.json",
+    "data/validation/sources/iea_annex_79_2024.json",
+    "data/validation/sources/ptb_absorption_database.json",
+    "data/validation/sources/aalto_motus_2021.json",
+    "data/validation/sources/iea_ebc_annex71_twin_houses_2020.json",
+    "data/validation/sources/dbnomics_bls_atus_sleeping_2025.json",
+    "data/validation/sources/bls_atus_2023_microdata.json"
+  ],
+  "scientific_result_manifests": [
+    "data/validation/results/energyplus_ideal_loads_25_1_0.json",
+    "data/validation/results/annex71_thermal_transfer_v1.json",
+    "data/validation/results/atus_aggregate_sleep_alternative_v1.json",
+    "data/validation/results/annex71_production_transfer_v1.json",
+    "data/validation/results/atus_population_holdout_v1.json"
+  ]
+}

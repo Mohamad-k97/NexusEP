@@ -10,6 +10,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from nexusep.jsonc import DuplicateJSONKeyError, loads_strict_json, strip_jsonc
+
 from nexusep.scenarios.validation import (
     FieldIssue,
     ScenarioValidationError,
@@ -50,91 +52,7 @@ class CanonicalScenarioBundle:
 def _strip_jsonc(text: str) -> str:
     """Remove JSONC comments and trailing commas without touching strings."""
 
-    output: list[str] = []
-    index = 0
-    in_string = False
-    escaped = False
-    while index < len(text):
-        char = text[index]
-        following = text[index + 1] if index + 1 < len(text) else ""
-        if in_string:
-            output.append(char)
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                in_string = False
-            index += 1
-            continue
-        if char == '"':
-            in_string = True
-            output.append(char)
-            index += 1
-            continue
-        if char == "/" and following == "/":
-            output.extend((" ", " "))
-            index += 2
-            while index < len(text) and text[index] not in "\r\n":
-                output.append(" ")
-                index += 1
-            continue
-        if char == "/" and following == "*":
-            output.extend((" ", " "))
-            index += 2
-            closed = False
-            while index < len(text):
-                if index + 1 < len(text) and text[index : index + 2] == "*/":
-                    output.extend((" ", " "))
-                    index += 2
-                    closed = True
-                    break
-                output.append("\n" if text[index] == "\n" else " ")
-                index += 1
-            if not closed:
-                raise ValueError("unterminated JSONC block comment")
-            continue
-        output.append(char)
-        index += 1
-
-    without_comments = "".join(output)
-    output = []
-    index = 0
-    in_string = False
-    escaped = False
-    while index < len(without_comments):
-        char = without_comments[index]
-        if in_string:
-            output.append(char)
-            if escaped:
-                escaped = False
-            elif char == "\\":
-                escaped = True
-            elif char == '"':
-                in_string = False
-            index += 1
-            continue
-        if char == '"':
-            in_string = True
-            output.append(char)
-            index += 1
-            continue
-        if char == ",":
-            lookahead = index + 1
-            while (
-                lookahead < len(without_comments)
-                and without_comments[lookahead].isspace()
-            ):
-                lookahead += 1
-            if (
-                lookahead < len(without_comments)
-                and without_comments[lookahead] in "}]"
-            ):
-                index += 1
-                continue
-        output.append(char)
-        index += 1
-    return "".join(output)
+    return strip_jsonc(text)
 
 
 def _read_document(path: Path) -> Any:
@@ -155,9 +73,21 @@ def _read_document(path: Path) -> Any:
             [FieldIssue("/", str(error), "file_read_error")]
         ) from error
     try:
-        return json.loads(
-            _strip_jsonc(text) if path.suffix.casefold() == ".jsonc" else text
+        return loads_strict_json(
+            text,
+            source=path,
+            jsonc=path.suffix.casefold() == ".jsonc",
         )
+    except DuplicateJSONKeyError as error:
+        raise ScenarioValidationError(
+            [
+                FieldIssue(
+                    error.json_pointer,
+                    str(error),
+                    "duplicate_json_key",
+                )
+            ]
+        ) from error
     except (json.JSONDecodeError, ValueError) as error:
         line = getattr(error, "lineno", None)
         column = getattr(error, "colno", None)

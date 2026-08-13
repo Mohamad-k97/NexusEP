@@ -1,0 +1,74 @@
+{
+  "governance_version": "1.0.0",
+  "validation_category": "calibration_and_blind_validation_planning",
+  "frozen_on": "2026-08-11",
+  "global_prohibition": "No final validation or holdout values may influence model selection, parameter bounds, preprocessing, objective weights, stopping rules, or acceptance thresholds.",
+  "segments": [
+    {
+      "dataset_id": "twin-houses",
+      "segment_id": "experiment-1",
+      "role": "calibration",
+      "start_date": null,
+      "end_date_exclusive": null,
+      "sealed": false,
+      "configuration_changes": [],
+      "permitted_uses": ["parameter identification", "calibration", "training residual analysis"],
+      "prohibited_uses": ["claiming blind validation"]
+    },
+    {
+      "dataset_id": "twin-houses",
+      "segment_id": "experiment-2",
+      "role": "blind_validation",
+      "start_date": null,
+      "end_date_exclusive": null,
+      "sealed": true,
+      "configuration_changes": [],
+      "permitted_uses": ["one-time evaluation after the Experiment 1 protocol is frozen"],
+      "prohibited_uses": ["parameter fitting", "feature selection", "threshold selection", "preprocessing design"]
+    },
+    {
+      "dataset_id": "nist-nzertf",
+      "segment_id": "year-1",
+      "role": "calibration",
+      "start_date": "2013-07-01",
+      "end_date_exclusive": "2014-07-01",
+      "sealed": false,
+      "configuration_changes": ["heat-pump dehumidification", "continuous heat-recovery ventilation near 170 m3/h", "generic thermostat"],
+      "permitted_uses": ["integrated calibration", "parameter identification", "training residual analysis"],
+      "prohibited_uses": ["claiming blind validation"]
+    },
+    {
+      "dataset_id": "nist-nzertf",
+      "segment_id": "year-2",
+      "role": "validation",
+      "start_date": "2015-02-01",
+      "end_date_exclusive": "2016-02-01",
+      "sealed": true,
+      "configuration_changes": ["whole-house dehumidifier", "ventilation 43 minutes per hour near 140 m3/h", "configurable thermostat"],
+      "permitted_uses": ["evaluation with documented Year 2 configuration represented as known inputs"],
+      "prohibited_uses": ["retuning Year 1 parameters", "absorbing configuration changes into envelope parameters", "threshold selection"]
+    },
+    {
+      "dataset_id": "atus",
+      "segment_id": "development-years-and-groups",
+      "role": "calibration",
+      "start_date": null,
+      "end_date_exclusive": null,
+      "sealed": false,
+      "configuration_changes": ["survey weights and demographic strata must be retained"],
+      "permitted_uses": ["fit population priors", "select behavioral covariates"],
+      "prohibited_uses": ["representing one household as deterministic truth"]
+    },
+    {
+      "dataset_id": "atus",
+      "segment_id": "held-out-years-or-demographics",
+      "role": "holdout",
+      "start_date": null,
+      "end_date_exclusive": null,
+      "sealed": true,
+      "configuration_changes": ["exact years or demographic strata must be frozen before microdata are opened"],
+      "permitted_uses": ["distributional generalization evaluation"],
+      "prohibited_uses": ["model fitting", "covariate selection", "distribution-threshold selection"]
+    }
+  ]
+}

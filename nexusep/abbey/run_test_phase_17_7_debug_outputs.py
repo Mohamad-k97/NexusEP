@@ -1,7 +1,7 @@
 """Compatibility entry point for the reconstructed Phase 17.7 tests."""
 
-from tests.phase17.test_17_7_debug_outputs import *  # noqa: F401,F403
+from nexusep.abbey._pytest_compat import run_pytest_module
 
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(run_pytest_module("tests/phase17/test_17_7_debug_outputs.py"))

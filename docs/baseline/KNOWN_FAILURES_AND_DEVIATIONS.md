@@ -1,5 +1,7 @@
 # Known failures, deviations, and uncertainty
 
+Validation category: **verification** (evidence classification and provenance)
+
 There are no observed validation or pytest failures in the Phase 1.4 baseline.
 The following limitations remain material.
 
@@ -49,4 +51,3 @@ Git contains no earlier committed Phase 17.1–17.8 validation sources before
 their first appearance in commit `7d27291`. Phase 17.3, 17.5, 17.6, and 17.7
 were reconstructed from surviving contracts rather than restored verbatim.
 Detailed provenance is in `PHASE_1_3_RECOVERY_PROVENANCE.md`.
-

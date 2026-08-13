@@ -384,6 +384,7 @@ class BuildingPerformanceStepResult:
     performance_path: str = BUILDING_PERFORMANCE_PATH_ENGINE
     legacy_fallback_used: bool = False
     legacy_fallback_reason: Optional[str] = None
+    legacy_fallback_exception_category: Optional[str] = None
 
 
 class BuildingPhysicsPerformanceModel:
@@ -437,6 +438,14 @@ class BuildingPhysicsPerformanceModel:
         self.physics_graph = physics_graph
         self.last_physics_engine_result = None
         self.last_physics_engine_error = None
+
+        if self.use_physics_engine:
+            if self.physics_graph is None:
+                raise ValueError(
+                    "physics_graph is required when use_physics_engine=True; "
+                    "select the explicit legacy model instead of omitting topology."
+                )
+            self.physics_graph.validate()
 
         
     def step(
@@ -570,6 +579,7 @@ class BuildingPhysicsPerformanceModel:
         performance_path = BUILDING_PERFORMANCE_PATH_ENGINE
         legacy_fallback_used = False
         legacy_fallback_reason = None
+        legacy_fallback_exception_category = None
         internal_source_result = None
         physics_inputs = {}
         interzone_thermal_flow_records = []
@@ -618,6 +628,7 @@ class BuildingPhysicsPerformanceModel:
 
             except Exception as exc:
                 physics_engine_error = repr(exc)
+                legacy_fallback_exception_category = type(exc).__name__
                 self.last_physics_engine_error = physics_engine_error
 
                 if not self.allow_legacy_physics_fallback:
@@ -798,6 +809,9 @@ class BuildingPhysicsPerformanceModel:
                     record["performance_path"] = performance_path
                     record["legacy_fallback_used"] = legacy_fallback_used
                     record["legacy_fallback_reason"] = legacy_fallback_reason
+                    record["legacy_fallback_exception_category"] = (
+                        legacy_fallback_exception_category
+                    )
 
                     self._add_weather_diagnostics_to_record(
                         record=record,
@@ -864,6 +878,9 @@ class BuildingPhysicsPerformanceModel:
                 performance_path=performance_path,
                 legacy_fallback_used=legacy_fallback_used,
                 legacy_fallback_reason=legacy_fallback_reason,
+                legacy_fallback_exception_category=(
+                    legacy_fallback_exception_category
+                ),
                 interzone_thermal_flow_records=interzone_thermal_flow_records,
                 interzone_airflow_records=interzone_airflow_records,
                 window_airflow_records=window_airflow_records,
@@ -900,6 +917,9 @@ class BuildingPhysicsPerformanceModel:
                 performance_path=performance_path,
                 legacy_fallback_used=legacy_fallback_used,
                 legacy_fallback_reason=legacy_fallback_reason,
+                legacy_fallback_exception_category=(
+                    legacy_fallback_exception_category
+                ),
                 weather_state=weather_state,
                 weather_source=weather_source,
             )
@@ -1533,7 +1553,7 @@ class BuildingPhysicsPerformanceModel:
     ) -> Any:
         physics_engine_result = run_building_physics_step(
             step_input=step_input,
-            require_physics_graph=False,
+            require_physics_graph=True,
             write_back_to_building_model=True,
         )
 
@@ -1606,6 +1626,7 @@ class BuildingPhysicsPerformanceModel:
         record["performance_path"] = performance_path
         record["legacy_fallback_used"] = False
         record["legacy_fallback_reason"] = None
+        record["legacy_fallback_exception_category"] = None
         record["physics_engine_source"] = getattr(
             physics_engine_result,
             "source",
@@ -1759,6 +1780,7 @@ class BuildingPhysicsPerformanceModel:
         performance_path: str,
         legacy_fallback_used: bool,
         legacy_fallback_reason: Optional[str],
+        legacy_fallback_exception_category: Optional[str],
         interzone_thermal_flow_records: List[Dict[str, Any]],
         interzone_airflow_records: List[Dict[str, Any]],
         window_airflow_records: List[Dict[str, Any]],
@@ -1769,6 +1791,9 @@ class BuildingPhysicsPerformanceModel:
         building_record["performance_path"] = performance_path
         building_record["legacy_fallback_used"] = legacy_fallback_used
         building_record["legacy_fallback_reason"] = legacy_fallback_reason
+        building_record["legacy_fallback_exception_category"] = (
+            legacy_fallback_exception_category
+        )
 
         building_record["interzone_thermal_flow_record_count"] = len(
             interzone_thermal_flow_records
@@ -1873,6 +1898,7 @@ class BuildingPhysicsPerformanceModel:
         performance_path: str,
         legacy_fallback_used: bool,
         legacy_fallback_reason: Optional[str],
+        legacy_fallback_exception_category: Optional[str],
         weather_state: Any = None,
         weather_source: Optional[str] = None,
     ) -> BuildingPerformanceStepResult:
@@ -1904,6 +1930,9 @@ class BuildingPhysicsPerformanceModel:
             performance_path=performance_path,
             legacy_fallback_used=legacy_fallback_used,
             legacy_fallback_reason=legacy_fallback_reason,
+            legacy_fallback_exception_category=(
+                legacy_fallback_exception_category
+            ),
         )
     
     def _make_zone_record(
@@ -2500,6 +2529,21 @@ class BuildingPhysicsPerformanceModel:
                 prefix="",
             )
 
+            fallback_rows = [
+                row for row in dwelling_zone_records if row.get("legacy_fallback_used")
+            ]
+            record["legacy_fallback_used"] = bool(fallback_rows)
+            record["legacy_fallback_reason"] = (
+                fallback_rows[0].get("legacy_fallback_reason")
+                if fallback_rows
+                else None
+            )
+            record["legacy_fallback_exception_category"] = (
+                fallback_rows[0].get("legacy_fallback_exception_category")
+                if fallback_rows
+                else None
+            )
+
             records.append(record)
 
         return records
@@ -2814,18 +2858,16 @@ class BuildingPhysicsPerformanceModel:
             if candidate in zone_observations:
                 return candidate
 
-        preferred = [
-            "dwelling_1_living_room",
-            "living_room",
-            "main_room",
-        ]
+        living_zone_ids = sorted(
+            zone.zone_id
+            for zone in self.building_model.all_zone_models().values()
+            if zone.zone_use in {"living", "living_room"}
+            and zone.zone_id in zone_observations
+        )
+        if living_zone_ids:
+            return living_zone_ids[0]
 
-        for zone_id in preferred:
-            for candidate in self._candidate_observation_zone_ids(zone_id):
-                if candidate in zone_observations:
-                    return candidate
-
-        for zone_id in zone_observations:
+        for zone_id in sorted(zone_observations):
             return zone_id
 
         raise ValueError("No zone observations available.")
