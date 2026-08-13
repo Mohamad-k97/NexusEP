@@ -1,0 +1,25 @@
+{
+  "protocol_version": "1.2.0",
+  "supersedes": "data/validation/governance/annex71_extended_holdout_v1_1.json",
+  "amended_on": "2026-08-13",
+  "amendment_status": "post_unsealing_target_independent_source_schedule_correction",
+  "validation_category": "post_unsealing_corrected_holdout_diagnostic",
+  "reason": "Section 3.15.7 of the registered experiment specification states that north, east, and south blinds remain open, both west-facing ground-floor blinds remain closed, and the attic west blind remains open. The prior mapper closed only one west ground-floor blind. This correction follows the specification and was not selected from a residual counterfactual.",
+  "unchanged_from_v1_1": [
+    "fixed-CET time correction",
+    "model and fabric policy",
+    "forcing mappings",
+    "opening and door schedules",
+    "warm-up",
+    "all numerical acceptance thresholds",
+    "missing-data acceptance",
+    "no post-hoc fitting"
+  ],
+  "corrected_shading_schedule": {
+    "window_west_living_type1": "closed for Main and Extended experiments",
+    "window_west_kitchen_type1": "closed for Main and Extended experiments",
+    "window_west_child1_type1": "open so the operated window is unobstructed",
+    "all_north_east_south_blinds": "open"
+  },
+  "scientific_label": "Results under v1.2 are post-unsealing corrected diagnostics. The immutable v2 first holdout result remains published and rejected."
+}

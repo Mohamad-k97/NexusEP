@@ -10,12 +10,21 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from datetime import datetime
+from functools import lru_cache
 
 import pandas as pd
 from pvlib.solarposition import spa_python, sun_rise_set_transit_spa
+from pvlib.spa import calculate_deltat
 
 NREL_SPA_REFERENCE = "NREL/TP-560-34302, revised January 2008"
 AZIMUTH_CONVENTION = "degrees clockwise from true north"
+
+
+@lru_cache(maxsize=512)
+def _monthly_delta_t_seconds(year: int, month: int) -> float:
+    """Cache pvlib's monthly SPA delta-T approximation without changing it."""
+
+    return float(calculate_deltat(year, month))
 
 
 @dataclass(frozen=True)
@@ -142,6 +151,8 @@ def calculate_solar_position(
     if not -180.0 <= longitude <= 180.0:
         raise ValueError("longitude_deg must be in [-180, 180]")
     pressure = _non_negative(atmospheric_pressure_pa, "atmospheric_pressure_pa")
+    if delta_t_seconds is None:
+        delta_t_seconds = _monthly_delta_t_seconds(timestamp.year, timestamp.month)
     times = pd.DatetimeIndex([timestamp])
     values = spa_python(
         times,

@@ -241,10 +241,12 @@ def test_named_cellar_boundary_is_required_and_changes_the_solution() -> None:
         for zone in scenario.building.dwelling.zones
     )
     step = build_annex71_step_input(scenario, graph, base[1], 0, prior)
-    assert {
+    blind_states = {
         item.opening_id: item.shading_open_fraction
         for item in step.opening_control_commands
-    }["window_west_living_type1"] == 0.0
+    }
+    assert blind_states["window_west_living_type1"] == 0.0
+    assert blind_states["window_west_kitchen_type1"] == 0.0
     missing = step.model_copy(update={"external_boundary_states": ()})
     with pytest.raises(CanonicalStepContractError, match="external boundary state"):
         validate_step_input_for_scenario(missing, scenario, graph)

@@ -46,14 +46,14 @@ FIXTURE_PATH = (
     / "validation"
     / "fixtures"
     / "annex71-twin-houses"
-    / "physical-runtime-error-v2.json"
+    / "physical-runtime-error-v3.json"
 )
 REPORT_PATH = (
     REPOSITORY_ROOT
     / "docs"
     / "validation"
     / "results"
-    / "annex71_physical_runtime_error_v2.md"
+    / "annex71_physical_runtime_error_v3.md"
 )
 TIMEZONE = ZoneInfo("Etc/GMT-1")
 WARMUP_HOURS = 24
@@ -161,7 +161,7 @@ def _metrics_for_indices(
 
 
 def _error_diagnostics(
-    result: Annex71RunResult, *, warmup_timesteps: int
+    result: Annex71RunResult, records, *, warmup_timesteps: int
 ) -> dict[str, Any]:
     timestamps = [datetime.fromisoformat(item) for item in result.timestamps]
     scored = np.arange(warmup_timesteps, len(timestamps), dtype=int)
@@ -173,11 +173,14 @@ def _error_diagnostics(
         dtype=int,
     )
     seven_days = max(1, round(7 * 24 * 60 / 10))
+    record_by_timestamp = {item.timestamp.isoformat(): item for item in records}
     worst: list[dict[str, Any]] = []
     for zone_id in sorted(result.measured_temperature_c):
         measured = np.asarray(result.measured_temperature_c[zone_id])
         simulated = np.asarray(result.simulated_temperature_c[zone_id])
         for index in scored:
+            source = record_by_timestamp[result.timestamps[index]]
+            zone_source = source.zone(zone_id)
             worst.append(
                 {
                     "timestamp": result.timestamps[index],
@@ -185,6 +188,11 @@ def _error_diagnostics(
                     "measured_c": float(measured[index]),
                     "simulated_c": float(simulated[index]),
                     "error_c": float(simulated[index] - measured[index]),
+                    "heating_power_w": zone_source.heating_power_w,
+                    "internal_gain_w": zone_source.internal_gain_w,
+                    "global_horizontal_radiation_w_m2": source.global_horizontal_radiation_w_m2,
+                    "kitchen_door_opening_fraction": source.kitchen_door_opening_fraction,
+                    "child1_window_opening_fraction": source.child1_window_opening_fraction,
                 }
             )
     worst.sort(key=lambda row: abs(row["error_c"]), reverse=True)
@@ -246,14 +254,14 @@ def _render_report(document: dict[str, Any]) -> str:
     ext = document["extended_primary_holdout"]
     main = document["main_experiment_posthoc"]
     lines = [
-        "# Annex 71 physical-model runtime and error report v2",
+        "# Annex 71 physical-model runtime and error report v3",
         "",
         "Validation category: post-hoc empirical diagnostic for the Main Experiment; predeclared holdout evaluation with a post-unsealing, target-independent time correction for the Extended Experiment. This is not pristine blind-validation evidence.",
         "",
         "## Decision",
         "",
         f"Strict gate: **{'passed' if ext['gate']['passed'] else 'rejected'}**. ",
-        "The original Phase 4.9 row remains **blocked and rejected with alternative**. A thermal-only score is reported, but four missing outdoor-CO2 input rows violate the predeclared no-missing-input rule.",
+        "The original Phase 4.9 row remains **blocked and rejected with alternative**. The temperature criteria fail and four missing outdoor-CO2 input rows independently violate the predeclared no-missing-input rule.",
         "",
         "## Runtime",
         "",
@@ -313,9 +321,9 @@ def _render_report(document: dict[str, Any]) -> str:
             "",
             "## Model-error interpretation",
             "",
-            "The component-resolved envelope, published thermal bridges, measured cellar boundary, fixed-CET alignment, measured opening/door states, and phase-specific blinds are now explicit. Remaining temperature residual is therefore not evidence for one more fitted whole-house conductance.",
+            "The component-resolved envelope, published thermal bridges, measured cellar boundary, fixed-CET alignment, measured opening/door states, and the specified blind states are now explicit. Remaining temperature residual is therefore not evidence for one more fitted whole-house conductance.",
             "",
-            "The strongest remaining structural risks are: (1) all construction layers are collapsed into one mass node per air body; (2) air-to-mass coupling uses a reduced effective-area coefficient rather than layer-resolved surface transfer; (3) open-door exchange uses a prescribed symmetric 0.10 m/s mixing speed rather than a pressure/buoyancy network; (4) solar optics use normal-incidence glazing data and a generic 0.35 closed-blind multiplier; and (5) infiltration is the published whole-house estimate applied uniformly to each air body. These are model-form uncertainties, not parameters authorized for post-hoc tuning.",
+            "The strongest remaining structural risks are: (1) all construction layers are collapsed into one mass node per air body; (2) air-to-mass coupling uses a reduced effective-area coefficient rather than layer-resolved surface transfer; (3) open-door exchange uses a prescribed symmetric 0.10 m/s mixing speed rather than a pressure/buoyancy large-opening network; (4) solar optics use normal-incidence glazing data and a generic 0.35 closed-blind multiplier; and (5) infiltration is the published whole-house estimate applied uniformly to each air body. The largest kitchen errors coincide with roughly 1.8 kW internal-heat pulses and an open kitchen/living door, directly exposing item (3). These are model-form uncertainties, not parameters authorized for post-hoc tuning.",
             "",
             "## Source and data-quality findings",
             "",
@@ -400,7 +408,7 @@ def run() -> dict[str, Any]:
     profile = _profile_sample(extended_records[:73])
 
     document = {
-        "report_version": "2.0.0",
+        "report_version": "3.0.0",
         "created_on": datetime.now(tz=TIMEZONE).isoformat(),
         "validation_category": {
             "main": "post_hoc_empirical_diagnostic",
@@ -412,6 +420,7 @@ def run() -> dict[str, Any]:
         "protocols": [
             "data/validation/governance/annex71_extended_holdout_v1.json",
             "data/validation/governance/annex71_extended_holdout_v1_1.json",
+            "data/validation/governance/annex71_extended_holdout_v1_2.json",
         ],
         "software": software,
         "source": {
@@ -441,7 +450,9 @@ def run() -> dict[str, Any]:
             "runtime": extended_runtime,
             "metrics": extended_metrics,
             "diagnostics": _error_diagnostics(
-                extended_result, warmup_timesteps=extended_warmup
+                extended_result,
+                extended_records[1:],
+                warmup_timesteps=extended_warmup,
             ),
             "maximum_abs_thermal_balance_residual_w": extended_result.maximum_abs_thermal_balance_residual_w,
             "fallback_used": extended_result.fallback_used,

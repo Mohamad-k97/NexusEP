@@ -158,6 +158,7 @@ class Annex71Interval:
     source_quality_flags: tuple[str, ...] = ()
     shading_open_fraction_by_opening: tuple[tuple[str, float], ...] = (
         ("window_west_living_type1", 0.0),
+        ("window_west_kitchen_type1", 0.0),
     )
 
     def zone(self, zone_id: str) -> Annex71ZoneObservation:
@@ -570,9 +571,8 @@ def load_annex71_intervals(
                 missing_source_fields=missing_source_fields,
                 source_quality_flags=source_quality_flags,
                 shading_open_fraction_by_opening=(
-                    (("window_west_living_type1", 0.0),)
-                    if experiment == "main"
-                    else (("window_west_kitchen_type1", 0.0),)
+                    ("window_west_living_type1", 0.0),
+                    ("window_west_kitchen_type1", 0.0),
                 ),
             )
         )
@@ -943,9 +943,6 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
                 surface_id,
                 name,
                 area,
-                solar_shading_factor=(
-                    1.0
-                ),
                 openable_area_m2=(
                     1.54 * 0.143 + 2.0 * 0.5 * 1.23 * 0.143
                     if name == "west_child1_type1"
