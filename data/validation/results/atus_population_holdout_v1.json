@@ -1,0 +1,40 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "atus-population-holdout-v1",
+  "title": "ATUS 2023 weighted respondent-diary population holdout",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-12",
+  "targeted_models": [
+    "OCC-1"
+  ],
+  "source_ids": [
+    "bls-atus-2023-microdata"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_atus_population_validation.py",
+      "sha256": "f9a00dab7f42f4fc03ad6e7be4f234a765d6a436d83363b1b3c70a6adf7a9f77",
+      "command": "uv run python scripts/validation_data/run_atus_population_validation.py"
+    }
+  ],
+  "report_path": "docs/validation/results/atus_population_holdout_v1.md",
+  "result_artifacts": [
+    {
+      "file_id": "atus-2023-population-holdout-result",
+      "path": "data/validation/fixtures/atus-2023-microdata/population-holdout-result-v1.json",
+      "sha256": "71d4a4656e0266bff7fbeb7db509d1af7425ce745a03a4bb29293fd2ea614b24",
+      "byte_size": 3317
+    }
+  ],
+  "numerical_tolerances": {
+    "daily_sleep_fraction_quantile_mae": "less than or equal to 0.05",
+    "observed_location_home_fraction_quantile_mae": "less than or equal to 0.05",
+    "sleep_episode_duration_quantile_mae": "less than or equal to 30 minutes",
+    "determinism": "exact repeat for identical seed, occupant ID, and day index"
+  },
+  "known_deviations": [
+    "The result is a U.S. population-prior validation, not deterministic or Italian-household truth.",
+    "Sleep location is inferred at home because BLS does not collect it; other missing-location minutes remain masked.",
+    "The empirical sampler preserves complete diary dependence but does not validate condition-dependent action probabilities or causal behavioral equations."
+  ]
+}

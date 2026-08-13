@@ -817,9 +817,24 @@ def run_building_physics_step(
                 building_model=building_model,
             )
 
+            mechanical_supply_temperature_by_zone_c = {}
+            for zone_id, command in zone_control_commands.items():
+                supply_temperature_c = _get_attr_or_key(
+                    command,
+                    "ventilation_supply_temperature_c",
+                    None,
+                )
+                if supply_temperature_c is not None:
+                    mechanical_supply_temperature_by_zone_c[zone_id] = float(
+                        supply_temperature_c
+                    )
+
             thermal_ventilation_exchange = make_ventilation_heat_exchange_for_thermal(
                 building_model=building_model,
                 airflow_network=airflow_network,
+                mechanical_supply_temperature_by_zone_c=(
+                    mechanical_supply_temperature_by_zone_c
+                ),
             )
 
             interzone_thermal_network = None
@@ -2240,11 +2255,17 @@ def _make_engine_zone_records(
             "lighting_result_dimming_fraction": lighting_result_dimming_fraction,
             "command_heating_on": bool(_get_attr_or_key(command, "heating_on", False)),
             "command_heating_power_fraction": heating_power_fraction,
+            "command_heating_convective_fraction": float(
+                _get_attr_or_key(command, "heating_convective_fraction", 1.0)
+            ),
             "command_heating_power_w": heating_power_w,
             "command_heating_delivered_power_w": heating_power_w,
             
             "command_cooling_on": bool(_get_attr_or_key(command, "cooling_on", False)),
             "command_cooling_power_fraction": cooling_power_fraction,
+            "command_cooling_convective_fraction": float(
+                _get_attr_or_key(command, "cooling_convective_fraction", 1.0)
+            ),
             "command_cooling_power_w": cooling_power_w,
             "command_cooling_delivered_power_w": cooling_power_w,
             "command_hvac_thermal_gain_w": heating_power_w - cooling_power_w,
@@ -2252,6 +2273,9 @@ def _make_engine_zone_records(
             "command_cooling_delivered_energy_wh": cooling_power_w * dt_hours,
             "command_ventilation_flow_m3_h": float(
                 _get_attr_or_key(command, "ventilation_flow_m3_h", 0.0)
+            ),
+            "command_ventilation_supply_temperature_c": _get_attr_or_key(
+                command, "ventilation_supply_temperature_c", None
             ),
             "heating_power_fraction": heating_power_fraction,
             "cooling_power_fraction": cooling_power_fraction,
@@ -2833,7 +2857,11 @@ def _add_hvac_command_gains_to_thermal_gains(
     )
 
     from nexusep.abbey.building.physics.thermal import (
-        make_building_thermal_gains,
+        GAIN_SOURCE_HVAC,
+        BuildingThermalGains,
+        ThermalGainSplit,
+        ZoneThermalGains,
+        ZoneThermalGainSource,
     )
 
     hvac_gains_by_zone_w = {}
@@ -2849,10 +2877,37 @@ def _add_hvac_command_gains_to_thermal_gains(
             )
         )
 
-    hvac_only_gains = make_building_thermal_gains(
-        zone_ids=zone_ids,
-        hvac_gains_by_zone_w=hvac_gains_by_zone_w,
-    )
+    hvac_only_gains = BuildingThermalGains()
+    for zone_id in zone_ids:
+        gain_w = hvac_gains_by_zone_w[zone_id]
+        command = zone_control_commands.get(zone_id)
+        if gain_w == 0.0:
+            continue
+        convective_fraction = float(
+            _get_attr_or_key(
+                command,
+                (
+                    "heating_convective_fraction"
+                    if gain_w > 0.0
+                    else "cooling_convective_fraction"
+                ),
+                1.0,
+            )
+        )
+        zone_gains = ZoneThermalGains(zone_id=zone_id)
+        zone_gains.add_source(
+            ZoneThermalGainSource(
+                zone_id=zone_id,
+                source_type=GAIN_SOURCE_HVAC,
+                gain_w=gain_w,
+                split=ThermalGainSplit(
+                    convective_fraction=convective_fraction,
+                    radiative_fraction=1.0 - convective_fraction,
+                ),
+                source="zone_control_command",
+            )
+        )
+        hvac_only_gains.set_zone_gains(zone_id, zone_gains)
 
     if base_thermal_gains is None:
         return hvac_only_gains

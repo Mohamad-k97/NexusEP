@@ -103,6 +103,27 @@ def test_annex71_production_replacement_fixes_mapping_but_remains_rejected() -> 
     assert decision["passed"] is False
 
 
+def test_annex71_energy_path_audit_does_not_authorize_post_hoc_tuning() -> None:
+    result = _json(
+        "data/validation/fixtures/annex71-twin-houses/energy-path-audit-v1.json"
+    )
+    later = result["audit"]["later_period"]["summary"]
+    decision = result["decision"]
+
+    assert decision["explicit_supply_air_path_verified"] is True
+    assert decision["explicit_heater_split_verified"] is True
+    assert decision["single_constant_missing_conductance_supported"] is False
+    assert decision["additional_calibration_authorized"] is False
+    assert decision["validation_status_changed"] is False
+    assert later["whole_building"]["one_step_temperature_rmse_c"] < 1.0
+    assert later["whole_building"]["unexplained_gain_mae_w"] > 0.0
+    assert later["by_zone"]["attic_airbody"]["unexplained_air_node_gain"][
+        "mae_w"
+    ] > later["by_zone"]["sleeping_airbody"]["unexplained_air_node_gain"][
+        "mae_w"
+    ]
+
+
 def test_atus_aggregate_alternative_fails_duration_and_distribution_gates() -> None:
     result = _json(
         "data/validation/fixtures/atus-aggregate/sleep-alternative-result-v1.json"

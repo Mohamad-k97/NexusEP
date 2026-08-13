@@ -1,0 +1,41 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "annex71-thermal-transfer-v1",
+  "title": "Annex 71 N2 living-room thermal-mapping diagnostic",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-11",
+  "targeted_models": [
+    "THERMAL-1"
+  ],
+  "source_ids": [
+    "iea-ebc-annex71-twin-houses-2020"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_annex71_thermal_transfer.py",
+      "sha256": "48d83ec8411f8e455dcc94485523056862c31ce3f6388da629e4e1843e7666a5",
+      "command": "uv run python scripts/validation_data/run_annex71_thermal_transfer.py"
+    }
+  ],
+  "report_path": "docs/validation/results/annex71_thermal_transfer_v1.md",
+  "result_artifacts": [
+    {
+      "file_id": "annex71-thermal-transfer-result",
+      "path": "data/validation/fixtures/annex71-twin-houses/thermal-transfer-result-v1.json",
+      "sha256": "2c3ef8f250defd9193d2578552bdbda5e045a573194c7a3c5264998b1b524712",
+      "byte_size": 4376
+    }
+  ],
+  "numerical_tolerances": {
+    "untouched_holdout_temperature_rmse_c": "less than or equal to 1.0 degC",
+    "untouched_holdout_absolute_temperature_bias_c": "less than or equal to 0.5 degC",
+    "parameter_bound_margin": "at least 1 percent of each declared bounded interval"
+  },
+  "known_deviations": [
+    "The arbitrary 60/40 split crosses substantial solar and operated-opening regime changes and does not follow the official blind/open workflow.",
+    "Only the N2 living-room series and selected measured forcings are mapped to a one-node helper; neither production adapter is exercised.",
+    "The full multizone topology, mass nodes, interzone exchange, and operated openings are not mapped.",
+    "Channel-level measurement uncertainty was not established, so uncertainty-weighted residual coverage is not claimed.",
+    "The holdout RMSE and bias fail the frozen criteria and capacity and conductance land on bounds; this is a rejected alternative."
+  ]
+}

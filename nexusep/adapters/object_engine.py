@@ -467,9 +467,14 @@ class ObjectEngineAdapter:
                 building_id=building_id,
                 heating_on=item.heating_on,
                 heating_power_fraction=item.heating_power_fraction,
+                heating_convective_fraction=item.heating_convective_fraction,
                 cooling_on=item.cooling_on,
                 cooling_power_fraction=item.cooling_power_fraction,
+                cooling_convective_fraction=item.cooling_convective_fraction,
                 ventilation_flow_m3_h=item.ventilation_volume_flow_m3_s * 3600.0,
+                ventilation_supply_temperature_c=(
+                    item.ventilation_supply_temperature_c
+                ),
                 lights_on=item.lights_on,
                 lighting_power_w=item.lighting_power_w,
                 window_open=item.window_opening_fraction > 0.0,

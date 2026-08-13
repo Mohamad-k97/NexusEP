@@ -83,9 +83,14 @@ class ZoneControlCommand(CanonicalModel):
     zone_id: ExternalID
     heating_on: bool
     heating_power_fraction: Fraction
+    heating_convective_fraction: Fraction = 1.0
     cooling_on: bool
     cooling_power_fraction: Fraction
+    cooling_convective_fraction: Fraction = 1.0
     ventilation_volume_flow_m3_s: NonnegativeFloat
+    ventilation_supply_temperature_c: Annotated[
+        float, Field(ge=-100.0, le=100.0, allow_inf_nan=False)
+    ] | None = None
     lights_on: bool
     lighting_power_w: NonnegativeFloat
     window_opening_fraction: Fraction

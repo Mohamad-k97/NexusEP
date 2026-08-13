@@ -1,0 +1,41 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "annex71-production-transfer-v1",
+  "title": "Annex 71 N2 four-air-body production diagnostic",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-13",
+  "targeted_models": [
+    "THERMAL-1"
+  ],
+  "source_ids": [
+    "iea-ebc-annex71-twin-houses-2020"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_annex71_production_transfer.py",
+      "sha256": "c74026af37e025fbf831f8c7b8903de65459a01d25c03dc239b97db46cb3cfb3",
+      "command": "uv run python scripts/validation_data/run_annex71_production_transfer.py"
+    }
+  ],
+  "report_path": "docs/validation/results/annex71_production_transfer_v1.md",
+  "result_artifacts": [
+    {
+      "file_id": "annex71-production-transfer-result",
+      "path": "data/validation/fixtures/annex71-twin-houses/production-transfer-result-v1.json",
+      "sha256": "4833b389c3efb3de33cfb1464aa98afbbcb095a8dcfa6474f0686c57e45084cd",
+      "byte_size": 114741
+    }
+  ],
+  "numerical_tolerances": {
+    "later_period_temperature_rmse_c": "less than or equal to 1.0 degC",
+    "later_period_absolute_temperature_bias_c": "less than or equal to 0.5 degC",
+    "thermal_balance_residual_w": "less than or equal to 1e-7 W",
+    "parameter_bound_margin": "at least 1 percent of the declared interval"
+  },
+  "known_deviations": [
+    "This is post-hoc same-experiment diagnosis, not blind or untouched validation; later targets were inspected during mapper repair.",
+    "Temperature RMSE and bias still fail after the explicit heater split and supply-air path repair; effective capacity approaches its upper bound and the optimizer exhausts its evaluation budget.",
+    "Canonical v1 still lacks per-opening blind state, detailed construction layers, cellar boundaries, and measurement uncertainty.",
+    "The run conserves thermal energy and uses no fallback, so numerical balance leakage does not explain the empirical residual."
+  ]
+}

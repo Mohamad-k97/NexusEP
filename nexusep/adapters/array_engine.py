@@ -640,6 +640,16 @@ class ArrayEngineAdapter:
 
     def run_step(self, step_input: SimulationStepInput, *, include_debug: bool = False):
         validate_step_input_for_scenario(step_input, self.scenario, self.compiled_graph)
+        if any(
+            item.heating_convective_fraction != 1.0
+            or item.cooling_convective_fraction != 1.0
+            or item.ventilation_supply_temperature_c is not None
+            for item in step_input.control_commands
+        ):
+            raise BackendAdapterError(
+                "array adapter cannot yet represent non-convective HVAC or "
+                "non-outdoor ventilation supply temperature"
+            )
         if step_input.internal_gains:
             raise BackendAdapterError(
                 "array adapter cannot yet inject canonical non-occupant internal gains"

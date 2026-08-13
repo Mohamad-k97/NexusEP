@@ -1,0 +1,40 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "annex71-energy-path-audit-v1",
+  "title": "Annex 71 production-adapter thermal energy-path audit",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-13",
+  "targeted_models": [
+    "THERMAL-1"
+  ],
+  "source_ids": [
+    "iea-ebc-annex71-twin-houses-2020"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_annex71_energy_path_audit.py",
+      "sha256": "7f08877a32dafcc77bacc729dd07b0b75292490a7a93b184df0984c03fefbcde",
+      "command": "uv run python scripts/validation_data/run_annex71_energy_path_audit.py"
+    }
+  ],
+  "report_path": "docs/validation/results/annex71_energy_path_audit_v1.md",
+  "result_artifacts": [
+    {
+      "file_id": "annex71-energy-path-audit",
+      "path": "data/validation/fixtures/annex71-twin-houses/energy-path-audit-v1.json",
+      "sha256": "282417a1b7724d53d72a31ffc1dd82c703d8cfb347f116f097f8eda8bfd744d2",
+      "byte_size": 30916
+    }
+  ],
+  "numerical_tolerances": {
+    "synthetic_energy_path_closure_w": "less than or equal to 1e-9 W",
+    "later_period_temperature_rmse_c": "diagnostic only; the production acceptance threshold remains less than or equal to 1.0 degC",
+    "unexplained_air_node_gain_w": "no post-hoc acceptance threshold; sign, distribution, and correlations are diagnostic evidence"
+  },
+  "known_deviations": [
+    "This is a post-hoc observation-constrained energy-path audit, not calibration, blind validation, or new acceptance evidence.",
+    "Measured air temperature constrains every interval while unmeasured mean radiant and mass temperature is conditionally estimated.",
+    "The residual changes sign and has large zone-dependent tails, so it does not support adding one fitted constant conductance.",
+    "The production empirical result remains rejected and additional calibration is not authorized by this audit."
+  ]
+}

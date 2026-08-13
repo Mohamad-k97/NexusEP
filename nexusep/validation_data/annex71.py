@@ -45,6 +45,7 @@ TIMEZONE = "Europe/Berlin"
 DT_MINUTES = 60.0
 AIR_DENSITY_KG_M3 = 1.204
 AIR_HEAT_CAPACITY_J_KG_K = 1005.0
+HEATER_CONVECTIVE_FRACTION = 0.70
 
 # Official air-body aggregation from the Annex 71 experimental specification.
 ZONE_ROOM_AREAS_M2: dict[str, dict[str, float]] = {
@@ -928,7 +929,7 @@ def build_canonical_scenario(
     return scenario, graph
 
 
-def _step_input(
+def build_annex71_step_input(
     scenario: CanonicalScenario,
     graph: Mapping[str, object],
     record: Annex71Interval,
@@ -951,9 +952,15 @@ def _step_input(
                 zone_id=zone.zone_id,
                 heating_on=observation.heating_power_w > 0.0,
                 heating_power_fraction=heating_fraction,
+                heating_convective_fraction=HEATER_CONVECTIVE_FRACTION,
                 cooling_on=False,
                 cooling_power_fraction=0.0,
                 ventilation_volume_flow_m3_s=observation.ventilation_supply_flow_m3_s,
+                ventilation_supply_temperature_c=(
+                    observation.ventilation_supply_temperature_c
+                    if observation.ventilation_supply_flow_m3_s > 0.0
+                    else None
+                ),
                 lights_on=False,
                 lighting_power_w=0.0,
                 window_opening_fraction=0.0,
@@ -968,30 +975,6 @@ def _step_input(
                 sensible_heat_w=observation.internal_gain_w,
                 latent_heat_w=0.0,
                 electrical_power_w=observation.internal_gain_w,
-                co2_generation_kg_s=0.0,
-                moisture_generation_kg_s=0.0,
-            )
-        )
-        # The production ventilation kernel uses outdoor temperature.  This
-        # explicit correction makes H*(Tout-Tzone)+H*(Tsupply-Tout) equal the
-        # measured-supply expression H*(Tsupply-Tzone).
-        ventilation_correction_w = (
-            AIR_DENSITY_KG_M3
-            * AIR_HEAT_CAPACITY_J_KG_K
-            * observation.ventilation_supply_flow_m3_s
-            * (
-                observation.ventilation_supply_temperature_c
-                - record.outdoor_temperature_c
-            )
-        )
-        gains.append(
-            InternalGain(
-                source_id=f"ventilation_supply_correction_{zone.zone_id}",
-                source_kind="other",
-                zone_id=zone.zone_id,
-                sensible_heat_w=ventilation_correction_w,
-                latent_heat_w=0.0,
-                electrical_power_w=0.0,
                 co2_generation_kg_s=0.0,
                 moisture_generation_kg_s=0.0,
             )
@@ -1075,7 +1058,7 @@ def run_object_scenario(
     for index, (record, target) in enumerate(
         zip(forcing_records, target_records, strict=True)
     ):
-        step = _step_input(scenario, graph, record, index, prior)
+        step = build_annex71_step_input(scenario, graph, record, index, prior)
         result = adapter.run_step(step, include_debug=True)
         for zone_result in result.zones:
             measured[zone_result.zone_id].append(
@@ -1153,6 +1136,7 @@ __all__ = [
     "Annex71RunResult",
     "Annex71ZoneObservation",
     "allocate_envelope_conductance_from_coheat",
+    "build_annex71_step_input",
     "build_canonical_scenario",
     "load_annex71_intervals",
     "parameters_as_dict",

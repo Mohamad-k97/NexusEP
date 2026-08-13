@@ -128,17 +128,16 @@ def _write_report(payload: dict[str, object], path: Path) -> None:
                 "## Scientific limits",
                 "",
                 (
-                    "- The canonical v1 system contract does not expose the measured electric "
-                    "heater's documented 70/30 convective/radiative split."
+                    "- The measured electric heater's documented 70/30 convective/radiative "
+                    "split is represented explicitly by the typed control contract."
                 ),
                 (
                     "- The ground-floor west blind is not represented because canonical v1 has "
                     "no per-opening blind state; this is a structural solar-gain limitation."
                 ),
                 (
-                    "- Supply-air temperature is represented by an explicit, traceable sensible "
-                    "gain correction because v1 ventilation commands carry flow but no supply "
-                    "temperature."
+                    "- Measured supply-air temperature enters the air node through the typed "
+                    "mechanical-ventilation heat path; it is not approximated as an internal gain."
                 ),
                 "- The result does not close the temporal-transfer or blind-validation gates.",
                 "",

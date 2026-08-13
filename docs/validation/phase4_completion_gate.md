@@ -2,8 +2,8 @@
 
 Validation category: **verification and validation status reporting**.
 
-Assessment date: **2026-08-12**. Source baseline:
-`63936cc50fe83850d5c9bd1d1b49026f47d91c9f` plus dirty Phase 4 changes.
+Assessment date: **2026-08-13**. Source baseline:
+`25d4751200c3eaaf938e3f8f50e78efbbe1505eb` plus the thermal energy-path audit branch.
 
 ## Gate assessment
 
@@ -12,7 +12,7 @@ Assessment date: **2026-08-12**. Source baseline:
 | Solar position passes an analytical reference | **pass** | not applicable | NREL SPA reference and edge-case contract suite |
 | Weather ingestion is source- and timezone-correct | **pass for registered fixtures** | not applicable | PVGIS/NASA POWER ingestion and common alignment contracts; source accuracy is not claimed |
 | Thermal RC passes analytical and comparative tests | **partial/open** | not applicable | Closed-form/conservation verification passes; no fabric cross-solver or Standard 140 result is registered |
-| A controlled thermal dataset is validated blindly | **blocked** | **blocked and rejected with alternative** | Annex 71 now runs as a four-air-body canonical object-adapter diagnostic, but the later targets were inspected while repairing the mapper and the fit remains bound-seeking. It is neither blind nor a pass. |
+| A controlled thermal dataset is validated blindly | **blocked** | **blocked and rejected with alternative** | Annex 71 now runs as a four-air-body canonical object-adapter diagnostic. Explicit supply-air and heater-split repairs improve its error, but the later targets were inspected, the fit remains bound-seeking, and the frozen numerical criteria still fail. It is neither blind nor a pass. |
 | Airflow, CO2, and moisture balances close | **pass for declared reduced-order scope** | not applicable | Analytical suites reconcile storage, source, transfer, and removal |
 | HVAC control and energy accounting pass supported BESTEST cases | **partial/open** | not applicable | Ideal controller verification and open EnergyPlus ideal-load comparison pass; equipment BESTEST physics are not implemented |
 | Integrated performance is tested against NZERTF | **blocked** | **blocked and rejected with alternative** | Annex 71, DOE BOPTEST, and the registered EnergyPlus case were assessed. None replaces mapped measured temperature, humidity, HVAC, ventilation, occupant-load, and energy evidence; Annex 71 is currently only a rejected mapping diagnostic. |
@@ -56,6 +56,7 @@ only when they test the same claim.
 | Annex 71 N2 living-room mapping diagnostic | Empirical-validation diagnostic | rejected | [report](results/annex71_thermal_transfer_v1.md) |
 | Object-runner/BLS ATUS aggregate sleep screen | Empirical validation alternative | rejected | [report](results/atus_aggregate_sleep_alternative_v1.md) |
 | Annex 71 N2 four-air-body production diagnostic | Post-hoc empirical diagnostic | rejected | [report](results/annex71_production_transfer_v1.md) fixes the mapper but fails the numerical and sealed-target gates |
+| Annex 71 thermal energy-path audit | Diagnostic verification and empirical residual analysis | rejection unchanged | [report](results/annex71_energy_path_audit_v1.md) verifies repaired paths and rejects a single fitted conductance as the remaining explanation |
 | BLS ATUS 2023 respondent-diary population model | Behavioral holdout validation | passed within U.S. schedule-prior scope | [report](results/atus_population_holdout_v1.md) |
 | BOPTEST for NZERTF replacement | Evidence-coverage assessment | rejected | Simulated controls benchmark; not an empirical integrated replacement |
 | EnergyPlus ideal-load case for NZERTF replacement | Comparative validation | rejected as integrated substitute | [narrow passing result](results/energyplus_ideal_loads_25_1_0.md) covers only ideal sensible load accounting |
@@ -66,7 +67,7 @@ The exact row classifications and their evidence paths are frozen in
 ## Verification outcome
 
 The focused repair/governance suite passes **43 tests**. The full default
-suite passes **415 tests** with **4 intentional annual-lane skips**. Those four
+suite passes **423 tests** with **4 intentional annual-lane skips**. Those four
 are opt-in 8,760-interval and repeated-determinism runs controlled by
 `NEXUSEP_RUN_ANNUAL` and `NEXUSEP_RUN_ANNUAL_REPEAT`; they are not unavailable
 scientific-source tests and are not classified as blocked alternatives.
@@ -82,6 +83,7 @@ The checksum-backed registry also passes with raw-file verification enabled.
 ```powershell
 uv run python scripts/calibration/run_rc_sensitivity.py
 uv run python scripts/validation_data/run_annex71_production_transfer.py
+uv run python scripts/validation_data/run_annex71_energy_path_audit.py
 uv run python scripts/validation_data/run_atus_population_validation.py
 uv run pytest -q tests/contracts/test_sensitivity_identifiability.py `
   tests/contracts/test_calibration_governance.py `

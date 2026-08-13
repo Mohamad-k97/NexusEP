@@ -51,6 +51,9 @@ Current experimental limitations are explicit errors or warnings:
 
 - externally supplied action events and non-occupant internal gains are
   rejected because the current timestep kernel has no injection boundary;
+- non-default heating/cooling convective fractions and mechanical supply-air
+  temperature are rejected because the array kernel cannot represent those
+  paths yet;
 - canonical pressure is encoded and consumed by array psychrometric conversions;
 - compiled surface topology is consumed deterministically and reduced to
   explicit envelope/interzone UA and capacity coefficients before execution;

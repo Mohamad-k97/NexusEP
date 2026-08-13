@@ -77,6 +77,15 @@ outputs/
 results/
 cache/
 
+# Small checksum-backed validation manifests and reports are approved evidence.
+!data/validation/results/
+data/validation/results/*
+!data/validation/results/*.json
+!data/validation/results/README.md
+!docs/validation/results/
+docs/validation/results/*
+!docs/validation/results/*.md
+
 # Large simulation/result files
 *.parquet
 *.zarr/

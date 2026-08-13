@@ -1,0 +1,41 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "atus-aggregate-sleep-alternative-v1",
+  "title": "ATUS aggregate sleep-duration plausibility alternative",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-11",
+  "targeted_models": [
+    "OCC-1"
+  ],
+  "source_ids": [
+    "dbnomics-bls-atus-sleeping-2025"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_atus_aggregate_alternative.py",
+      "sha256": "c503fddeef991d75ca828dd84f904151d5c1cf4a009d5568d71d5baf7a39c305",
+      "command": "uv run python scripts/validation_data/run_atus_aggregate_alternative.py"
+    }
+  ],
+  "report_path": "docs/validation/results/atus_aggregate_sleep_alternative_v1.md",
+  "result_artifacts": [
+    {
+      "file_id": "atus-aggregate-sleep-result",
+      "path": "data/validation/fixtures/atus-aggregate/sleep-alternative-result-v1.json",
+      "sha256": "a6217789c78ebf88d0d2488dd65c02689fc889821ce8696bc1be0e59df511263",
+      "byte_size": 4223
+    }
+  ],
+  "numerical_tolerances": {
+    "sleep_duration_absolute_error_minutes": "less than or equal to the frozen 30-minute activity-duration screen",
+    "distribution_evidence": "respondent-level timing, duration, frequency, transition, and variability evidence required"
+  },
+  "known_deviations": [
+    "DBnomics is an access mirror; BLS is the underlying ATUS aggregate-series provider.",
+    "The mirror snapshot ends in 2023 and contains aggregate LABSTAT estimates rather than respondent diary microdata.",
+    "The comparison uses a 30-day deterministic production object-runner output; the decision target is provenance only.",
+    "The former 300-minute sleep-episode discontinuity is repaired and no complete diagnostic episode ends there.",
+    "The duration screen still fails and individual-distribution evidence is unavailable; this is a rejected alternative.",
+    "The array engine is excluded until its fixed-duration sleep execution conforms to the object contract."
+  ]
+}

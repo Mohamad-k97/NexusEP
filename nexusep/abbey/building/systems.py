@@ -9,9 +9,10 @@ This module defines:
 - energy result containers
 """
 
+import copy
+import math
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional
-import copy
 
 
 VALID_CONTROL_MODES = {
@@ -318,11 +319,14 @@ class ZoneControlCommand:
 
     heating_on: bool = False
     heating_power_fraction: float = 0.0
+    heating_convective_fraction: float = 1.0
 
     cooling_on: bool = False
     cooling_power_fraction: float = 0.0
+    cooling_convective_fraction: float = 1.0
 
     ventilation_flow_m3_h: float = 0.0
+    ventilation_supply_temperature_c: float | None = None
 
     lights_on: bool = False
     lighting_power_w: float = 0.0
@@ -334,10 +338,29 @@ class ZoneControlCommand:
 
     def __post_init__(self) -> None:
         _check_fraction(self.heating_power_fraction, "heating_power_fraction", self.zone_id)
+        _check_fraction(
+            self.heating_convective_fraction,
+            "heating_convective_fraction",
+            self.zone_id,
+        )
         _check_fraction(self.cooling_power_fraction, "cooling_power_fraction", self.zone_id)
+        _check_fraction(
+            self.cooling_convective_fraction,
+            "cooling_convective_fraction",
+            self.zone_id,
+        )
         _check_fraction(self.window_opening_fraction, "window_opening_fraction", self.zone_id)
         _check_nonnegative(self.ventilation_flow_m3_h, "ventilation_flow_m3_h", self.zone_id)
         _check_nonnegative(self.lighting_power_w, "lighting_power_w", self.zone_id)
+        if self.ventilation_supply_temperature_c is not None:
+            self.ventilation_supply_temperature_c = float(
+                self.ventilation_supply_temperature_c
+            )
+            if not math.isfinite(self.ventilation_supply_temperature_c):
+                raise ValueError(
+                    "ventilation_supply_temperature_c must be finite for "
+                    + self.zone_id
+                )
 
     def copy(self, **updates: Any) -> "ZoneControlCommand":
         if not updates:
@@ -352,9 +375,14 @@ class ZoneControlCommand:
             "building_id": self.building_id,
             "heating_on": self.heating_on,
             "heating_power_fraction": self.heating_power_fraction,
+            "heating_convective_fraction": self.heating_convective_fraction,
             "cooling_on": self.cooling_on,
             "cooling_power_fraction": self.cooling_power_fraction,
+            "cooling_convective_fraction": self.cooling_convective_fraction,
             "ventilation_flow_m3_h": self.ventilation_flow_m3_h,
+            "ventilation_supply_temperature_c": (
+                self.ventilation_supply_temperature_c
+            ),
             "lights_on": self.lights_on,
             "lighting_power_w": self.lighting_power_w,
             "window_open": self.window_open,

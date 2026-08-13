@@ -14,6 +14,7 @@ from nexusep.validation_data.annex71 import (
     build_canonical_scenario,
     run_object_scenario,
 )
+from nexusep.validation_data.annex71_audit import audit_annex71_energy_paths
 
 ZONE_IDS = (
     "ground_airbody",
@@ -73,3 +74,14 @@ def test_four_air_bodies_execute_without_fallback_and_conserve_energy() -> None:
     )
     assert result.fallback_used is False
     assert result.maximum_abs_thermal_balance_residual_w <= 1.0e-7
+
+
+def test_observation_constrained_energy_audit_closes_steady_no_gain_case() -> None:
+    start = datetime(2018, 12, 20, 0, tzinfo=ZoneInfo("Europe/Berlin"))
+    records = tuple(_record(start + timedelta(hours=index), 10.0) for index in range(3))
+
+    audit = audit_annex71_energy_paths(records, warmup_timesteps=0)
+
+    assert len(audit.records) == 8
+    assert audit.summary["whole_building"]["unexplained_gain_rmse_w"] <= 1.0e-9
+    assert all(abs(item.unexplained_air_node_gain_w) <= 1.0e-9 for item in audit.records)

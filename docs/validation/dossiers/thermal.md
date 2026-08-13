@@ -4,7 +4,7 @@ Validation category: **verification and empirical-validation status**.
 
 ## Model version and commit
 
-Model claim `THERMAL-1`; source baseline `63936cc50fe83850d5c9bd1d1b49026f47d91c9f` plus dirty Phase 4 changes.
+Model claim `THERMAL-1`; Phase 4 checkpoint `25d4751200c3eaaf938e3f8f50e78efbbe1505eb` plus the thermal energy-path audit branch.
 
 ## Dataset and license
 
@@ -16,7 +16,7 @@ One-/two-zone analytical cases plus the four official N2 air bodies, published t
 
 ## Preprocessing
 
-The Annex 71 hourly workbooks are joined exactly by Excel timestamp. A lag audit and the published experiment start support mapping each row to the preceding hour before conversion to canonical interval-start timestamps; this is a documented preprocessing choice rather than a claim that the workbook convention was independently proven. The published 107 W/K whole-house HTC is distributed across air bodies using low-solar near-steady coheat observations. Canonical `other` gains now reach the thermal bridge instead of being dropped.
+The Annex 71 hourly workbooks are joined exactly by Excel timestamp. A lag audit and the published experiment start support mapping each row to the preceding hour before conversion to canonical interval-start timestamps; this is a documented preprocessing choice rather than a claim that the workbook convention was independently proven. The published 107 W/K whole-house HTC is distributed across air bodies using low-solar near-steady coheat observations. Canonical `other` gains now reach the thermal bridge. Measured mechanical supply temperature enters the air node directly, and the documented heater split sends 70% to air and 30% to the mass node.
 
 ## Calibrated parameters
 
@@ -28,15 +28,15 @@ No untouched period is claimed. The later User-1 period was inspected while the 
 
 ## Metrics and plots
 
-Analytical temperature error, energy residual, timestep convergence, sensitivity rank, and production-adapter temperature metrics are reported. Production calibration RMSE is 2.172 degC with +1.841 degC bias; the later-period diagnostic RMSE is 1.858 degC with +1.310 degC bias.
+Analytical temperature error, energy residual, timestep convergence, sensitivity rank, production-adapter temperature metrics, and an observation-constrained path decomposition are reported. After the energy-path repair, production calibration RMSE is 2.003 degC with +1.669 degC bias; the later-period diagnostic RMSE is 1.685 degC with +1.162 degC bias. The later one-step audit RMSE is 0.835 degC, but its unexplained heat-flow MAE is 302.9 W and it is not an acceptance score.
 
 ## Residual analysis
 
-Closed-system residuals are checked near numerical precision. The production diagnostic conserves heat to 1.83e-10 W and uses no fallback, so the remaining temperature error is not a balance leak. Bound-seeking capacity and positive bias indicate structural/parameterization error.
+Closed-system residuals are checked near numerical precision. The production diagnostic conserves heat to 1.83e-10 W and uses no fallback, so the remaining temperature error is not a balance leak. The observation-constrained residual changes sign and has large zone-dependent tails, especially in the attic; correlations implicate source timing/distribution and two-node coupling rather than one missing constant conductance. Bound-seeking capacity and positive free-run bias still indicate structural/parameterization error.
 
 ## Limitations
 
-The canonical contract still lacks the measured heater's 70/30 convective/radiative split, per-opening blind physics, supply-air temperature, detailed construction layers/bridges, cellar boundaries, and measurement uncertainty. Static effective interzone exchange is reduced-order and is not a pressure-network airflow claim.
+The canonical contract now represents the measured heater's 70/30 convective/radiative split and mechanical supply-air temperature. It still lacks per-opening blind physics, detailed construction layers/bridges, cellar boundaries, and measurement uncertainty. Mean radiant/mass temperature is unmeasured. Static effective interzone exchange is reduced-order and is not a pressure-network airflow claim.
 
 ## Pass/fail decision
 
@@ -44,4 +44,4 @@ The canonical contract still lacks the measured heater's 70/30 convective/radiat
 
 ## Reproducible command
 
-`uv run python scripts/validation_data/run_annex71_production_transfer.py` followed by `uv run pytest -q tests/unit/test_thermal_rc_analytical.py tests/integration/test_annex71_production_mapping.py tests/integration/test_phase4_blocked_alternatives.py`
+`uv run python scripts/validation_data/run_annex71_production_transfer.py`, then `uv run python scripts/validation_data/run_annex71_energy_path_audit.py`, followed by `uv run pytest -q tests/unit/test_thermal_rc_analytical.py tests/unit/test_thermal_energy_paths.py tests/integration/test_annex71_production_mapping.py tests/integration/test_phase4_blocked_alternatives.py`

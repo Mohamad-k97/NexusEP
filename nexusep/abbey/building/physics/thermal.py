@@ -1765,9 +1765,9 @@ class ZoneVentilationHeatExchange:
     """
     Ventilation/infiltration thermal exchange for one zone.
 
-    Heat exchange with outdoor air:
+    Heat exchange with outdoor or mechanically supplied air:
 
-        q_vent_to_zone = H_vent * (T_outdoor - T_zone_air)
+        q_vent_to_zone = sum(H_source * (T_source - T_zone_air))
 
     Positive = heat gain by the zone.
     Negative = heat loss from the zone.
@@ -1777,6 +1777,7 @@ class ZoneVentilationHeatExchange:
 
     airflow_inputs: ZoneVentilationAirflowInputs
     h_ventilation_w_k: float = 0.0
+    mechanical_supply_temperature_c: float | None = None
 
     def __post_init__(self) -> None:
         if not self.zone_id:
@@ -1803,6 +1804,40 @@ class ZoneVentilationHeatExchange:
             "h_ventilation_w_k",
             self.zone_id,
         )
+        if self.mechanical_supply_temperature_c is not None:
+            self.mechanical_supply_temperature_c = float(
+                self.mechanical_supply_temperature_c
+            )
+            if not np.isfinite(self.mechanical_supply_temperature_c):
+                raise ValueError(
+                    "mechanical_supply_temperature_c must be finite for "
+                    + self.zone_id
+                )
+
+    def mechanical_conductance_w_k(self) -> float:
+        return ventilation_conductance_from_airflow_m3_h(
+            self.airflow_inputs.mechanical_ventilation_flow_m3_h
+        )
+
+    def effective_supply_temperature_c(self, outdoor_temperature_c: float) -> float:
+        """Return the conductance-weighted ventilation source temperature."""
+
+        outdoor_temperature_c = float(outdoor_temperature_c)
+        if self.h_ventilation_w_k <= 0.0:
+            return outdoor_temperature_c
+        mechanical_h_w_k = min(
+            self.mechanical_conductance_w_k(), self.h_ventilation_w_k
+        )
+        outdoor_h_w_k = self.h_ventilation_w_k - mechanical_h_w_k
+        mechanical_temperature_c = (
+            self.mechanical_supply_temperature_c
+            if self.mechanical_supply_temperature_c is not None
+            else outdoor_temperature_c
+        )
+        return (
+            outdoor_h_w_k * outdoor_temperature_c
+            + mechanical_h_w_k * mechanical_temperature_c
+        ) / self.h_ventilation_w_k
 
     def heat_gain_from_outdoor_w(
         self,
@@ -1810,7 +1845,7 @@ class ZoneVentilationHeatExchange:
         outdoor_temperature_c: float,
     ) -> float:
         return self.h_ventilation_w_k * (
-            float(outdoor_temperature_c)
+            self.effective_supply_temperature_c(outdoor_temperature_c)
             - float(zone_air_temperature_c)
         )
 
@@ -1825,6 +1860,10 @@ class ZoneVentilationHeatExchange:
             "zone_id": self.zone_id,
             "airflow_inputs": self.airflow_inputs.to_dict(),
             "h_ventilation_w_k": self.h_ventilation_w_k,
+            "mechanical_supply_temperature_c": (
+                self.mechanical_supply_temperature_c
+            ),
+            "mechanical_conductance_w_k": self.mechanical_conductance_w_k(),
         }
 
 @dataclass
@@ -3318,6 +3357,7 @@ def make_zone_ventilation_airflow_inputs_from_zone_model(
 def make_zone_ventilation_heat_exchange(
     zone_model: Any,
     airflow_inputs: Optional[ZoneVentilationAirflowInputs] = None,
+    mechanical_supply_temperature_c: float | None = None,
 ) -> ZoneVentilationHeatExchange:
     """
     Create ventilation heat-exchange object for one zone.
@@ -3339,12 +3379,14 @@ def make_zone_ventilation_heat_exchange(
         zone_id=zone_id,
         airflow_inputs=airflow_inputs,
         h_ventilation_w_k=airflow_inputs.outdoor_ventilation_conductance_w_k(),
+        mechanical_supply_temperature_c=mechanical_supply_temperature_c,
     )
 
 
 def make_building_ventilation_heat_exchange(
     building_model: Any,
     airflow_inputs_by_zone: Optional[Dict[str, ZoneVentilationAirflowInputs]] = None,
+    mechanical_supply_temperature_by_zone_c: Optional[Dict[str, float]] = None,
 ) -> BuildingVentilationHeatExchange:
     """
     Build ventilation heat-exchange objects for all zones.
@@ -3364,6 +3406,8 @@ def make_building_ventilation_heat_exchange(
 
     if airflow_inputs_by_zone is None:
         airflow_inputs_by_zone = {}
+    if mechanical_supply_temperature_by_zone_c is None:
+        mechanical_supply_temperature_by_zone_c = {}
 
     zone_models = building_model.all_zone_models()
 
@@ -3375,6 +3419,9 @@ def make_building_ventilation_heat_exchange(
         out[zone_id] = make_zone_ventilation_heat_exchange(
             zone_model=zone_model,
             airflow_inputs=airflow_inputs,
+            mechanical_supply_temperature_c=(
+                mechanical_supply_temperature_by_zone_c.get(zone_id)
+            ),
         )
 
     return BuildingVentilationHeatExchange(
@@ -3392,7 +3439,7 @@ def calculate_ventilation_heat_gains_by_zone_w(
     Positive = heat gain by zone.
     Negative = heat loss from zone.
 
-        q_vent = H_vent * (T_outdoor - T_zone_air)
+        q_vent = H_vent * (T_effective_supply - T_zone_air)
     """
 
     if ventilation_exchange is None:
@@ -4645,6 +4692,7 @@ def make_zone_ventilation_airflow_inputs_from_airflow_network(
 def make_building_ventilation_heat_exchange_from_airflow_network(
     building_model: Any,
     airflow_network: Any,
+    mechanical_supply_temperature_by_zone_c: Optional[Dict[str, float]] = None,
 ) -> BuildingVentilationHeatExchange:
     """
     Build ventilation heat exchange from BuildingAirflowNetwork.
@@ -4680,12 +4728,16 @@ def make_building_ventilation_heat_exchange_from_airflow_network(
     return make_building_ventilation_heat_exchange(
         building_model=building_model,
         airflow_inputs_by_zone=airflow_inputs_by_zone,
+        mechanical_supply_temperature_by_zone_c=(
+            mechanical_supply_temperature_by_zone_c
+        ),
     )
 
 
 def make_ventilation_heat_exchange_for_thermal(
     building_model: Any,
     airflow_network: Any = None,
+    mechanical_supply_temperature_by_zone_c: Optional[Dict[str, float]] = None,
 ) -> BuildingVentilationHeatExchange:
     """
     Compatibility wrapper.
@@ -4701,10 +4753,16 @@ def make_ventilation_heat_exchange_for_thermal(
         return make_building_ventilation_heat_exchange_from_airflow_network(
             building_model=building_model,
             airflow_network=airflow_network,
+            mechanical_supply_temperature_by_zone_c=(
+                mechanical_supply_temperature_by_zone_c
+            ),
         )
 
     return make_building_ventilation_heat_exchange(
         building_model=building_model,
+        mechanical_supply_temperature_by_zone_c=(
+            mechanical_supply_temperature_by_zone_c
+        ),
     )
 
 def step_building_thermal_state_semi_implicit(
@@ -4776,14 +4834,21 @@ def step_building_thermal_state_semi_implicit(
         zone_gains = building_gains.get_zone_gains(zone_id)
 
         ventilation_h_w_k = zone_parameters.h_ventilation_w_k
+        ventilation_temperature_c = outdoor_temperature_c
         if (
             ventilation_exchange is not None
             and zone_id in ventilation_exchange.zone_ventilation
         ):
+            zone_ventilation = ventilation_exchange.zone_ventilation[zone_id]
             ventilation_h_w_k = _non_negative_float(
-                ventilation_exchange.zone_ventilation[zone_id].h_ventilation_w_k,
+                zone_ventilation.h_ventilation_w_k,
                 "ventilation_h_w_k",
                 zone_id,
+            )
+            ventilation_temperature_c = (
+                zone_ventilation.effective_supply_temperature_c(
+                    outdoor_temperature_c
+                )
             )
 
         additional_outside_h_w_k = _non_negative_float(
@@ -4808,7 +4873,8 @@ def step_building_thermal_state_semi_implicit(
 
         rhs[air_index] = (
             c_air_over_dt * zone_state.air_temperature_c
-            + outside_h_w_k * outdoor_temperature_c
+            + envelope_h_w_k * outdoor_temperature_c
+            + ventilation_h_w_k * ventilation_temperature_c
             + zone_gains.convective_gain_w()
         )
         rhs[mass_index] = (
@@ -4831,7 +4897,7 @@ def step_building_thermal_state_semi_implicit(
             ThermalTemperatureTarget(
                 target_id="outside_ventilation",
                 target_type=THERMAL_PATH_VENTILATION,
-                temperature_c=outdoor_temperature_c,
+                temperature_c=ventilation_temperature_c,
                 h_w_k=ventilation_h_w_k,
             ),
         ]

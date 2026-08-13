@@ -1,0 +1,46 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "energyplus-ideal-loads-25.1.0",
+  "title": "EnergyPlus 25.1 ideal sensible-load comparison",
+  "validation_category": "comparative_validation",
+  "created_on": "2026-08-11",
+  "targeted_models": [
+    "HVAC-1"
+  ],
+  "source_ids": [
+    "energyplus-25.1.0"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/compare_energyplus_ideal_loads.py",
+      "sha256": "baf1e58bbcd55deda336ff7d1ea7011bf3ab0b455c11dd5150875f84e5b6209a",
+      "command": "uv run python scripts/validation_data/compare_energyplus_ideal_loads.py --energyplus-exe C:/EnergyPlusV25-1-0/energyplus.exe --input data/validation/fixtures/energyplus-ideal-loads-25.1.0/energyplus_ideal_loads.idf --weather C:/EnergyPlusV25-1-0/WeatherData/USA_CO_Golden-NREL.724666_TMY3.epw --output-directory artifacts/benchmarks/hvac/energyplus-comparison --result-json data/validation/fixtures/energyplus-ideal-loads-25.1.0/comparison.json"
+    }
+  ],
+  "report_path": "docs/validation/results/energyplus_ideal_loads_25_1_0.md",
+  "result_artifacts": [
+    {
+      "file_id": "energyplus-ideal-loads-comparison",
+      "path": "data/validation/fixtures/energyplus-ideal-loads-25.1.0/comparison.json",
+      "sha256": "555e4f5dea2d487122235622a77d5af8be3c3fd65dae431a89a437c1f975368f",
+      "byte_size": 2926
+    },
+    {
+      "file_id": "energyplus-ideal-loads-input",
+      "path": "data/validation/fixtures/energyplus-ideal-loads-25.1.0/energyplus_ideal_loads.idf",
+      "sha256": "52f3f05c1b1f732468c71be4fcc0b1e5361ee57611d08364d75cc41c2f81799c",
+      "byte_size": 5486
+    }
+  ],
+  "numerical_tolerances": {
+    "delivered_power_w": "absolute 0.001 W",
+    "delivered_energy_wh": "absolute 0.001 Wh per one-hour interval",
+    "energyplus_zone_temperature_c": "absolute 0.000001 degC for the reference fixture target check only"
+  },
+  "known_deviations": [
+    "EnergyPlus modulates an unlimited ideal load to hold a setpoint; NexusEP applies declared full capacity outside a bang-bang activation band.",
+    "NexusEP capacities are set to independently imposed steady EnergyPlus loads, so zone-temperature trajectories are not compared.",
+    "The fixture excludes equipment curves, fans, ducts, latent control, cycling, overload recovery, and part-load behavior.",
+    "This result is not derived from ASHRAE content and does not constitute an ASHRAE Standard 140 pass."
+  ]
+}

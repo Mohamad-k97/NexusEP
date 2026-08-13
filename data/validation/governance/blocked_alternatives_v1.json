@@ -1,7 +1,7 @@
 {
   "governance_version": "1.0.0",
   "validation_category": "verification_and_validation_status_reporting",
-  "assessed_on": "2026-08-12",
+  "assessed_on": "2026-08-13",
   "policy": "The original Phase 4 requirement remains blocked unless an alternative tests the same claim and passes the predeclared criteria. A runnable but failing or scientifically narrower substitute is recorded as rejected, never promoted to a pass.",
   "evaluations": [
     {
@@ -12,14 +12,16 @@
       "alternative_scope": "The four published N2 air bodies, coheat allocation, measured User-1 forcing, deterministic graph, and object production adapter are exercised. The target period was inspected during mapper repair, so this is post-hoc and not blind validation.",
       "equivalent_claim": false,
       "execution_status": "rejected",
-      "test_command": "uv run python scripts/validation_data/run_annex71_production_transfer.py",
+      "test_command": "uv run python scripts/validation_data/run_annex71_production_transfer.py; uv run python scripts/validation_data/run_annex71_energy_path_audit.py",
       "evidence_paths": [
         "data/validation/fixtures/annex71-twin-houses/production-transfer-result-v1.json",
         "docs/validation/results/annex71_production_transfer_v1.md",
+        "data/validation/fixtures/annex71-twin-houses/energy-path-audit-v1.json",
+        "docs/validation/results/annex71_energy_path_audit_v1.md",
         "data/validation/fixtures/annex71-twin-houses/thermal-transfer-result-v1.json",
         "docs/validation/results/annex71_thermal_transfer_v1.md"
       ],
-      "rejection_or_limit": "The former helper rejection is preserved. Its production replacement fixes forcing alignment, internal-gain routing, topology, and multizone execution, but the later targets were inspected while debugging and the reduced-order fit still reaches its capacity bound. It cannot satisfy a blind-validation claim.",
+      "rejection_or_limit": "The former helper rejection is preserved. Its production replacement fixes forcing alignment, internal-gain routing, topology, multizone execution, heater split, and mechanical supply temperature. Error improves, but the frozen thresholds still fail, the later targets were inspected, and effective capacity remains bound-seeking. The energy-path audit does not authorize another fitted correction. It cannot satisfy a blind-validation claim.",
       "alternative_classification": "blocked and rejected with alternative"
     },
     {
@@ -36,7 +38,7 @@
         "data/validation/fixtures/energyplus-ideal-loads-25.1.0/comparison.json",
         "docs/validation/phase4_completion_gate.md"
       ],
-      "rejection_or_limit": "Annex 71 is currently only a rejected helper-model mapping diagnostic; BOPTEST is a simulated control benchmark rather than measured empirical evidence; the EnergyPlus case covers only ideal sensible load accounting.",
+      "rejection_or_limit": "Annex 71 now has a rejected four-air-body production diagnostic, but it does not cover the NZERTF humidity, equipment, occupant-load, and whole-building energy claim; BOPTEST is a simulated control benchmark rather than measured empirical evidence; the EnergyPlus case covers only ideal sensible load accounting.",
       "alternative_classification": "blocked and rejected with alternative"
     },
     {
@@ -65,14 +67,16 @@
       "alternative_scope": "The published HTC is allocated from coheat observations and effective capacity is fitted on an early User-1 period before a later-period production-engine diagnostic.",
       "equivalent_claim": false,
       "execution_status": "rejected",
-      "test_command": "uv run python scripts/validation_data/run_annex71_production_transfer.py",
+      "test_command": "uv run python scripts/validation_data/run_annex71_production_transfer.py; uv run python scripts/validation_data/run_annex71_energy_path_audit.py",
       "evidence_paths": [
         "data/validation/fixtures/annex71-twin-houses/production-transfer-result-v1.json",
         "docs/validation/results/annex71_production_transfer_v1.md",
+        "data/validation/fixtures/annex71-twin-houses/energy-path-audit-v1.json",
+        "docs/validation/results/annex71_energy_path_audit_v1.md",
         "data/validation/fixtures/annex71-twin-houses/thermal-transfer-result-v1.json",
         "docs/validation/results/annex71_thermal_transfer_v1.md"
       ],
-      "rejection_or_limit": "The production engine is now exercised and the former mapper defects are fixed, but the later targets were inspected during repair and the effective capacity remains bound-seeking. The run is a post-hoc diagnostic, not unseen-parameter validation.",
+      "rejection_or_limit": "The production engine is now exercised and the former mapper defects, heater split, and mechanical supply path are fixed. Error improves, but the frozen thresholds still fail, the later targets were inspected, and effective capacity remains bound-seeking. The path audit rejects a single fitted-conductance explanation. The run is a post-hoc diagnostic, not unseen-parameter validation.",
       "alternative_classification": "blocked and rejected with alternative"
     }
   ]

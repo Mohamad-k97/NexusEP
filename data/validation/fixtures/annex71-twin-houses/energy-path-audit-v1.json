@@ -1,0 +1,703 @@
+{
+  "artifact_version": "1.0.0",
+  "created_on": "2026-08-13",
+  "validation_category": "diagnostic_verification_and_empirical_residual_analysis",
+  "claim_limit": "Post-hoc energy-path diagnosis; not calibration, blind validation, or evidence that acceptance thresholds pass.",
+  "parameters": {
+    "total_effective_capacity_j_k": 149549685.09780443,
+    "ground_envelope_conductance_w_k": 42.63589708249608,
+    "kitchen_envelope_conductance_w_k": 12.011631849732803,
+    "sleeping_envelope_conductance_w_k": 8.408778494071905,
+    "attic_envelope_conductance_w_k": 43.943692573699224,
+    "ground_kitchen_exchange_w_k": 200.0,
+    "ground_sleeping_exchange_w_k": 45.0,
+    "ground_attic_exchange_w_k": 42.8706
+  },
+  "audit": {
+    "calibration": {
+      "graph_sha256": "01a46a316ad58689c7f68e18d9e6b04fb5bf13b401dc372b2f4460ec684d4633",
+      "warmup_timesteps": 24,
+      "summary": {
+        "method": "measured air temperatures constrain each interval; the unobserved mass node advances from its prior state with the measured end-of-interval air temperature",
+        "sign_convention": "positive unexplained_air_node_gain_w means additional heat is required to reproduce the measurement",
+        "limitations": [
+          "mean radiant/mass temperature is unmeasured and conditionally estimated",
+          "path residuals diagnose the reduced-order mapping and are not parameter estimates",
+          "the inspected period is not blind or untouched validation evidence"
+        ],
+        "whole_building": {
+          "count": 1972,
+          "one_step_temperature_rmse_c": 0.7075487098700083,
+          "unexplained_gain_bias_w": -108.34290250527688,
+          "unexplained_gain_mae_w": 258.2460398340198,
+          "unexplained_gain_rmse_w": 402.39184681523824,
+          "unexplained_net_energy_kwh": -213.65220374040604
+        },
+        "by_zone": {
+          "attic_airbody": {
+            "count": 493,
+            "one_step_temperature": {
+              "bias_c": 0.14487300184203944,
+              "mae_c": 0.6210895222021183,
+              "rmse_c": 0.8452682734592661
+            },
+            "unexplained_air_node_gain": {
+              "bias_w": -90.47813709501659,
+              "mae_w": 455.05814200339285,
+              "rmse_w": 610.7357873523796,
+              "p05_w": -1412.5859556384712,
+              "p50_w": 127.97179780772585,
+              "p95_w": 712.1085640435919,
+              "net_energy_kwh": -44.605721587843185
+            },
+            "components": {
+              "air_storage_w": {
+                "mean_w": 0.17684601463344002,
+                "mean_abs_w": 18.078341278421696,
+                "net_energy_kwh": 0.08718508521428593,
+                "correlation_with_unexplained_gain": -0.2491775176739684
+              },
+              "envelope_gain_w": {
+                "mean_w": -843.8345822736261,
+                "mean_abs_w": 843.8345822736261,
+                "net_energy_kwh": -416.0104490608977,
+                "correlation_with_unexplained_gain": -0.3765887232825138
+              },
+              "ventilation_gain_w": {
+                "mean_w": -421.7553748882691,
+                "mean_abs_w": 421.7553748882691,
+                "net_energy_kwh": -207.92539981991666,
+                "correlation_with_unexplained_gain": -0.49732236082447623
+              },
+              "interzone_gain_w": {
+                "mean_w": 25.806759406931242,
+                "mean_abs_w": 28.09146417256378,
+                "net_energy_kwh": 12.722732387617102,
+                "correlation_with_unexplained_gain": -0.7592650866540632
+              },
+              "air_mass_gain_w": {
+                "mean_w": 439.39390734741573,
+                "mean_abs_w": 599.2400635448921,
+                "net_energy_kwh": 216.62119632227598,
+                "correlation_with_unexplained_gain": -0.7765171988945619
+              },
+              "convective_source_gain_w": {
+                "mean_w": 891.0442735171982,
+                "mean_abs_w": 891.0442735171982,
+                "net_energy_kwh": 439.2848268439787,
+                "correlation_with_unexplained_gain": 0.2289193549415598
+              },
+              "radiative_source_gain_w": {
+                "mean_w": 449.418745630444,
+                "mean_abs_w": 449.418745630444,
+                "net_energy_kwh": 221.56344159580888,
+                "correlation_with_unexplained_gain": 0.24491812934536986
+              },
+              "heating_gain_w": {
+                "mean_w": 1164.8275862068965,
+                "mean_abs_w": 1164.8275862068965,
+                "net_energy_kwh": 574.26,
+                "correlation_with_unexplained_gain": 0.2642029274679319
+              },
+              "internal_gain_w": {
+                "mean_w": 96.83569979716025,
+                "mean_abs_w": 96.83569979716025,
+                "net_energy_kwh": 47.74,
+                "correlation_with_unexplained_gain": -0.4531020014839057
+              },
+              "solar_gain_w": {
+                "mean_w": 78.79973314358546,
+                "mean_abs_w": 78.79973314358546,
+                "net_energy_kwh": 38.848268439787624,
+                "correlation_with_unexplained_gain": 0.12464223269891588
+              }
+            }
+          },
+          "ground_airbody": {
+            "count": 493,
+            "one_step_temperature": {
+              "bias_c": 0.32069156347675676,
+              "mae_c": 0.4475428199904631,
+              "rmse_c": 0.5657491461747337
+            },
+            "unexplained_air_node_gain": {
+              "bias_w": -213.82448550973606,
+              "mae_w": 375.34717200840606,
+              "rmse_w": 476.939802966397,
+              "p05_w": -896.433041528811,
+              "p50_w": -233.57433643317987,
+              "p95_w": 477.4404794967445,
+              "net_energy_kwh": -105.41547135629988
+            },
+            "components": {
+              "air_storage_w": {
+                "mean_w": 0.046500554866127364,
+                "mean_abs_w": 11.706941026576319,
+                "net_energy_kwh": 0.022924773549000788,
+                "correlation_with_unexplained_gain": -0.5120281066696253
+              },
+              "envelope_gain_w": {
+                "mean_w": -844.3869415754818,
+                "mean_abs_w": 844.3869415754818,
+                "net_energy_kwh": -416.28276219671255,
+                "correlation_with_unexplained_gain": 0.020869718225623914
+              },
+              "ventilation_gain_w": {
+                "mean_w": -488.57124183123466,
+                "mean_abs_w": 489.0876412900198,
+                "net_energy_kwh": -240.86562222279866,
+                "correlation_with_unexplained_gain": 0.046697384971351154
+              },
+              "interzone_gain_w": {
+                "mean_w": 1.89047266349446,
+                "mean_abs_w": 66.89482504228333,
+                "net_energy_kwh": 0.9320030231027688,
+                "correlation_with_unexplained_gain": -0.7209677559817803
+              },
+              "air_mass_gain_w": {
+                "mean_w": 603.462811727499,
+                "mean_abs_w": 610.7607368412516,
+                "net_energy_kwh": 297.50716618165694,
+                "correlation_with_unexplained_gain": 0.19783544514656085
+              },
+              "convective_source_gain_w": {
+                "mean_w": 941.4758850803249,
+                "mean_abs_w": 941.4758850803249,
+                "net_energy_kwh": 464.1476113446002,
+                "correlation_with_unexplained_gain": -0.7076233118757245
+              },
+              "radiative_source_gain_w": {
+                "mean_w": 616.8123774876314,
+                "mean_abs_w": 616.8123774876314,
+                "net_energy_kwh": 304.08850210140224,
+                "correlation_with_unexplained_gain": 0.17529814194583748
+              },
+              "heating_gain_w": {
+                "mean_w": 1139.47261663286,
+                "mean_abs_w": 1139.47261663286,
+                "net_energy_kwh": 561.76,
+                "correlation_with_unexplained_gain": -0.7618253725461169
+              },
+              "internal_gain_w": {
+                "mean_w": 169.93914807302232,
+                "mean_abs_w": 169.93914807302232,
+                "net_energy_kwh": 83.78,
+                "correlation_with_unexplained_gain": -0.1613140170023971
+              },
+              "solar_gain_w": {
+                "mean_w": 248.87649786207393,
+                "mean_abs_w": 248.87649786207393,
+                "net_energy_kwh": 122.69611344600246,
+                "correlation_with_unexplained_gain": 0.47835997976318106
+              }
+            }
+          },
+          "kitchen_airbody": {
+            "count": 493,
+            "one_step_temperature": {
+              "bias_c": 0.5395818101886208,
+              "mae_c": 0.6203266478797572,
+              "rmse_c": 0.8634311132377737
+            },
+            "unexplained_air_node_gain": {
+              "bias_w": -102.73469486703915,
+              "mae_w": 140.241659476939,
+              "rmse_w": 199.89288483794445,
+              "p05_w": -419.40399000457853,
+              "p50_w": -71.49057247362224,
+              "p95_w": 110.7057836635452,
+              "net_energy_kwh": -50.6482045694503
+            },
+            "components": {
+              "air_storage_w": {
+                "mean_w": 0.005256713995943222,
+                "mean_abs_w": 1.7793976876267725,
+                "net_energy_kwh": 0.0025915600000000084,
+                "correlation_with_unexplained_gain": -0.2285835104721778
+              },
+              "envelope_gain_w": {
+                "mean_w": -239.06314748393154,
+                "mean_abs_w": 239.06314748393154,
+                "net_energy_kwh": -117.85813170957826,
+                "correlation_with_unexplained_gain": 0.14357417291524371
+              },
+              "ventilation_gain_w": {
+                "mean_w": 0.0,
+                "mean_abs_w": 0.0,
+                "net_energy_kwh": 0.0,
+                "correlation_with_unexplained_gain": null
+              },
+              "interzone_gain_w": {
+                "mean_w": -19.607129048673034,
+                "mean_abs_w": 52.30385562801514,
+                "net_energy_kwh": -9.666314620995804,
+                "correlation_with_unexplained_gain": 0.25416201738267213
+              },
+              "air_mass_gain_w": {
+                "mean_w": 114.98136814704382,
+                "mean_abs_w": 115.57480330777024,
+                "net_energy_kwh": 56.685814496492604,
+                "correlation_with_unexplained_gain": -0.10321241024514179
+              },
+              "convective_source_gain_w": {
+                "mean_w": 246.42885996659584,
+                "mean_abs_w": 246.42885996659584,
+                "net_energy_kwh": 121.48942796353175,
+                "correlation_with_unexplained_gain": -0.8113797691128568
+              },
+              "radiative_source_gain_w": {
+                "mean_w": 118.5899628230951,
+                "mean_abs_w": 118.5899628230951,
+                "net_energy_kwh": 58.46485167178589,
+                "correlation_with_unexplained_gain": -0.752788399208293
+              },
+              "heating_gain_w": {
+                "mean_w": 92.31237322515213,
+                "mean_abs_w": 92.31237322515213,
+                "net_energy_kwh": 45.51,
+                "correlation_with_unexplained_gain": -0.3547125559437234
+              },
+              "internal_gain_w": {
+                "mean_w": 257.5659229208925,
+                "mean_abs_w": 257.5659229208925,
+                "net_energy_kwh": 126.98,
+                "correlation_with_unexplained_gain": -0.653383501281025
+              },
+              "solar_gain_w": {
+                "mean_w": 15.140526643646355,
+                "mean_abs_w": 15.140526643646355,
+                "net_energy_kwh": 7.464279635317653,
+                "correlation_with_unexplained_gain": 0.0909269224246281
+              }
+            }
+          },
+          "sleeping_airbody": {
+            "count": 493,
+            "one_step_temperature": {
+              "bias_c": 0.2221763482620817,
+              "mae_c": 0.32291371841587463,
+              "rmse_c": 0.4716321336948776
+            },
+            "unexplained_air_node_gain": {
+              "bias_w": -26.334292549315705,
+              "mae_w": 62.337185847341296,
+              "rmse_w": 85.14605403728537,
+              "p05_w": -185.32845888482407,
+              "p50_w": 0.6479424455209144,
+              "p95_w": 63.75733072139398,
+              "net_energy_kwh": -12.982806226812643
+            },
+            "components": {
+              "air_storage_w": {
+                "mean_w": 0.005930111561866203,
+                "mean_abs_w": 1.662407941176468,
+                "net_energy_kwh": 0.0029235450000000378,
+                "correlation_with_unexplained_gain": 0.18549655640708204
+              },
+              "envelope_gain_w": {
+                "mean_w": -168.04423601854893,
+                "mean_abs_w": 168.04423601854893,
+                "net_energy_kwh": -82.84580835714462,
+                "correlation_with_unexplained_gain": -0.2709593740667712
+              },
+              "ventilation_gain_w": {
+                "mean_w": 0.0,
+                "mean_abs_w": 0.0,
+                "net_energy_kwh": 0.0,
+                "correlation_with_unexplained_gain": null
+              },
+              "interzone_gain_w": {
+                "mean_w": -8.090103021752668,
+                "mean_abs_w": 11.83201307361094,
+                "net_energy_kwh": -3.9884207897240653,
+                "correlation_with_unexplained_gain": 0.28036193384929936
+              },
+              "air_mass_gain_w": {
+                "mean_w": 66.95957080902909,
+                "mean_abs_w": 68.14247623514761,
+                "net_energy_kwh": 33.01106840885134,
+                "correlation_with_unexplained_gain": -0.7982475572505253
+              },
+              "convective_source_gain_w": {
+                "mean_w": 135.5149908921501,
+                "mean_abs_w": 135.5149908921501,
+                "net_energy_kwh": 66.80889050983001,
+                "correlation_with_unexplained_gain": -0.43170682069083954
+              },
+              "radiative_source_gain_w": {
+                "mean_w": 67.22112492590264,
+                "mean_abs_w": 67.22112492590264,
+                "net_energy_kwh": 33.14001458847,
+                "correlation_with_unexplained_gain": -0.2377265610164409
+              },
+              "heating_gain_w": {
+                "mean_w": 90.2028397565923,
+                "mean_abs_w": 90.2028397565923,
+                "net_energy_kwh": 44.47,
+                "correlation_with_unexplained_gain": 0.311640586055136
+              },
+              "internal_gain_w": {
+                "mean_w": 101.86612576064908,
+                "mean_abs_w": 101.86612576064908,
+                "net_energy_kwh": 50.22,
+                "correlation_with_unexplained_gain": -0.5612146796028656
+              },
+              "solar_gain_w": {
+                "mean_w": 10.66715030081136,
+                "mean_abs_w": 10.66715030081136,
+                "net_energy_kwh": 5.2589050983,
+                "correlation_with_unexplained_gain": 0.14149702620221358
+              }
+            }
+          }
+        }
+      }
+    },
+    "later_period": {
+      "graph_sha256": "f18abc498e14ad647de33f4cf6f734e73cdbf1223babd366d0abd59b0b415686",
+      "warmup_timesteps": 24,
+      "summary": {
+        "method": "measured air temperatures constrain each interval; the unobserved mass node advances from its prior state with the measured end-of-interval air temperature",
+        "sign_convention": "positive unexplained_air_node_gain_w means additional heat is required to reproduce the measurement",
+        "limitations": [
+          "mean radiant/mass temperature is unmeasured and conditionally estimated",
+          "path residuals diagnose the reduced-order mapping and are not parameter estimates",
+          "the inspected period is not blind or untouched validation evidence"
+        ],
+        "whole_building": {
+          "count": 2052,
+          "one_step_temperature_rmse_c": 0.835338651066977,
+          "unexplained_gain_bias_w": -105.44031746334112,
+          "unexplained_gain_mae_w": 302.9002959236298,
+          "unexplained_gain_rmse_w": 473.8311047535551,
+          "unexplained_net_energy_kwh": -216.36353143477598
+        },
+        "by_zone": {
+          "attic_airbody": {
+            "count": 513,
+            "one_step_temperature": {
+              "bias_c": 0.23947701555278011,
+              "mae_c": 0.7454039095166425,
+              "rmse_c": 0.9929834705405957
+            },
+            "unexplained_air_node_gain": {
+              "bias_w": -164.57774388655332,
+              "mae_w": 542.0061881808327,
+              "rmse_w": 716.2791286399321,
+              "p05_w": -1518.9857190044156,
+              "p50_w": 107.59095277406337,
+              "p95_w": 617.5850730645809,
+              "net_energy_kwh": -84.42838261380184
+            },
+            "components": {
+              "air_storage_w": {
+                "mean_w": 0.04783975382901695,
+                "mean_abs_w": 19.535297425136896,
+                "net_energy_kwh": 0.024541793714285696,
+                "correlation_with_unexplained_gain": -0.2717427891727003
+              },
+              "envelope_gain_w": {
+                "mean_w": -997.0151208296832,
+                "mean_abs_w": 997.0151208296832,
+                "net_energy_kwh": -511.46875698562746,
+                "correlation_with_unexplained_gain": -0.14855575433758264
+              },
+              "ventilation_gain_w": {
+                "mean_w": -486.8140863560212,
+                "mean_abs_w": 486.8140863560212,
+                "net_energy_kwh": -249.73562630063887,
+                "correlation_with_unexplained_gain": -0.36266037856146366
+              },
+              "interzone_gain_w": {
+                "mean_w": 27.90710160156816,
+                "mean_abs_w": 31.928992557208915,
+                "net_energy_kwh": 14.316343121604467,
+                "correlation_with_unexplained_gain": -0.7419022688395255
+              },
+              "air_mass_gain_w": {
+                "mean_w": 564.9141649686729,
+                "mean_abs_w": 652.8728200796843,
+                "net_energy_kwh": 289.8009666289292,
+                "correlation_with_unexplained_gain": -0.6973193438937866
+              },
+              "convective_source_gain_w": {
+                "mean_w": 1055.6335242558457,
+                "mean_abs_w": 1055.6335242558457,
+                "net_energy_kwh": 541.5399979432489,
+                "correlation_with_unexplained_gain": -0.09941646658334101
+              },
+              "radiative_source_gain_w": {
+                "mean_w": 577.6607826300967,
+                "mean_abs_w": 577.6607826300967,
+                "net_energy_kwh": 296.3399814892396,
+                "correlation_with_unexplained_gain": 0.017797630991812776
+              },
+              "heating_gain_w": {
+                "mean_w": 1354.4639376218324,
+                "mean_abs_w": 1354.4639376218324,
+                "net_energy_kwh": 694.84,
+                "correlation_with_unexplained_gain": -0.07575166047241151
+              },
+              "internal_gain_w": {
+                "mean_w": 132.70955165692007,
+                "mean_abs_w": 132.70955165692007,
+                "net_energy_kwh": 68.08,
+                "correlation_with_unexplained_gain": -0.31857689763669256
+              },
+              "solar_gain_w": {
+                "mean_w": 146.12081760718996,
+                "mean_abs_w": 146.12081760718996,
+                "net_energy_kwh": 74.95997943248845,
+                "correlation_with_unexplained_gain": 0.12908619676237104
+              }
+            }
+          },
+          "ground_airbody": {
+            "count": 513,
+            "one_step_temperature": {
+              "bias_c": 0.2130942952899045,
+              "mae_c": 0.5077408474781352,
+              "rmse_c": 0.6574908004711552
+            },
+            "unexplained_air_node_gain": {
+              "bias_w": -94.7805408609718,
+              "mae_w": 440.6240918316709,
+              "rmse_w": 571.1967418364761,
+              "p05_w": -1012.9714268592676,
+              "p50_w": -137.77009143138054,
+              "p95_w": 943.6449042972714,
+              "net_energy_kwh": -48.62241746167853
+            },
+            "components": {
+              "air_storage_w": {
+                "mean_w": 0.10020037230546891,
+                "mean_abs_w": 14.22097350399291,
+                "net_energy_kwh": 0.051402790992705547,
+                "correlation_with_unexplained_gain": -0.4286402053551339
+              },
+              "envelope_gain_w": {
+                "mean_w": -995.0975620335502,
+                "mean_abs_w": 995.0975620335502,
+                "net_energy_kwh": -510.48504932321123,
+                "correlation_with_unexplained_gain": 0.016292431208770452
+              },
+              "ventilation_gain_w": {
+                "mean_w": -550.8388971048824,
+                "mean_abs_w": 550.8388971048824,
+                "net_energy_kwh": -282.58035421480474,
+                "correlation_with_unexplained_gain": -0.025706525822603226
+              },
+              "interzone_gain_w": {
+                "mean_w": -18.93115215152578,
+                "mean_abs_w": 81.63385778523217,
+                "net_energy_kwh": -9.711681053732725,
+                "correlation_with_unexplained_gain": -0.7771374437170177
+              },
+              "air_mass_gain_w": {
+                "mean_w": 727.6032145372951,
+                "mean_abs_w": 742.0075958923037,
+                "net_energy_kwh": 373.26044905763246,
+                "correlation_with_unexplained_gain": 0.01147776183653057
+              },
+              "convective_source_gain_w": {
+                "mean_w": 932.1451379859404,
+                "mean_abs_w": 932.1451379859404,
+                "net_energy_kwh": 478.1904557867875,
+                "correlation_with_unexplained_gain": -0.6822401276161532
+              },
+              "radiative_source_gain_w": {
+                "mean_w": 770.2419143880852,
+                "mean_abs_w": 770.2419143880852,
+                "net_energy_kwh": 395.13410208108775,
+                "correlation_with_unexplained_gain": 0.3398744234997094
+              },
+              "heating_gain_w": {
+                "mean_w": 1025.8089668615985,
+                "mean_abs_w": 1025.8089668615985,
+                "net_energy_kwh": 526.24,
+                "correlation_with_unexplained_gain": -0.7629021947016987
+              },
+              "internal_gain_w": {
+                "mean_w": 244.03508771929825,
+                "mean_abs_w": 244.03508771929825,
+                "net_energy_kwh": 125.19,
+                "correlation_with_unexplained_gain": -0.26519685826806116
+              },
+              "solar_gain_w": {
+                "mean_w": 432.5429977931292,
+                "mean_abs_w": 432.5429977931292,
+                "net_energy_kwh": 221.89455786787525,
+                "correlation_with_unexplained_gain": 0.5992064171675596
+              }
+            }
+          },
+          "kitchen_airbody": {
+            "count": 513,
+            "one_step_temperature": {
+              "bias_c": 0.532981083444343,
+              "mae_c": 0.6366374079258937,
+              "rmse_c": 0.85770958561612
+            },
+            "unexplained_air_node_gain": {
+              "bias_w": -122.21278405676433,
+              "mae_w": 142.94755416982136,
+              "rmse_w": 191.63057365990346,
+              "p05_w": -395.9187734643191,
+              "p50_w": -92.69315196644945,
+              "p95_w": 84.4541578637638,
+              "net_energy_kwh": -62.6951582211201
+            },
+            "components": {
+              "air_storage_w": {
+                "mean_w": 0.01768120857699804,
+                "mean_abs_w": 1.9903989083820646,
+                "net_energy_kwh": 0.009070459999999995,
+                "correlation_with_unexplained_gain": -0.3447170133210736
+              },
+              "envelope_gain_w": {
+                "mean_w": -280.4587257233909,
+                "mean_abs_w": 280.4587257233909,
+                "net_energy_kwh": -143.87532629609953,
+                "correlation_with_unexplained_gain": -0.19960928211478157
+              },
+              "ventilation_gain_w": {
+                "mean_w": 0.0,
+                "mean_abs_w": 0.0,
+                "net_energy_kwh": 0.0,
+                "correlation_with_unexplained_gain": null
+              },
+              "interzone_gain_w": {
+                "mean_w": -1.8994503208365894,
+                "mean_abs_w": 56.97435964015824,
+                "net_energy_kwh": -0.9744180145891703,
+                "correlation_with_unexplained_gain": 0.16917608522949062
+              },
+              "air_mass_gain_w": {
+                "mean_w": 135.99612474097316,
+                "mean_abs_w": 136.63880616403304,
+                "net_energy_kwh": 69.76601199211922,
+                "correlation_with_unexplained_gain": 0.18190092116356288
+              },
+              "convective_source_gain_w": {
+                "mean_w": 268.5925165685956,
+                "mean_abs_w": 268.5925165685956,
+                "net_energy_kwh": 137.78796099968957,
+                "correlation_with_unexplained_gain": -0.747897831105575
+              },
+              "radiative_source_gain_w": {
+                "mean_w": 139.67183040391043,
+                "mean_abs_w": 139.67183040391043,
+                "net_energy_kwh": 71.65164899720605,
+                "correlation_with_unexplained_gain": -0.661258510543184
+              },
+              "heating_gain_w": {
+                "mean_w": 94.48343079922027,
+                "mean_abs_w": 94.48343079922027,
+                "net_energy_kwh": 48.47,
+                "correlation_with_unexplained_gain": -0.20402107600632438
+              },
+              "internal_gain_w": {
+                "mean_w": 285.1267056530214,
+                "mean_abs_w": 285.1267056530214,
+                "net_energy_kwh": 146.27,
+                "correlation_with_unexplained_gain": -0.6585183763611467
+              },
+              "solar_gain_w": {
+                "mean_w": 28.654210520264325,
+                "mean_abs_w": 28.654210520264325,
+                "net_energy_kwh": 14.6996099968956,
+                "correlation_with_unexplained_gain": -0.024322882529293554
+              }
+            }
+          },
+          "sleeping_airbody": {
+            "count": 513,
+            "one_step_temperature": {
+              "bias_c": 0.271303891534279,
+              "mae_c": 0.43964291186387383,
+              "rmse_c": 0.7982396815097359
+            },
+            "unexplained_air_node_gain": {
+              "bias_w": -40.19020104907502,
+              "mae_w": 86.02334951219436,
+              "rmse_w": 148.39096521314258,
+              "p05_w": -181.53931327855761,
+              "p50_w": -4.237690098248976,
+              "p95_w": 94.72591998668986,
+              "net_energy_kwh": -20.617573138175487
+            },
+            "components": {
+              "air_storage_w": {
+                "mean_w": 0.020896033138401545,
+                "mean_abs_w": 1.9395318031189044,
+                "net_energy_kwh": 0.010719664999999993,
+                "correlation_with_unexplained_gain": 0.14441573892589543
+              },
+              "envelope_gain_w": {
+                "mean_w": -197.57842926285366,
+                "mean_abs_w": 197.57842926285366,
+                "net_energy_kwh": -101.35773421184393,
+                "correlation_with_unexplained_gain": -0.05156526598834506
+              },
+              "ventilation_gain_w": {
+                "mean_w": 0.0,
+                "mean_abs_w": 0.0,
+                "net_energy_kwh": 0.0,
+                "correlation_with_unexplained_gain": null
+              },
+              "interzone_gain_w": {
+                "mean_w": -7.076499129205795,
+                "mean_abs_w": 14.809490821885005,
+                "net_energy_kwh": -3.630244053282573,
+                "correlation_with_unexplained_gain": 0.30684358312026744
+              },
+              "air_mass_gain_w": {
+                "mean_w": 83.84150853004287,
+                "mean_abs_w": 85.01168906191553,
+                "net_energy_kwh": 43.010693875912,
+                "correlation_with_unexplained_gain": -0.5441871426206907
+              },
+              "convective_source_gain_w": {
+                "mean_w": 161.02451694423,
+                "mean_abs_w": 161.02451694423,
+                "net_energy_kwh": 82.60557719239,
+                "correlation_with_unexplained_gain": -0.8159681057122637
+              },
+              "radiative_source_gain_w": {
+                "mean_w": 86.6475530828655,
+                "mean_abs_w": 86.6475530828655,
+                "net_energy_kwh": 44.45019473151,
+                "correlation_with_unexplained_gain": -0.6781909047672776
+              },
+              "heating_gain_w": {
+                "mean_w": 80.25341130604288,
+                "mean_abs_w": 80.25341130604288,
+                "net_energy_kwh": 41.17,
+                "correlation_with_unexplained_gain": -0.6275042745571529
+              },
+              "internal_gain_w": {
+                "mean_w": 146.8421052631579,
+                "mean_abs_w": 146.8421052631579,
+                "net_energy_kwh": 75.33,
+                "correlation_with_unexplained_gain": -0.4187172879886635
+              },
+              "solar_gain_w": {
+                "mean_w": 20.576553457894736,
+                "mean_abs_w": 20.576553457894736,
+                "net_energy_kwh": 10.5557719239,
+                "correlation_with_unexplained_gain": 0.08260812418498938
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "decision": {
+    "explicit_supply_air_path_verified": true,
+    "explicit_heater_split_verified": true,
+    "single_constant_missing_conductance_supported": false,
+    "additional_calibration_authorized": false,
+    "validation_status_changed": false
+  }
+}

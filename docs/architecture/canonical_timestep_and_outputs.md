@@ -30,6 +30,13 @@ Action events describe externally known semantic events. Their physical
 effects must be represented explicitly in `internal_gains`; an adapter must
 not infer gains from an action name.
 
+`ZoneControlCommand` carries delivered heating/cooling fractions, their
+convective fractions, and an optional mechanical-ventilation supply
+temperature. Convective fractions default to `1.0` for backward compatibility;
+the complementary share is radiant and must enter the thermal mass path.
+Supply temperature applies only to mechanical outdoor air. Infiltration and
+window exchange remain coupled to outdoor dry-bulb temperature.
+
 ## Required output tables
 
 `CanonicalZoneStepResult` is the required per-zone row. Its columns are

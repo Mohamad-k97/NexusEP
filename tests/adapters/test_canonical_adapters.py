@@ -494,3 +494,27 @@ def test_adapters_reject_untyped_mapping_and_array_unsupported_inputs() -> None:
     )
     with pytest.raises(BackendAdapterError, match="cannot yet inject"):
         array_adapter.run_step(step.model_copy(update={"internal_gains": (gain,)}))
+
+
+@pytest.mark.parametrize(
+    "command_update",
+    [
+        {"heating_convective_fraction": 0.7},
+        {"ventilation_supply_temperature_c": 18.0},
+    ],
+)
+def test_array_adapter_rejects_unrepresentable_energy_paths(
+    command_update: dict[str, float],
+) -> None:
+    scenario, graph, step = make_step_input()
+    commands = tuple(
+        item.model_copy(update=command_update)
+        if item.zone_id == "living_zone"
+        else item
+        for item in step.control_commands
+    )
+
+    with pytest.raises(BackendAdapterError, match="cannot yet represent"):
+        ArrayEngineAdapter(scenario, graph).run_step(
+            step.model_copy(update={"control_commands": commands})
+        )

@@ -2,12 +2,12 @@
 
 Validation category: **verification and validation-protocol audit**.
 
-Assessment date: **2026-08-12**.
+Assessment date: **2026-08-13**.
 
 ## Outcome
 
 The rejected scientific alternatives exposed two different classes of issue.
-Nine implementation, preprocessing, and contract defects were repairable.
+Eleven implementation, preprocessing, and contract defects were repairable.
 The controlled-thermal rejection remains an evidence/model-scope failure;
 changing bounds or tolerances merely to make it green would invalidate the
 claim. The aggregate-only occupant rejection is retained, while a new
@@ -24,6 +24,8 @@ respondent-level alternative passes in its narrower schedule-prior scope.
 | Dropped canonical `other` gains | The object adapter normalized `other` to `generic`, but the thermal aggregation bridge omitted the generic category. | Include generic sensible gains in the internal/appliance thermal channel and add a direct regression. | A 100 W generic source reaches the thermal solver with exactly 100 W total sensible gain. |
 | Annex hourly forcing shifted one interval | The former mapper applied row T to the following interval. A lag audit and the published experiment start support mapping row T to the preceding hour, while the canonical contract labels interval starts. | Make the selected source-to-canonical alignment explicit and seed each run from the preceding measured state. | The clock-alignment regression passes; heat-input correlation and short-run error improve without changing solver equations. The source workbook's label convention is not claimed as independently proven. |
 | ATUS diary clock shifted four hours | ATUS diaries cover 04:00 to 04:00, while NexusEP schedules use a midnight day. | Rotate complete diaries to 00:00--24:00, splitting the wraparound episode without changing duration, and preserve day-type conditioning. | Synthetic ZIP and full microdata regressions prove contiguous 1,440-minute coverage and deterministic weekday selection. |
+| Mechanical supply heat misclassified as a generic gain | The Annex mapper converted supply-air heat to a generic source. The generic bridge split it 70/30 between air and mass, although ventilation heat acts directly on the air node. | Add a typed mechanical supply-temperature command and keep mechanical, infiltration, and window conductances distinct in the solver. | Regressions prove supply temperature applies only to mechanical airflow; infiltration remains at outdoor temperature. |
+| Heater radiant share discarded | The documented 70/30 heater split was sent through a control path that treated all delivered heat as convective. | Add typed heating/cooling convective fractions and construct explicit air/mass thermal gains. Preserve `1.0` as the compatibility default. | A 500 W, 70% convective command reaches the solver as exactly 350 W air and 150 W mass gain. |
 
 The regenerated Phase 2.16 parity report contains 181 exact matches, 5
 tolerance matches, 22 expected model differences, no missing features, no
@@ -37,11 +39,19 @@ The Annex 71 diagnostic remains **blocked and rejected with alternative**.
 The former one-room helper rejection remains available for provenance. Its
 replacement maps four official air bodies and measured forcing through the
 canonical object adapter, conserves heat to 1.83e-10 W, and uses no fallback.
-Nevertheless calibration RMSE is 2.172 degC and the later diagnostic RMSE is
-1.858 degC; capacity reaches 1.4955e8 J/K near the frozen upper bound. The
+After the two energy-path repairs, calibration RMSE improves from 2.172 to
+2.003 degC and the later diagnostic RMSE improves from 1.858 to 1.685 degC.
+Both still fail the frozen thresholds; capacity reaches 1.4955e8 J/K near the frozen upper bound. The
 later targets were inspected while fixing the mapper, so they are no longer
 unseen. This is negative evidence for the present reduced-order
 parameterization, not a blind-validation pass.
+
+The observation-constrained audit reports 0.835 degC later-period one-step
+RMSE but 302.9 W unexplained-gain MAE. Residuals change sign, vary strongly by
+zone, and have the largest tails in the attic. That evidence rejects the idea
+of adding one fitted constant conductance and does not authorize more
+calibration. Source timing/distribution, the unmeasured mass state, and
+two-node coupling must be investigated separately.
 
 The old ATUS aggregate alternative remains **blocked and rejected with
 alternative**. It was not tuned away. A separate official-microdata
@@ -55,9 +65,9 @@ passes 1,725 respondent-isolated holdouts: sleep-fraction quantile MAE
 
 - Acquire an independent controlled thermal dataset or a genuinely sealed
   Annex 58/71 outcome before claiming blind validation.
-- Extend the canonical thermal contract for heater radiative split, blind
-  state, supply-air temperature, cellar/ground boundaries, and detailed fabric
-  before attempting another empirical fit.
+- Extend the canonical thermal contract for blind state, cellar/ground
+  boundaries, detailed fabric, and measurement uncertainty before attempting
+  another empirical fit.
 - Add demographic/household conditioning and condition-dependent stochastic
   action models; the passing ATUS result covers schedules, not causal actions.
 - Perform NZERTF integrated calibration/validation only when the measured
@@ -68,6 +78,7 @@ passes 1,725 respondent-isolated holdouts: sleep-fraction quantile MAE
 ```powershell
 uv run python -m nexusep.parity.harness --output artifacts/baseline/phase_2_16_initial_parity.json
 uv run python scripts/validation_data/run_annex71_production_transfer.py
+uv run python scripts/validation_data/run_annex71_energy_path_audit.py
 uv run python scripts/validation_data/run_atus_population_validation.py
 uv run pytest -q
 ```
