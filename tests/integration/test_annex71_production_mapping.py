@@ -172,8 +172,17 @@ def test_roof_window_uses_published_thirty_degree_tilt() -> None:
         surface.tilt_deg == pytest.approx(90.0)
         for surface in attic.surfaces
         if surface is not roof_surface
-        and surface.surface_id not in {"attic_north_roof"}
+        and surface.surface_id not in {
+            "attic_north_roof",
+            "attic_airbody_to_ground_airbody",
+        }
     )
+    attic_floor = next(
+        surface
+        for surface in attic.surfaces
+        if surface.surface_id == "attic_airbody_to_ground_airbody"
+    )
+    assert attic_floor.tilt_deg == pytest.approx(0.0)
 
 
 def test_published_component_model_exposes_cellar_fabric_and_dynamic_blind() -> None:
@@ -288,6 +297,7 @@ def test_measured_window_and_door_positions_reach_native_controls() -> None:
         _record(end, 20.0),
         child1_window_opening_fraction=0.6,
         kitchen_door_opening_fraction=0.0,
+        attic_door_opening_fraction=0.25,
     )
     scenario, graph = build_canonical_scenario(
         (operated,), initial_record=initial
@@ -319,6 +329,25 @@ def test_measured_window_and_door_positions_reach_native_controls() -> None:
         and "ground_airbody_to_kitchen_airbody" in connection["surface_ids"]
     )
     assert door_controls[kitchen_connection]["opening_fraction"] == 0.0
+    attic_connection = next(
+        connection["connection_id"]
+        for connection in graph["connections"]
+        if connection["boundary_type"] == "interzone"
+        and "ground_airbody_to_attic_airbody" in connection["surface_ids"]
+    )
+    assert door_controls[attic_connection]["opening_fraction"] == pytest.approx(
+        0.25
+    )
+    graph_connections = {
+        connection["connection_id"]: connection
+        for connection in graph["connections"]
+    }
+    assert graph_connections[kitchen_connection]["airflow_model"] == (
+        "two_opening_buoyancy"
+    )
+    assert graph_connections[attic_connection]["airflow_model"] == (
+        "prescribed_velocity"
+    )
 
 
 def test_legacy_effective_graph_does_not_invent_physical_opening_controls() -> None:

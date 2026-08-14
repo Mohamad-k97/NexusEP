@@ -220,6 +220,10 @@
         "external_boundary_id": {"type": ["string", "null"]},
         "airflow_opening_area_m2": {"type": "number", "minimum": 0, "x-unit": "m2"},
         "airflow_open_fraction": {"type": "number", "minimum": 0, "maximum": 1, "x-unit": "1"},
+        "airflow_model": {"enum": ["none", "prescribed_velocity", "two_opening_buoyancy"]},
+        "airflow_opening_height_m": {"type": "number", "minimum": 0, "maximum": 100, "x-unit": "m"},
+        "airflow_discharge_coefficient": {"type": "number", "minimum": 0, "maximum": 1, "x-unit": "1"},
+        "airflow_assumed_velocity_m_s": {"type": "number", "minimum": 0, "maximum": 20, "x-unit": "m/s"},
         "provenance": {"$ref": "#/$defs/provenance"}
       }
     },

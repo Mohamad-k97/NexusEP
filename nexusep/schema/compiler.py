@@ -655,11 +655,20 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
                 "tilt_deg",
                 "airflow_opening_area_m2",
                 "airflow_open_fraction",
+                "airflow_opening_height_m",
+                "airflow_discharge_coefficient",
+                "airflow_assumed_velocity_m_s",
             ):
                 if not _close(surface.get(field, 0.0), pair.get(field, 0.0)):
                     raise CanonicalContractError(
                         f"Interzone pair {surface_id!r}/{pair_id!r} disagrees on {field}."
                     )
+            if surface.get("airflow_model", "none") != pair.get(
+                "airflow_model", "none"
+            ):
+                raise CanonicalContractError(
+                    f"Interzone pair {surface_id!r}/{pair_id!r} disagrees on airflow_model."
+                )
             expected_pair_azimuth = (float(surface["azimuth_deg"]) + 180.0) % 360.0
             if not _close(expected_pair_azimuth, pair["azimuth_deg"]):
                 raise CanonicalContractError(
@@ -699,6 +708,16 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
                     ),
                     "airflow_open_fraction": float(
                         surface.get("airflow_open_fraction", 0.0)
+                    ),
+                    "airflow_model": surface.get("airflow_model", "none"),
+                    "airflow_opening_height_m": float(
+                        surface.get("airflow_opening_height_m", 0.0)
+                    ),
+                    "airflow_discharge_coefficient": float(
+                        surface.get("airflow_discharge_coefficient", 0.0)
+                    ),
+                    "airflow_assumed_velocity_m_s": float(
+                        surface.get("airflow_assumed_velocity_m_s", 0.0)
                     ),
                     "provenance": {
                         "connection_id": _graph_provenance(
@@ -758,6 +777,10 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
                 or "outdoor_air",
                 "airflow_opening_area_m2": 0.0,
                 "airflow_open_fraction": 0.0,
+                "airflow_model": "none",
+                "airflow_opening_height_m": 0.0,
+                "airflow_discharge_coefficient": 0.0,
+                "airflow_assumed_velocity_m_s": 0.0,
                 "provenance": {
                     "net_opaque_area_m2": _graph_provenance(
                         "derived",
@@ -810,6 +833,10 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
                     or "outdoor_air",
                     "airflow_opening_area_m2": 0.0,
                     "airflow_open_fraction": 0.0,
+                    "airflow_model": "none",
+                    "airflow_opening_height_m": 0.0,
+                    "airflow_discharge_coefficient": 0.0,
+                    "airflow_assumed_velocity_m_s": 0.0,
                     "provenance": {
                         "azimuth_deg": _graph_provenance(
                             "derived",

@@ -303,6 +303,9 @@ class ObjectEngineAdapter:
                 airflow_opening_area_m2 = float(
                     connection.get("airflow_opening_area_m2", 0.0)
                 )
+                canonical_airflow_model = str(
+                    connection.get("airflow_model", "none")
+                )
                 zone_connections[connection["connection_id"]] = ZoneConnection(
                     connection_id=connection["connection_id"],
                     from_zone_id=connection["source_node_id"],
@@ -317,7 +320,26 @@ class ObjectEngineAdapter:
                         if airflow_opening_area_m2 > 0.0
                         else None
                     ),
-                    discharge_coefficient=0.6,
+                    airflow_model=(
+                        canonical_airflow_model
+                        if canonical_airflow_model != "none"
+                        else "prescribed_velocity"
+                    ),
+                    opening_height_m=(
+                        float(connection["airflow_opening_height_m"])
+                        if float(connection["airflow_opening_height_m"]) > 0.0
+                        else None
+                    ),
+                    discharge_coefficient=(
+                        float(connection["airflow_discharge_coefficient"])
+                        if airflow_opening_area_m2 > 0.0
+                        else 0.6
+                    ),
+                    assumed_mixing_air_speed_m_s=(
+                        float(connection["airflow_assumed_velocity_m_s"])
+                        if airflow_opening_area_m2 > 0.0
+                        else 0.10
+                    ),
                     base_airflow_m3_h=0.0,
                     partition_sound_reduction_db=35.0,
                     door_sound_reduction_db=20.0,

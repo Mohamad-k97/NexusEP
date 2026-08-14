@@ -1,0 +1,26 @@
+{
+  "protocol_version": "1.4.0",
+  "supersedes": "data/validation/governance/annex71_extended_holdout_v1_3.json",
+  "amended_on": "2026-08-14",
+  "amendment_status": "post_unsealing_target_independent_large_opening_and_schedule_correction",
+  "validation_category": "post_unsealing_corrected_holdout_diagnostic",
+  "reason": "The vertical internal-door path used an implicit fixed 0.10 m/s exchange although zone temperatures and atmospheric pressure were available. It now uses the centered-neutral-plane two-opening buoyancy equation documented in NIST TN 1887r1. The Extended workbook also supplies n2_attic_door_pos, which the mapper previously ignored; it is now mapped as a dynamic control. These changes follow registered model and source contracts and were not selected by fitting measured temperatures.",
+  "unchanged_from_v1_3": [
+    "fixed-CET time correction",
+    "published component capacities and U-values",
+    "forcing mappings",
+    "window, kitchen-door, and blind source schedules",
+    "air-to-mass conductance coefficient",
+    "warm-up",
+    "all numerical acceptance thresholds",
+    "missing-data acceptance",
+    "no post-hoc fitting"
+  ],
+  "corrected_airflow_mapping": {
+    "vertical_internal_doors": "NIST CONTAM two-opening centered-neutral-plane buoyancy exchange using current zone temperatures, timestep atmospheric pressure, explicit opening area and height, and discharge coefficient 0.78",
+    "attic_trap_door_state": "n2_attic_door_pos is mapped at every Extended timestep",
+    "horizontal_trap_door_physics": "remains an explicit prescribed_velocity compatibility model at 0.10 m/s because NexusEP has no whole-building pressure solve or verified horizontal-opening correlation",
+    "pressure_network_claim": "not made"
+  },
+  "scientific_label": "Results under v1.4 are post-unsealing corrected diagnostics. The immutable first holdout result remains published and rejected. This amendment cannot restore a blind-validation claim."
+}

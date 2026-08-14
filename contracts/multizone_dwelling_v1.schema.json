@@ -551,6 +551,30 @@
           "x-unit": "1",
           "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].airflow_open_fraction"
         },
+        "airflow_model": {
+          "enum": ["none", "prescribed_velocity", "two_opening_buoyancy"]
+        },
+        "airflow_opening_height_m": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 100.0,
+          "x-unit": "m",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].airflow_opening_height_m"
+        },
+        "airflow_discharge_coefficient": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 1.0,
+          "x-unit": "1",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].airflow_discharge_coefficient"
+        },
+        "airflow_assumed_velocity_m_s": {
+          "type": "number",
+          "minimum": 0.0,
+          "maximum": 20.0,
+          "x-unit": "m/s",
+          "x-registry-path": "scenario.building.dwelling.zones[].surfaces[].airflow_assumed_velocity_m_s"
+        },
         "openings": {
           "type": "array",
           "items": {

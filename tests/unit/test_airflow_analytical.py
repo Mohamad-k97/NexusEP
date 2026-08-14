@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime
-from math import exp
+from math import exp, sqrt
 
 import pytest
 
@@ -12,15 +12,26 @@ from nexusep.abbey.building.physics.airflow import (
     AIRFLOW_PRESSURE_NETWORK_MODE,
     AIRFLOW_WINDOW_MODEL,
     CO2_BUILDING_TIMESTEP_METHOD,
+    INTERZONE_AIRFLOW_MODEL_TWO_OPENING_BUOYANCY,
+    INTERZONE_TWO_OPENING_SOURCE,
     BuildingAirflowNetwork,
     BuildingAirState,
     BuildingCO2GenerationResult,
+    DoorOpeningInput,
     InterzoneAirflowLink,
     InterzoneAirflowRecord,
     ZoneAirState,
     ZoneOutdoorAirflowRecord,
+    calculate_interzone_airflow_link,
     check_airflow_network_mass_balance,
+    dry_air_density_kg_m3,
     step_building_co2_state,
+    two_opening_buoyancy_exchange_m3_s,
+)
+from nexusep.abbey.building.physics.graph import ZoneConnection
+from nexusep.abbey.building.physics.thermal import (
+    BuildingThermalState,
+    ZoneThermalState,
 )
 from nexusep.abbey.building.physics.weather import WeatherState
 from nexusep.abbey.building.physics.windows import (
@@ -197,6 +208,98 @@ def test_two_zone_exchange_is_reciprocal_and_every_flow_is_traceable() -> None:
         ("west", "east"),
         ("east", "west"),
     }
+
+
+def test_nist_two_opening_buoyancy_equation_69_is_implemented_directly() -> None:
+    pressure_pa = 101_325.0
+    density_20 = dry_air_density_kg_m3(20.0, pressure_pa)
+    density_30 = dry_air_density_kg_m3(30.0, pressure_pa)
+    height_m = 1.95
+    width_m = 0.935
+    area_m2 = height_m * width_m
+    coefficient = 0.78
+    reference_density = 0.5 * (density_20 + density_30)
+    expected_mass_flow_kg_s = (
+        coefficient
+        / 3.0
+        * width_m
+        * sqrt(
+            reference_density
+            * 9.80665
+            * abs(density_20 - density_30)
+            * height_m**3
+        )
+    )
+
+    actual_m3_s = two_opening_buoyancy_exchange_m3_s(
+        opening_area_m2=area_m2,
+        opening_height_m=height_m,
+        discharge_coefficient=coefficient,
+        zone_a_air_density_kg_m3=density_20,
+        zone_b_air_density_kg_m3=density_30,
+    )
+
+    assert actual_m3_s * reference_density == pytest.approx(
+        expected_mass_flow_kg_s, rel=1e-12
+    )
+
+
+def test_two_opening_buoyancy_is_zero_at_equal_temperature_and_reciprocal() -> None:
+    connection = ZoneConnection(
+        connection_id="west-east-door",
+        from_zone_id="west",
+        to_zone_id="east",
+        connection_type="door",
+        area_m2=8.0,
+        is_openable=True,
+        max_opening_area_m2=1.5,
+        airflow_model=INTERZONE_AIRFLOW_MODEL_TWO_OPENING_BUOYANCY,
+        opening_height_m=2.0,
+        discharge_coefficient=0.78,
+    )
+    opening = DoorOpeningInput(
+        zone_connection_id=connection.connection_id,
+        zone_a_id="west",
+        zone_b_id="east",
+        opening_fraction=1.0,
+    )
+    equal_state = BuildingThermalState(
+        {
+            "west": ZoneThermalState("west", 20.0, 20.0),
+            "east": ZoneThermalState("east", 20.0, 20.0),
+        }
+    )
+    unequal_state = BuildingThermalState(
+        {
+            "west": ZoneThermalState("west", 20.0, 20.0),
+            "east": ZoneThermalState("east", 30.0, 30.0),
+        }
+    )
+
+    equal = calculate_interzone_airflow_link(
+        connection, opening, equal_state, 101_325.0
+    )
+    unequal = calculate_interzone_airflow_link(
+        connection, opening, unequal_state, 101_325.0
+    )
+    swapped = calculate_interzone_airflow_link(
+        connection,
+        opening,
+        BuildingThermalState(
+            {
+                "west": ZoneThermalState("west", 30.0, 30.0),
+                "east": ZoneThermalState("east", 20.0, 20.0),
+            }
+        ),
+        101_325.0,
+    )
+
+    assert equal.mixing_flow_m3_h == 0.0
+    assert unequal.mixing_flow_m3_h > 0.0
+    assert swapped.mixing_mass_flow_kg_s == pytest.approx(
+        unequal.mixing_mass_flow_kg_s, rel=1e-12
+    )
+    assert unequal.source == INTERZONE_TWO_OPENING_SOURCE
 
 
 def test_closed_two_zone_contaminant_exchange_conserves_total_amount() -> None:

@@ -154,6 +154,7 @@ class Annex71Interval:
     cellar_temperature_c: float = 10.0
     child1_window_opening_fraction: float = 0.0
     kitchen_door_opening_fraction: float = 1.0
+    attic_door_opening_fraction: float = 1.0
     missing_source_fields: tuple[str, ...] = ()
     source_quality_flags: tuple[str, ...] = ()
     shading_open_fraction_by_opening: tuple[tuple[str, float], ...] = (
@@ -568,6 +569,13 @@ def load_annex71_intervals(
                     ),
                     1.0,
                 ),
+                attic_door_opening_fraction=min(
+                    max(
+                        _optional_finite(row.get("n2_attic_door_pos"), 1.0),
+                        0.0,
+                    ),
+                    1.0,
+                ),
                 missing_source_fields=missing_source_fields,
                 source_quality_flags=source_quality_flags,
                 shading_open_fraction_by_opening=(
@@ -680,6 +688,10 @@ def _surface(
     external_boundary_id: str | None = "outdoor_air",
     airflow_opening_area_m2: float = 0.0,
     airflow_open_fraction: float = 0.0,
+    airflow_model: str = "none",
+    airflow_opening_height_m: float = 0.0,
+    airflow_discharge_coefficient: float = 0.0,
+    airflow_assumed_velocity_m_s: float = 0.0,
     thermal_bridge_conductance_w_k: float = 0.0,
     openings: Sequence[dict[str, Any]] = (),
 ) -> dict[str, Any]:
@@ -703,6 +715,10 @@ def _surface(
         "tilt_deg": tilt_deg,
         "airflow_opening_area_m2": airflow_opening_area_m2,
         "airflow_open_fraction": airflow_open_fraction,
+        "airflow_model": airflow_model,
+        "airflow_opening_height_m": airflow_opening_height_m,
+        "airflow_discharge_coefficient": airflow_discharge_coefficient,
+        "airflow_assumed_velocity_m_s": airflow_assumed_velocity_m_s,
         "openings": list(openings),
     }
 
@@ -834,6 +850,8 @@ GROUND_HEIGHT_M = 2.60
 GROUND_CEILING_AREA_M2 = 81.69
 TRAP_DOOR_AREA_M2 = 0.57 * 1.39
 INTERNAL_DOOR_AREA_M2 = 0.935 * 1.95
+INTERNAL_DOOR_HEIGHT_M = 1.95
+CONTAM_LARGE_OPENING_DISCHARGE_COEFFICIENT = 0.78
 ROOF_PLANE_AREA_M2 = 10.24 * (10.296 / 2.0) / math.cos(math.radians(30.0))
 ATTIC_GABLE_AREA_M2 = 10.296 * 0.35 + 0.5 * 10.296 * (2.91 - 0.35)
 ATTIC_KNEE_AREA_M2 = 10.24 * 0.35
@@ -904,6 +922,11 @@ def _published_interzone_surface(
     azimuth_deg: float,
     airflow_opening_area_m2: float = 0.0,
     airflow_open_fraction: float = 0.0,
+    airflow_model: str = "none",
+    airflow_opening_height_m: float = 0.0,
+    airflow_discharge_coefficient: float = 0.0,
+    airflow_assumed_velocity_m_s: float = 0.0,
+    tilt_deg: float = 90.0,
     thermal_bridge_conductance_w_k: float = 0.0,
 ) -> dict[str, Any]:
     u_value, areal_capacity_j_m2_k = PUBLISHED_CONSTRUCTIONS[construction]
@@ -918,6 +941,11 @@ def _published_interzone_surface(
         paired_surface_id=f"{other_zone_id}_to_{zone_id}",
         airflow_opening_area_m2=airflow_opening_area_m2,
         airflow_open_fraction=airflow_open_fraction,
+        airflow_model=airflow_model,
+        airflow_opening_height_m=airflow_opening_height_m,
+        airflow_discharge_coefficient=airflow_discharge_coefficient,
+        airflow_assumed_velocity_m_s=airflow_assumed_velocity_m_s,
+        tilt_deg=tilt_deg,
         thermal_bridge_conductance_w_k=thermal_bridge_conductance_w_k,
     )
 
@@ -1128,21 +1156,45 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
             (2.835 + 2.625) * GROUND_HEIGHT_M - INTERNAL_DOOR_AREA_M2,
             INTERNAL_DOOR_AREA_M2,
             1.0,
+            INTERNAL_DOOR_HEIGHT_M,
+            90.0,
+            "two_opening_buoyancy",
+            CONTAM_LARGE_OPENING_DISCHARGE_COEFFICIENT,
+            0.0,
         ),
         "sleeping_airbody": (
             (3.885 + 2.88) * GROUND_HEIGHT_M - INTERNAL_DOOR_AREA_M2,
             INTERNAL_DOOR_AREA_M2,
+            0.0,
+            INTERNAL_DOOR_HEIGHT_M,
+            90.0,
+            "two_opening_buoyancy",
+            CONTAM_LARGE_OPENING_DISCHARGE_COEFFICIENT,
             0.0,
         ),
         "attic_airbody": (
             GROUND_CEILING_AREA_M2 - TRAP_DOOR_AREA_M2,
             TRAP_DOOR_AREA_M2,
             1.0,
+            0.0,
+            0.0,
+            "prescribed_velocity",
+            0.60,
+            0.10,
         ),
     }
     if zone_id == "ground_airbody":
         for other_zone_id in ("attic_airbody", "kitchen_airbody", "sleeping_airbody"):
-            solid_area, opening_area, opening_fraction = partition_specs[other_zone_id]
+            (
+                solid_area,
+                opening_area,
+                opening_fraction,
+                opening_height,
+                tilt_deg,
+                airflow_model,
+                discharge_coefficient,
+                assumed_velocity,
+            ) = partition_specs[other_zone_id]
             result.append(
                 _published_interzone_surface(
                     zone_id,
@@ -1154,6 +1206,11 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
                     azimuth_deg=180.0,
                     airflow_opening_area_m2=opening_area,
                     airflow_open_fraction=opening_fraction,
+                    airflow_model=airflow_model,
+                    airflow_opening_height_m=opening_height,
+                    airflow_discharge_coefficient=discharge_coefficient,
+                    airflow_assumed_velocity_m_s=assumed_velocity,
+                    tilt_deg=tilt_deg,
                     thermal_bridge_conductance_w_k=(
                         GROUND_ATTIC_THERMAL_BRIDGE_CONDUCTANCE_W_K
                         if other_zone_id == "attic_airbody"
@@ -1162,7 +1219,16 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
                 )
             )
     else:
-        solid_area, opening_area, opening_fraction = partition_specs[zone_id]
+        (
+            solid_area,
+            opening_area,
+            opening_fraction,
+            opening_height,
+            tilt_deg,
+            airflow_model,
+            discharge_coefficient,
+            assumed_velocity,
+        ) = partition_specs[zone_id]
         result.append(
             _published_interzone_surface(
                 zone_id,
@@ -1172,6 +1238,11 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
                 azimuth_deg=0.0,
                 airflow_opening_area_m2=opening_area,
                 airflow_open_fraction=opening_fraction,
+                airflow_model=airflow_model,
+                airflow_opening_height_m=opening_height,
+                airflow_discharge_coefficient=discharge_coefficient,
+                airflow_assumed_velocity_m_s=assumed_velocity,
+                tilt_deg=tilt_deg,
                 thermal_bridge_conductance_w_k=(
                     GROUND_ATTIC_THERMAL_BRIDGE_CONDUCTANCE_W_K
                     if zone_id == "attic_airbody"
@@ -1498,13 +1569,17 @@ def build_annex71_step_input(
         for connection in connections
         if connection.get("connection_type") == "opening"
     }
-    kitchen_door_surface_id = "ground_airbody_to_kitchen_airbody"
-    has_kitchen_airflow_opening = any(
-        connection.get("boundary_type") == "interzone"
-        and kitchen_door_surface_id in connection.get("surface_ids", ())
-        and float(connection.get("airflow_opening_area_m2", 0.0)) > 0.0
+    interzone_opening_fractions_by_surface = {
+        "ground_airbody_to_attic_airbody": record.attic_door_opening_fraction,
+        "ground_airbody_to_kitchen_airbody": record.kitchen_door_opening_fraction,
+    }
+    available_interzone_opening_surface_ids = {
+        str(surface_id)
         for connection in connections
-    )
+        if connection.get("boundary_type") == "interzone"
+        and float(connection.get("airflow_opening_area_m2", 0.0)) > 0.0
+        for surface_id in connection.get("surface_ids", ())
+    }
     commands = []
     gains = []
     for zone in scenario.building.dwelling.zones:
@@ -1597,14 +1672,16 @@ def build_annex71_step_input(
             )
             if opening_id in available_opening_ids
         ),
-        interzone_opening_controls=(
+        interzone_opening_controls=tuple(
             InterzoneOpeningControl(
-                surface_id=kitchen_door_surface_id,
-                opening_fraction=record.kitchen_door_opening_fraction,
-            ),
-        )
-        if has_kitchen_airflow_opening
-        else (),
+                surface_id=surface_id,
+                opening_fraction=opening_fraction,
+            )
+            for surface_id, opening_fraction in sorted(
+                interzone_opening_fractions_by_surface.items()
+            )
+            if surface_id in available_interzone_opening_surface_ids
+        ),
         control_commands=tuple(commands),
         system_availability=tuple(
             SystemAvailability(

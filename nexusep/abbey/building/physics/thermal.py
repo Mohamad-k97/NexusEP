@@ -4843,14 +4843,29 @@ def add_interzone_airflow_to_thermal_network(
         )
         if airflow_link is None:
             continue
-        mixing_flow_m3_h = _non_negative_float(
-            _get_attr_or_default(airflow_link, "mixing_flow_m3_h", 0.0),
-            "mixing_flow_m3_h",
-            link_id,
+        airflow_model = str(
+            _get_attr_or_default(airflow_link, "airflow_model", "")
         )
-        link.h_w_k += ventilation_conductance_from_airflow_m3_h(
-            mixing_flow_m3_h
-        )
+        if airflow_model == "two_opening_buoyancy":
+            mixing_mass_flow_kg_s = _non_negative_float(
+                _get_attr_or_default(
+                    airflow_link, "mixing_mass_flow_kg_s", 0.0
+                ),
+                "mixing_mass_flow_kg_s",
+                link_id,
+            )
+            link.h_w_k += (
+                mixing_mass_flow_kg_s * THERMAL_AIR_SPECIFIC_HEAT_J_KG_K
+            )
+        else:
+            mixing_flow_m3_h = _non_negative_float(
+                _get_attr_or_default(airflow_link, "mixing_flow_m3_h", 0.0),
+                "mixing_flow_m3_h",
+                link_id,
+            )
+            link.h_w_k += ventilation_conductance_from_airflow_m3_h(
+                mixing_flow_m3_h
+            )
         link.source = link.source + " + BuildingAirflowNetwork"
     return updated
 

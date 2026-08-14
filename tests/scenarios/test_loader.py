@@ -17,7 +17,7 @@ REPOSITORY_ROOT = Path(__file__).resolve().parents[2]
 EXAMPLE_PATH = (
     REPOSITORY_ROOT / "contracts" / "examples" / "multizone_dwelling_v1_minimal.json"
 )
-EXPECTED_GRAPH_HASH = "a3021d4de71b7d32fa3a518520c2db11ee12a927d081c98b0d76d01adfb0f00a"
+EXPECTED_GRAPH_HASH = "243691d930735fe70f0660704c836ae46fac690a18d00c90571280db63e85f09"
 
 
 def _example() -> dict[str, Any]:

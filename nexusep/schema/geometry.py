@@ -88,6 +88,16 @@ class Surface(CanonicalModel):
         float, Field(ge=0.0, le=1_000.0, allow_inf_nan=False)
     ] = 0.0
     airflow_open_fraction: Fraction = 0.0
+    airflow_model: Literal[
+        "none", "prescribed_velocity", "two_opening_buoyancy"
+    ] = "none"
+    airflow_opening_height_m: Annotated[
+        float, Field(ge=0.0, le=100.0, allow_inf_nan=False)
+    ] = 0.0
+    airflow_discharge_coefficient: Fraction = 0.0
+    airflow_assumed_velocity_m_s: Annotated[
+        float, Field(ge=0.0, le=20.0, allow_inf_nan=False)
+    ] = 0.0
     openings: tuple[Opening, ...]
 
     @model_validator(mode="after")
@@ -97,7 +107,14 @@ class Surface(CanonicalModel):
                 raise ValueError(
                     "exterior surfaces cannot reference adjacent zones or pairs"
                 )
-            if self.airflow_opening_area_m2 != 0.0 or self.airflow_open_fraction != 0.0:
+            if (
+                self.airflow_opening_area_m2 != 0.0
+                or self.airflow_open_fraction != 0.0
+                or self.airflow_model != "none"
+                or self.airflow_opening_height_m != 0.0
+                or self.airflow_discharge_coefficient != 0.0
+                or self.airflow_assumed_velocity_m_s != 0.0
+            ):
                 raise ValueError(
                     "exterior surface airflow openings belong to Opening records"
                 )
@@ -110,10 +127,39 @@ class Surface(CanonicalModel):
                 raise ValueError("interzone surfaces cannot name an external boundary")
             if self.airflow_opening_area_m2 > self.area_m2:
                 raise ValueError("airflow_opening_area_m2 cannot exceed surface area")
-            if self.airflow_opening_area_m2 == 0.0 and self.airflow_open_fraction != 0.0:
-                raise ValueError(
-                    "airflow_open_fraction requires a positive airflow opening area"
-                )
+            if self.airflow_opening_area_m2 == 0.0:
+                if (
+                    self.airflow_open_fraction != 0.0
+                    or self.airflow_model != "none"
+                    or self.airflow_opening_height_m != 0.0
+                    or self.airflow_discharge_coefficient != 0.0
+                    or self.airflow_assumed_velocity_m_s != 0.0
+                ):
+                    raise ValueError(
+                        "interzone airflow parameters require a positive opening area"
+                    )
+            else:
+                if self.airflow_model == "none":
+                    raise ValueError(
+                        "positive interzone airflow opening area requires a model"
+                    )
+                if self.airflow_discharge_coefficient <= 0.0:
+                    raise ValueError(
+                        "interzone airflow requires positive discharge coefficient"
+                    )
+                if self.airflow_model == "two_opening_buoyancy":
+                    if self.airflow_opening_height_m <= 0.0:
+                        raise ValueError(
+                            "two_opening_buoyancy requires positive opening height"
+                        )
+                    if self.airflow_assumed_velocity_m_s != 0.0:
+                        raise ValueError(
+                            "two_opening_buoyancy cannot prescribe a mixing velocity"
+                        )
+                elif self.airflow_assumed_velocity_m_s <= 0.0:
+                    raise ValueError(
+                        "prescribed_velocity requires positive assumed velocity"
+                    )
         if self.boundary_type == "interzone" and self.openings:
             raise ValueError("version 1 interzone surfaces cannot contain openings")
         if sum(opening.area_m2 for opening in self.openings) > self.area_m2:

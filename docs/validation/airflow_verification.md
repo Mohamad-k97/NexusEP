@@ -14,9 +14,10 @@ NexusEP currently represents outdoor infiltration, fixed mechanical
 ventilation, and window airflow as balanced outdoor mixing. Each non-zero
 outdoor exchange is emitted as two traceable paths: outdoor-to-zone supply and
 zone-to-outdoor exhaust. Interzone exchange is a symmetric pair with the same
-prescribed volumetric flow in each direction. A constant air density of
-1.2 kg/m³ is used only to express the volumetric residual as kg/s; density is
-not solved by an airflow network.
+flow in each direction. Prescribed paths retain the 1.2 kg/m³ diagnostic
+convention. The vertical two-opening model derives dry-air density from zone
+temperature and timestep atmospheric pressure and reports equal opposing mass
+flow; it does not solve zone pressures.
 
 For a closed set of well-mixed zones, the building CO₂ step now solves all
 concentrations simultaneously by backward Euler:
@@ -44,6 +45,8 @@ Each test declares `VALIDATION_CATEGORY = "verification"`.
 | Deliberate supply/exhaust mismatch | Residual is detected and converted to kg/s | `rho = 1.2 kg/m³` diagnostic convention |
 | AIRNET Appendix B.7.1 fixed-flow subset | The imposed 1.0 kg/s maps to 3000 m³/h at the diagnostic density; pressure drop remains unsolved | exact unit conversion only |
 | Two-zone equal exchange | Reciprocal directed paths and zero net flow | `1e-9 m³/h` |
+| NIST two-opening equation 69 | Calculated mass flow equals the published centered-neutral-plane equation | `1e-12` relative |
+| Equal-temperature and reversed-temperature doorway | Equal temperature gives zero buoyancy flow; swapping zone temperatures preserves exchange magnitude | exact zero / `1e-12` relative |
 | Two-zone CO₂, unequal volumes | High zone decreases, low zone increases, `sum(V*C)` is conserved | `1e-9 ppm·m³` absolute |
 | CO₂ timestep convergence | Backward-Euler result approaches the closed-form exchange solution monotonically | Finest tested step `0.25 min`, west-zone error `< 0.4 ppm` after one hour |
 | Closed window | Exactly zero window flow | exact |
@@ -58,7 +61,7 @@ Command:
 uv run pytest -q tests/unit/test_airflow_analytical.py
 ```
 
-Current result: **11 passed**.
+Current result: **13 passed**.
 
 ## Scope and gates
 
@@ -66,12 +69,15 @@ Current result: **11 passed**.
   solved supply and exhaust paths.
 - The window model uses opening area, local wind speed, and façade alignment,
   with a per-window safety cap. It receives no indoor temperature or zone
-  pressure, so it cannot represent buoyancy direction.
-- Interzone opening flow is prescribed symmetric mixing. It cannot represent
-  a neutral pressure level or unequal two-way doorway streams.
+  pressure. Vertical internal openings can additionally use the symmetric
+  centered-neutral-plane NIST two-opening buoyancy equation.
+- Interzone exchange is symmetric. Vertical openings may be temperature-driven;
+  prescribed compatibility paths remain explicit. Neither can represent a
+  displaced neutral pressure level or unequal two-way doorway streams.
 - CO₂ is one well-mixed concentration per zone. The physical test range stays
   above the model's 300 ppm lower bound; activating that defensive bound can
   break a pure conservation comparison and must be reported.
-- Pressure-, stack-, and wind-pressure empirical claims remain blocked until a
-  defensible pressure-network solver, boundary-pressure contract, and matched
+- General pressure-, stack-, horizontal-opening, and wind-pressure empirical
+  claims remain blocked until a defensible pressure-network solver,
+  boundary-pressure contract, and matched
   comparison cases exist.

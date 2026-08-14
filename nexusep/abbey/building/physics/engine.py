@@ -736,6 +736,7 @@ def run_building_physics_step(
                         weather_state=weather_state,
                         airflow_control_inputs=airflow_control_inputs,
                         window_boundary_result=window_boundary_result,
+                        thermal_state=thermal_state,
                     )
 
                 else:

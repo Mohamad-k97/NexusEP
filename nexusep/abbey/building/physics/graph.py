@@ -31,6 +31,11 @@ VALID_BOUNDARY_CONNECTION_TYPES = {
     "outside_boundary",
 }
 
+VALID_INTERZONE_AIRFLOW_MODELS = {
+    "prescribed_velocity",
+    "two_opening_buoyancy",
+}
+
 
 @dataclass
 class OutsideBoundaryNode:
@@ -65,6 +70,9 @@ class ZoneConnection:
     
     # Airflow opening properties for doors / interzone openings
     max_opening_area_m2: Optional[float] = None
+    airflow_model: str = "prescribed_velocity"
+    opening_height_m: Optional[float] = None
+    assumed_mixing_air_speed_m_s: float = 0.10
     discharge_coefficient: float = 0.6
     base_airflow_m3_h: float = 0.0
     
@@ -115,8 +123,28 @@ class ZoneConnection:
             )
 
         self.open_fraction = clamp_fraction(self.open_fraction)
-        
+
+        self.airflow_model = str(self.airflow_model).strip().lower()
+        if self.airflow_model not in VALID_INTERZONE_AIRFLOW_MODELS:
+            raise ValueError(
+                "ZoneConnection '{}' has unsupported airflow_model '{}'. "
+                "Valid models are {}.".format(
+                    self.connection_id,
+                    self.airflow_model,
+                    sorted(VALID_INTERZONE_AIRFLOW_MODELS),
+                )
+            )
+
         self.discharge_coefficient = clamp_fraction(self.discharge_coefficient)
+
+        self.assumed_mixing_air_speed_m_s = float(
+            self.assumed_mixing_air_speed_m_s
+        )
+        if self.assumed_mixing_air_speed_m_s < 0.0:
+            raise ValueError(
+                "ZoneConnection '{}' has negative assumed mixing air speed."
+                .format(self.connection_id)
+            )
 
         self.base_airflow_m3_h = float(self.base_airflow_m3_h)
 
@@ -140,7 +168,25 @@ class ZoneConnection:
         if self.is_openable and self.max_opening_area_m2 is None:
             if self.area_m2 is not None:
                 self.max_opening_area_m2 = self.area_m2
-                
+
+        if self.opening_height_m is not None:
+            self.opening_height_m = float(self.opening_height_m)
+            if self.opening_height_m <= 0.0:
+                raise ValueError(
+                    "ZoneConnection '{}' must have positive opening_height_m."
+                    .format(self.connection_id)
+                )
+
+        if (
+            self.is_openable
+            and self.airflow_model == "two_opening_buoyancy"
+            and self.opening_height_m is None
+        ):
+            raise ValueError(
+                "ZoneConnection '{}' uses two_opening_buoyancy and requires "
+                "opening_height_m.".format(self.connection_id)
+            )
+
         self.partition_sound_reduction_db = float(
             self.partition_sound_reduction_db
         )

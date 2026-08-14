@@ -37,7 +37,7 @@ AIRFLOW_TOPOLOGY_SOURCE = "BuildingPhysicsGraph"
 AIRFLOW_PARAMETER_SOURCE = "ZoneModel"
 
 AIRFLOW_WINDOW_MODEL = "wind_orientation_opening_approximation"
-AIRFLOW_DOOR_MODEL = "interzone_mixing_approximation"
+AIRFLOW_DOOR_MODEL = "typed_interzone_opening_model"
 AIRFLOW_MECHANICAL_MODEL = "fixed_flow_input"
 
 CO2_STATE_VARIABLE = "co2_ppm"
@@ -76,6 +76,17 @@ DEFAULT_INTERZONE_DISCHARGE_COEFFICIENT = 0.60
 DEFAULT_INTERZONE_MAX_OPENING_AREA_M2 = 0.0
 DEFAULT_INTERZONE_MIXING_AIR_SPEED_M_S = 0.10
 DEFAULT_INTERZONE_BASE_AIRFLOW_M3_H = 0.0
+
+INTERZONE_AIRFLOW_MODEL_PRESCRIBED_VELOCITY = "prescribed_velocity"
+INTERZONE_AIRFLOW_MODEL_TWO_OPENING_BUOYANCY = "two_opening_buoyancy"
+VALID_INTERZONE_AIRFLOW_MODELS = {
+    INTERZONE_AIRFLOW_MODEL_PRESCRIBED_VELOCITY,
+    INTERZONE_AIRFLOW_MODEL_TWO_OPENING_BUOYANCY,
+}
+INTERZONE_TWO_OPENING_SOURCE = "nist_contam_two_opening_buoyancy"
+DRY_AIR_GAS_CONSTANT_J_KG_K = 287.05
+STANDARD_GRAVITY_M_S2 = 9.80665
+DEFAULT_ATMOSPHERIC_PRESSURE_PA = 101325.0
 
 INTERZONE_AIRFLOW_SOURCE_BASE = "base_interzone_airflow"
 INTERZONE_AIRFLOW_SOURCE_DOOR_OPENING = "door_opening"
@@ -1418,151 +1429,198 @@ class BuildingOutdoorAirflowResult:
             },
         }
     
+def dry_air_density_kg_m3(
+    air_temperature_c: float,
+    atmospheric_pressure_pa: float,
+) -> float:
+    """Return ideal dry-air density for the large-opening calculation."""
+
+    temperature_k = float(air_temperature_c) + 273.15
+    pressure_pa = float(atmospheric_pressure_pa)
+    if temperature_k <= 0.0:
+        raise ValueError("air_temperature_c must be above absolute zero.")
+    if pressure_pa <= 0.0:
+        raise ValueError("atmospheric_pressure_pa must be positive.")
+    return pressure_pa / (DRY_AIR_GAS_CONSTANT_J_KG_K * temperature_k)
+
+
+def two_opening_buoyancy_exchange_m3_s(
+    *,
+    opening_area_m2: float,
+    opening_height_m: float,
+    discharge_coefficient: float,
+    zone_a_air_density_kg_m3: float,
+    zone_b_air_density_kg_m3: float,
+) -> float:
+    """NIST CONTAM two-opening exchange (TN 1887r1, equation 69).
+
+    The equation assumes a vertical opening, uniform temperature in each zone,
+    no other airflow paths, equal opposing mass flows, and a neutral plane at
+    mid-height. It is a reduced-order buoyancy model, not a pressure solve.
+    """
+
+    area_m2 = float(opening_area_m2)
+    height_m = float(opening_height_m)
+    coefficient = float(discharge_coefficient)
+    density_a = float(zone_a_air_density_kg_m3)
+    density_b = float(zone_b_air_density_kg_m3)
+    if area_m2 < 0.0 or height_m < 0.0:
+        raise ValueError("opening area and height cannot be negative.")
+    if not 0.0 <= coefficient <= 1.0:
+        raise ValueError("discharge_coefficient must be within [0, 1].")
+    if density_a <= 0.0 or density_b <= 0.0:
+        raise ValueError("zone air densities must be positive.")
+    if area_m2 == 0.0 or height_m == 0.0 or coefficient == 0.0:
+        return 0.0
+
+    reference_density = 0.5 * (density_a + density_b)
+    density_difference = abs(density_a - density_b)
+    opening_width_m = area_m2 / height_m
+    mass_flow_kg_s = (
+        coefficient
+        / 3.0
+        * opening_width_m
+        * math.sqrt(
+            reference_density
+            * STANDARD_GRAVITY_M_S2
+            * density_difference
+            * height_m**3
+        )
+    )
+    return mass_flow_kg_s / reference_density
+
+
 @dataclass
 class InterzoneAirflowLink:
-    """
-    Symmetric interzone airflow/mixing link.
-
-    This is not a pressure-network result.
-
-    Phase 5.7 approximation:
-
-        flow_ab_m3_h = base_airflow_m3_h + opening_fraction * max_flow_m3_h
-
-    The same mixing flow is applied both ways for CO2 transport:
-
-        A loses to B and B gains from A
-        B loses to A and A gains from B
-
-    This conserves air approximately for the simplified model.
-    """
+    """Symmetric interzone exchange with an explicit physical model."""
 
     link_id: str
     zone_connection_id: str
-
     zone_a_id: str
     zone_b_id: str
-
     connection_type: str = "generic_interzone"
-
     base_airflow_m3_h: float = DEFAULT_INTERZONE_BASE_AIRFLOW_M3_H
-
     max_opening_area_m2: float = DEFAULT_INTERZONE_MAX_OPENING_AREA_M2
+    airflow_model: str = INTERZONE_AIRFLOW_MODEL_PRESCRIBED_VELOCITY
+    opening_height_m: float = 0.0
     discharge_coefficient: float = DEFAULT_INTERZONE_DISCHARGE_COEFFICIENT
     opening_fraction: float = DEFAULT_DOOR_OPENING_FRACTION
-
+    zone_a_air_temperature_c: float = 20.0
+    zone_b_air_temperature_c: float = 20.0
+    atmospheric_pressure_pa: float = DEFAULT_ATMOSPHERIC_PRESSURE_PA
+    zone_a_air_density_kg_m3: float = 0.0
+    zone_b_air_density_kg_m3: float = 0.0
+    reference_air_density_kg_m3: float = 0.0
     assumed_mixing_air_speed_m_s: float = DEFAULT_INTERZONE_MIXING_AIR_SPEED_M_S
-
     max_flow_m3_h: float = 0.0
     mixing_flow_m3_h: float = 0.0
-
+    mixing_mass_flow_kg_s: float = 0.0
     source: str = INTERZONE_AIRFLOW_MIXING_MODE
 
     def __post_init__(self) -> None:
-        if not self.link_id:
-            raise ValueError("InterzoneAirflowLink.link_id cannot be empty.")
-
-        if not self.zone_connection_id:
-            raise ValueError(
-                "InterzoneAirflowLink.zone_connection_id cannot be empty."
-            )
-
-        if not self.zone_a_id:
-            raise ValueError("InterzoneAirflowLink.zone_a_id cannot be empty.")
-
-        if not self.zone_b_id:
-            raise ValueError("InterzoneAirflowLink.zone_b_id cannot be empty.")
-
+        if not self.link_id or not self.zone_connection_id:
+            raise ValueError("Interzone airflow IDs cannot be empty.")
+        if not self.zone_a_id or not self.zone_b_id:
+            raise ValueError("Interzone airflow zone IDs cannot be empty.")
         if self.zone_a_id == self.zone_b_id:
-            raise ValueError(
-                "InterzoneAirflowLink cannot connect a zone to itself: "
-                + self.zone_a_id
-            )
+            raise ValueError("Interzone airflow cannot connect a zone to itself.")
 
         self.base_airflow_m3_h = _non_negative_float(
-            self.base_airflow_m3_h,
-            "base_airflow_m3_h",
-            self.link_id,
+            self.base_airflow_m3_h, "base_airflow_m3_h", self.link_id
         )
-
         self.max_opening_area_m2 = _non_negative_float(
-            self.max_opening_area_m2,
-            "max_opening_area_m2",
-            self.link_id,
+            self.max_opening_area_m2, "max_opening_area_m2", self.link_id
         )
-
+        self.airflow_model = str(self.airflow_model).strip().lower()
+        if self.airflow_model not in VALID_INTERZONE_AIRFLOW_MODELS:
+            raise ValueError("Unsupported interzone airflow model " + self.airflow_model)
+        self.opening_height_m = _non_negative_float(
+            self.opening_height_m, "opening_height_m", self.link_id
+        )
         self.discharge_coefficient = _clamp_unit_interval(
             self.discharge_coefficient
         )
-
-        self.opening_fraction = _clamp_unit_interval(
-            self.opening_fraction
-        )
-
+        self.opening_fraction = _clamp_unit_interval(self.opening_fraction)
         self.assumed_mixing_air_speed_m_s = _non_negative_float(
             self.assumed_mixing_air_speed_m_s,
             "assumed_mixing_air_speed_m_s",
             self.link_id,
         )
-
-        if self.max_flow_m3_h <= 0.0:
-            self.max_flow_m3_h = (
-                self.discharge_coefficient
-                * self.max_opening_area_m2
-                * self.assumed_mixing_air_speed_m_s
-                * 3600.0
-            )
-
-        self.max_flow_m3_h = _non_negative_float(
-            self.max_flow_m3_h,
-            "max_flow_m3_h",
-            self.link_id,
+        self.zone_a_air_temperature_c = float(self.zone_a_air_temperature_c)
+        self.zone_b_air_temperature_c = float(self.zone_b_air_temperature_c)
+        self.atmospheric_pressure_pa = float(self.atmospheric_pressure_pa)
+        self.zone_a_air_density_kg_m3 = dry_air_density_kg_m3(
+            self.zone_a_air_temperature_c, self.atmospheric_pressure_pa
+        )
+        self.zone_b_air_density_kg_m3 = dry_air_density_kg_m3(
+            self.zone_b_air_temperature_c, self.atmospheric_pressure_pa
+        )
+        self.reference_air_density_kg_m3 = 0.5 * (
+            self.zone_a_air_density_kg_m3 + self.zone_b_air_density_kg_m3
         )
 
+        if self.max_flow_m3_h <= 0.0:
+            if self.airflow_model == INTERZONE_AIRFLOW_MODEL_TWO_OPENING_BUOYANCY:
+                if self.max_opening_area_m2 > 0.0 and self.opening_height_m <= 0.0:
+                    raise ValueError(
+                        "two_opening_buoyancy requires positive opening_height_m."
+                    )
+                self.max_flow_m3_h = two_opening_buoyancy_exchange_m3_s(
+                    opening_area_m2=self.max_opening_area_m2,
+                    opening_height_m=self.opening_height_m,
+                    discharge_coefficient=self.discharge_coefficient,
+                    zone_a_air_density_kg_m3=self.zone_a_air_density_kg_m3,
+                    zone_b_air_density_kg_m3=self.zone_b_air_density_kg_m3,
+                ) * 3600.0
+            else:
+                self.max_flow_m3_h = (
+                    self.discharge_coefficient
+                    * self.max_opening_area_m2
+                    * self.assumed_mixing_air_speed_m_s
+                    * 3600.0
+                )
+        self.max_flow_m3_h = _non_negative_float(
+            self.max_flow_m3_h, "max_flow_m3_h", self.link_id
+        )
         if self.mixing_flow_m3_h <= 0.0:
             self.mixing_flow_m3_h = (
                 self.base_airflow_m3_h
                 + self.opening_fraction * self.max_flow_m3_h
             )
-
         self.mixing_flow_m3_h = _non_negative_float(
-            self.mixing_flow_m3_h,
-            "mixing_flow_m3_h",
-            self.link_id,
+            self.mixing_flow_m3_h, "mixing_flow_m3_h", self.link_id
         )
+        if self.mixing_mass_flow_kg_s <= 0.0:
+            self.mixing_mass_flow_kg_s = (
+                self.mixing_flow_m3_s() * self.reference_air_density_kg_m3
+            )
+        self.mixing_mass_flow_kg_s = _non_negative_float(
+            self.mixing_mass_flow_kg_s, "mixing_mass_flow_kg_s", self.link_id
+        )
+        if self.airflow_model == INTERZONE_AIRFLOW_MODEL_TWO_OPENING_BUOYANCY:
+            self.source = INTERZONE_TWO_OPENING_SOURCE
 
     def mixing_flow_m3_s(self) -> float:
         return self.mixing_flow_m3_h / 3600.0
 
     def active_sources(self) -> List[str]:
         sources = []
-
         if self.base_airflow_m3_h > 0.0:
             sources.append(INTERZONE_AIRFLOW_SOURCE_BASE)
-
         if self.opening_fraction > 0.0 and self.max_flow_m3_h > 0.0:
             sources.append(INTERZONE_AIRFLOW_SOURCE_DOOR_OPENING)
-
         return sources
 
     def other_zone_id(self, zone_id: str) -> str:
         if zone_id == self.zone_a_id:
             return self.zone_b_id
-
         if zone_id == self.zone_b_id:
             return self.zone_a_id
-
-        raise ValueError(
-            "Zone "
-            + zone_id
-            + " is not connected by interzone link "
-            + self.link_id
-        )
+        raise ValueError("Zone " + zone_id + " is not connected by " + self.link_id)
 
     def copy(self, **updates: Any) -> "InterzoneAirflowLink":
         if not updates:
             return copy.deepcopy(self)
-
         return replace(self, **updates)
 
     def to_dict(self) -> Dict[str, Any]:
@@ -1574,12 +1632,21 @@ class InterzoneAirflowLink:
             "connection_type": self.connection_type,
             "base_airflow_m3_h": self.base_airflow_m3_h,
             "max_opening_area_m2": self.max_opening_area_m2,
+            "airflow_model": self.airflow_model,
+            "opening_height_m": self.opening_height_m,
             "discharge_coefficient": self.discharge_coefficient,
             "opening_fraction": self.opening_fraction,
+            "zone_a_air_temperature_c": self.zone_a_air_temperature_c,
+            "zone_b_air_temperature_c": self.zone_b_air_temperature_c,
+            "atmospheric_pressure_pa": self.atmospheric_pressure_pa,
+            "zone_a_air_density_kg_m3": self.zone_a_air_density_kg_m3,
+            "zone_b_air_density_kg_m3": self.zone_b_air_density_kg_m3,
+            "reference_air_density_kg_m3": self.reference_air_density_kg_m3,
             "assumed_mixing_air_speed_m_s": self.assumed_mixing_air_speed_m_s,
             "max_flow_m3_h": self.max_flow_m3_h,
             "mixing_flow_m3_h": self.mixing_flow_m3_h,
             "mixing_flow_m3_s": self.mixing_flow_m3_s(),
+            "mixing_mass_flow_kg_s": self.mixing_mass_flow_kg_s,
             "active_sources": self.active_sources(),
             "source": self.source,
         }
@@ -3466,6 +3533,7 @@ def calculate_building_airflow_network(
     weather_state: Any,
     airflow_control_inputs: Optional[BuildingAirflowControlInputs] = None,
     window_boundary_result: Any = None,
+    thermal_state: Any = None,
 ) -> BuildingAirflowNetwork:
     """
     Full Phase 5.8 airflow network calculation.
@@ -3506,6 +3574,12 @@ def calculate_building_airflow_network(
     interzone_airflow_result = calculate_building_interzone_airflows(
         physics_graph=physics_graph,
         airflow_control_inputs=airflow_control_inputs,
+        thermal_state=thermal_state,
+        atmospheric_pressure_pa=_get_attr_or_default(
+            weather_state,
+            "atmospheric_pressure_pa",
+            DEFAULT_ATMOSPHERIC_PRESSURE_PA,
+        ) or DEFAULT_ATMOSPHERIC_PRESSURE_PA,
     )
 
     return assemble_building_airflow_network(
@@ -3517,9 +3591,11 @@ def calculate_building_airflow_network(
 def calculate_interzone_airflow_link(
     zone_connection: Any,
     door_opening_input: DoorOpeningInput,
+    thermal_state: Any = None,
+    atmospheric_pressure_pa: float = DEFAULT_ATMOSPHERIC_PRESSURE_PA,
 ) -> InterzoneAirflowLink:
     """
-    Calculate simplified symmetric interzone airflow link.
+    Calculate a symmetric interzone exchange using the connection's model.
     """
 
     if zone_connection is None:
@@ -3575,6 +3651,35 @@ def calculate_interzone_airflow_link(
         DEFAULT_INTERZONE_DISCHARGE_COEFFICIENT,
     )
 
+    airflow_model = _get_attr_or_default(
+        zone_connection,
+        "airflow_model",
+        INTERZONE_AIRFLOW_MODEL_PRESCRIBED_VELOCITY,
+    )
+    opening_height_m = _get_attr_or_default(
+        zone_connection,
+        "opening_height_m",
+        0.0,
+    ) or 0.0
+    assumed_mixing_air_speed_m_s = _get_attr_or_default(
+        zone_connection,
+        "assumed_mixing_air_speed_m_s",
+        DEFAULT_INTERZONE_MIXING_AIR_SPEED_M_S,
+    )
+    zone_a_air_temperature_c = 20.0
+    zone_b_air_temperature_c = 20.0
+    if airflow_model == INTERZONE_AIRFLOW_MODEL_TWO_OPENING_BUOYANCY:
+        if thermal_state is None or not hasattr(thermal_state, "get_zone_state"):
+            raise ValueError(
+                "two_opening_buoyancy requires a BuildingThermalState input."
+            )
+        zone_a_air_temperature_c = float(
+            thermal_state.get_zone_state(zone_a_id).air_temperature_c
+        )
+        zone_b_air_temperature_c = float(
+            thermal_state.get_zone_state(zone_b_id).air_temperature_c
+        )
+
     return InterzoneAirflowLink(
         link_id=zone_connection_id,
         zone_connection_id=zone_connection_id,
@@ -3583,9 +3688,14 @@ def calculate_interzone_airflow_link(
         connection_type=connection_type,
         base_airflow_m3_h=base_airflow_m3_h,
         max_opening_area_m2=max_opening_area_m2,
+        airflow_model=airflow_model,
+        opening_height_m=opening_height_m,
         discharge_coefficient=discharge_coefficient,
         opening_fraction=door_opening_input.opening_fraction,
-        assumed_mixing_air_speed_m_s=DEFAULT_INTERZONE_MIXING_AIR_SPEED_M_S,
+        zone_a_air_temperature_c=zone_a_air_temperature_c,
+        zone_b_air_temperature_c=zone_b_air_temperature_c,
+        atmospheric_pressure_pa=atmospheric_pressure_pa,
+        assumed_mixing_air_speed_m_s=assumed_mixing_air_speed_m_s,
         source=INTERZONE_AIRFLOW_MIXING_MODE,
     )
 
@@ -3607,7 +3717,7 @@ def make_interzone_airflow_record_from_link(
         zone_b_id=link.zone_b_id,
         flow_a_to_b_m3_h=link.mixing_flow_m3_h,
         flow_b_to_a_m3_h=link.mixing_flow_m3_h,
-        source=INTERZONE_AIRFLOW_MIXING_MODE,
+        source=link.source,
     )
 
 def make_static_door_opening_input_from_zone_connection(
@@ -3665,6 +3775,8 @@ def make_static_door_opening_input_from_zone_connection(
 def calculate_building_interzone_airflows(
     physics_graph: Any,
     airflow_control_inputs: BuildingAirflowControlInputs,
+    thermal_state: Any = None,
+    atmospheric_pressure_pa: float = DEFAULT_ATMOSPHERIC_PRESSURE_PA,
 ) -> BuildingInterzoneAirflowResult:
     """
     Calculate symmetric interzone airflow/mixing through all ZoneConnections.
@@ -3704,6 +3816,8 @@ def calculate_building_interzone_airflows(
         link = calculate_interzone_airflow_link(
             zone_connection=zone_connection,
             door_opening_input=door_opening,
+            thermal_state=thermal_state,
+            atmospheric_pressure_pa=atmospheric_pressure_pa,
         )
 
         record = make_interzone_airflow_record_from_link(link)
