@@ -49,6 +49,12 @@ Validation category: **verification** (scope governance only).
 - `results/annex71_large_opening_runtime_error_v5.md` records the protocol-1.4
   vertical two-opening correction, measured attic-door mapping, runtime,
   deterministic repeat, conservation, and the still-rejected temperature gate.
+- [Annex 71 boundary v6](results/annex71_boundary_runtime_error_v6.md),
+  [sky-boundary v7](results/annex71_sky_boundary_runtime_error_v7.md), and
+  [measured-plane v8](results/annex71_measured_plane_runtime_error_v8.md)
+  preserve the source-plan ceiling, separate supply/exhaust, IR-sky, and
+  cardinal façade-forcing corrections. V8 remains rejected and locates the
+  next issue in the reduced RC model rather than a discarded source channel.
 - [ATUS aggregate sleep alternative](results/atus_aggregate_sleep_alternative_v1.md)
   compares repaired object-runner output with the survey aggregate and records
   the remaining duration and distribution gaps.

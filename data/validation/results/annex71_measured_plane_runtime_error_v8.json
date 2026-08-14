@@ -1,0 +1,44 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "annex71-measured-plane-runtime-error-v8",
+  "title": "Annex 71 measured-plane runtime and error diagnostic",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-14",
+  "targeted_models": [
+    "THERMAL-1"
+  ],
+  "source_ids": [
+    "iea-ebc-annex71-twin-houses-2020"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_annex71_measured_plane_runtime_error.py",
+      "sha256": "5f392143339b38115bd59649960d75786485bc3834995853c7d7e9aed5cb3ab4",
+      "command": "uv run python scripts/validation_data/run_annex71_measured_plane_runtime_error.py"
+    }
+  ],
+  "report_path": "docs/validation/results/annex71_measured_plane_runtime_error_v8.md",
+  "result_artifacts": [
+    {
+      "file_id": "annex71-measured-plane-runtime-error-v8",
+      "path": "data/validation/fixtures/annex71-twin-houses/measured-plane-runtime-error-v8.json",
+      "sha256": "50f261c264f650b7357fb9c093285dc200a259d24a4d032c7ebd94a506d34199",
+      "byte_size": 24325
+    }
+  ],
+  "numerical_tolerances": {
+    "pooled_temperature_rmse_c": "less than or equal to 1.0 degC",
+    "pooled_absolute_temperature_bias_c": "less than or equal to 0.5 degC",
+    "per_air_body_temperature_rmse_c": "less than or equal to 1.5 degC",
+    "thermal_balance_residual_w": "less than or equal to 1e-7 W",
+    "missing_scored_inputs": "zero rows"
+  },
+  "known_deviations": [
+    "This is a protocol-1.6 post-unsealing corrected diagnostic, not pristine blind-validation evidence.",
+    "Measured cardinal-plane forcing changes Extended RMSE only from 2.483 to 2.489 degC and bias from +2.131 to +2.128 degC; it does not resolve the rejection.",
+    "Attic RMSE passes at 1.454 degC; ground, kitchen, and sleeping airbodies fail their thresholds.",
+    "Four missing outdoor-CO2 rows independently fail the frozen no-missing-input check.",
+    "Thermal conservation, no-fallback, and deterministic-repeat checks pass.",
+    "The measured full run took 160.939 seconds for 4,896 ten-minute timesteps."
+  ]
+}

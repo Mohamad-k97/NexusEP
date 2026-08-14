@@ -32,6 +32,8 @@ respondent-level alternative passes in its narrower schedule-prior scope.
 | Mechanical supply heat misclassified as a generic gain | The Annex mapper converted supply-air heat to a generic source. The generic bridge split it 70/30 between air and mass, although ventilation heat acts directly on the air node. | Add a typed mechanical supply-temperature command and keep mechanical, infiltration, and window conductances distinct in the solver. | Regressions prove supply temperature applies only to mechanical airflow; infiltration remains at outdoor temperature. |
 | Heater radiant share discarded | The documented 70/30 heater split was sent through a control path that treated all delivered heat as convective. | Add typed heating/cooling convective fractions and construct explicit air/mass thermal gains. Preserve `1.0` as the compatibility default. | A 500 W, 70% convective command reaches the solver as exactly 350 W air and 150 W mass gain. |
 | Fixed vertical-door mixing and ignored attic-door state | Vertical internal openings used an implicit 0.10 m/s exchange and the Extended `n2_attic_door_pos` channel was discarded. | Add typed opening model/height/discharge/velocity fields; implement NIST TN 1887r1 equation 69 from current temperatures and pressure for vertical doors; map both measured door states. Keep the horizontal hatch on an explicit compatibility path because no pressure network or verified horizontal correlation exists. | The analytical equation, zero-temperature-difference case, reciprocity, and schema constraints pass. V5 lowers kitchen RMSE by 0.114 degC and maximum error by 0.783 degC without fitting, but the empirical gate remains rejected. |
+| Annex ceiling, ventilation, and radiative forcing loss | The full 81.69 m2 ceiling was assigned to one lower airbody, supply and exhaust were forced equal, native object weather dropped canonical sky temperature, and measured cardinal façade radiation was discarded. | Partition the ceiling by source-plan footprint, preserve distinct SUA/EHA enthalpy terms, add an opt-in opaque sol-air contract, pass measured IR sky temperature end-to-end, and prefer matching measured vertical-plane forcing. Unsupported array paths reject explicitly. | Contract and end-to-end regressions pass. V8 closes energy to 1.969e-9 W and is deterministic, but pooled RMSE 2.489 degC and bias +2.128 degC remain rejected; source-forcing repair is not confused with model validation. |
+| Duplicate solar-position evaluation | Canonical weather construction and the object adapter independently evaluated NREL SPA for the same immutable physical instant and inputs. | Cache scalar SPA results by UTC timestamp and numeric inputs; never key on ambiguous civil datetimes. | DST-fold tests pass. The 72-hour sample remains identical and falls from 12.630 s in v8 to 11.091 s while filling the cache and 5.465 s at steady state. |
 
 The regenerated Phase 2.16 parity report contains 181 exact matches, 4
 tolerance matches, 23 expected model differences, no missing features, no
@@ -43,13 +45,13 @@ larger tolerance.
 
 The Annex 71 diagnostic remains **blocked and rejected with alternative**.
 The former helper and legacy-effective results remain available for
-provenance. The v5 replacement maps four official air bodies, component
-properties, thermal bridges, measured cellar/weather forcing, blind/window/
-door schedules, graph-derived RC area, and typed vertical-opening exchange
-through the canonical object adapter. It is deterministic, uses no fallback,
-and conserves heat to 1.537e-9 W. The 4,896-step Extended run has pooled RMSE
-2.626 degC, bias +2.295 degC, MAE 2.337 degC, and maximum absolute error
-7.783 degC. Those
+provenance. The v8 replacement maps four official air bodies, component
+properties, thermal bridges, measured cellar/weather/sky/façade forcing,
+blind/window/door schedules, graph-derived RC area, typed vertical-opening
+exchange, and separate mechanical supply/exhaust through the canonical object
+adapter. It is deterministic, uses no fallback, and conserves heat to
+1.969e-9 W. The 4,896-step Extended run has pooled RMSE 2.489 degC, bias
++2.128 degC, MAE 2.175 degC, and maximum absolute error 7.474 degC. Those
 values fail the frozen thresholds, and four missing outdoor-CO2 rows
 independently fail input completeness. Post-unsealing amendments mean the
 result is not blind evidence.
@@ -62,12 +64,13 @@ calibration. A frozen cross-period structural diagnostic rejects one-hour
 source shifts, alternate heater splits, +/-2 degC initial mass states, and
 floor-area capacity allocation as material explanations. The official
 supplement exposed real roof-tilt, component-fabric, cellar, and blind mapping
-defects, which are now corrected without residual fitting. V5 shows that those
-repairs and the vertical-door correction do not remove the positive free-run bias. The largest errors occur in
+defects, which are now corrected without residual fitting. V8 shows that those
+repairs do not remove the positive free-run bias. The largest errors occur in
 the kitchen during roughly 1.8 kW heat pulses with the internal door open,
-while pooled RMSE grows from 1.525 degC in the first scored week to 3.466 degC
-in the last. The one-mass-node fabric representation and longer-timescale
-boundary/forcing uncertainty are now the strongest model-form limitations.
+while pooled RMSE grows from 1.472 degC in the first scored week to 3.276 degC
+in the last. Because v7/v8 consume the remaining measured boundary channels
+and barely change the residual, the one-mass-node fabric representation is now
+the strongest model-form limitation.
 
 The old ATUS aggregate alternative remains **blocked and rejected with
 alternative**. It was not tuned away. A separate official-microdata
@@ -102,6 +105,8 @@ uv run python scripts/validation_data/run_annex71_energy_path_audit.py
 uv run python scripts/validation_data/run_annex71_structural_diagnostics.py
 uv run python scripts/validation_data/run_annex71_physical_runtime_error.py
 uv run python scripts/validation_data/run_annex71_large_opening_runtime_error.py
+uv run python scripts/validation_data/run_annex71_sky_boundary_runtime_error.py
+uv run python scripts/validation_data/run_annex71_measured_plane_runtime_error.py
 uv run python scripts/validation_data/run_atus_population_validation.py
 uv run pytest -q
 ```

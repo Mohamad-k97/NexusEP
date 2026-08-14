@@ -157,6 +157,7 @@ def test_repository_registry_indexes_only_retrieved_or_explicitly_gated_sources(
         "data/validation/results/annex71_large_opening_runtime_error_v5.json",
         "data/validation/results/annex71_boundary_runtime_error_v6.json",
         "data/validation/results/annex71_sky_boundary_runtime_error_v7.json",
+        "data/validation/results/annex71_measured_plane_runtime_error_v8.json",
         "data/validation/results/atus_population_holdout_v1.json",
     }
 

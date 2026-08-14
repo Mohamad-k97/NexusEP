@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from functools import lru_cache
 
 import pandas as pd
@@ -124,6 +124,41 @@ def calculate_solar_day_events(
     )
 
 
+@lru_cache(maxsize=32768)
+def _spa_position_values(
+    utc_timestamp_seconds: float,
+    latitude_deg: float,
+    longitude_deg: float,
+    elevation_m: float,
+    atmospheric_pressure_pa: float,
+    outdoor_temperature_c: float,
+    delta_t_seconds: float,
+    atmospheric_refraction_deg: float,
+) -> tuple[float, float, float, float, float, float]:
+    """Cache SPA scalars by physical UTC instant, never civil datetime equality."""
+
+    timestamp = datetime.fromtimestamp(utc_timestamp_seconds, tz=UTC)
+    values = spa_python(
+        pd.DatetimeIndex([timestamp]),
+        latitude_deg,
+        longitude_deg,
+        altitude=elevation_m,
+        pressure=atmospheric_pressure_pa,
+        temperature=outdoor_temperature_c,
+        delta_t=delta_t_seconds,
+        atmos_refract=atmospheric_refraction_deg,
+        how="numpy",
+    ).iloc[0]
+    return (
+        float(values["zenith"]),
+        float(values["apparent_zenith"]),
+        float(values["elevation"]),
+        float(values["apparent_elevation"]),
+        float(values["azimuth"]) % 360.0,
+        float(values["equation_of_time"]),
+    )
+
+
 def calculate_solar_position(
     timestamp: datetime,
     *,
@@ -151,30 +186,38 @@ def calculate_solar_position(
     if not -180.0 <= longitude <= 180.0:
         raise ValueError("longitude_deg must be in [-180, 180]")
     pressure = _non_negative(atmospheric_pressure_pa, "atmospheric_pressure_pa")
+    utc_timestamp = timestamp.astimezone(UTC)
     if delta_t_seconds is None:
-        delta_t_seconds = _monthly_delta_t_seconds(timestamp.year, timestamp.month)
-    times = pd.DatetimeIndex([timestamp])
-    values = spa_python(
-        times,
+        delta_t_seconds = _monthly_delta_t_seconds(
+            utc_timestamp.year, utc_timestamp.month
+        )
+    (
+        zenith_deg,
+        apparent_zenith_deg,
+        elevation_deg,
+        apparent_elevation_deg,
+        azimuth_deg,
+        equation_of_time_minutes,
+    ) = _spa_position_values(
+        utc_timestamp.timestamp(),
         latitude,
         longitude,
-        altitude=float(elevation_m),
-        pressure=pressure,
-        temperature=float(outdoor_temperature_c),
-        delta_t=delta_t_seconds,
-        atmos_refract=float(atmospheric_refraction_deg),
-        how="numpy",
-    ).iloc[0]
+        float(elevation_m),
+        pressure,
+        float(outdoor_temperature_c),
+        float(delta_t_seconds),
+        float(atmospheric_refraction_deg),
+    )
     return SolarPosition(
         timestamp=timestamp,
         latitude_deg=latitude,
         longitude_deg=longitude,
-        zenith_deg=float(values["zenith"]),
-        apparent_zenith_deg=float(values["apparent_zenith"]),
-        elevation_deg=float(values["elevation"]),
-        apparent_elevation_deg=float(values["apparent_elevation"]),
-        azimuth_deg=float(values["azimuth"]) % 360.0,
-        equation_of_time_minutes=float(values["equation_of_time"]),
+        zenith_deg=zenith_deg,
+        apparent_zenith_deg=apparent_zenith_deg,
+        elevation_deg=elevation_deg,
+        apparent_elevation_deg=apparent_elevation_deg,
+        azimuth_deg=azimuth_deg,
+        equation_of_time_minutes=equation_of_time_minutes,
     )
 
 
