@@ -53,6 +53,10 @@ DT_MINUTES = 60.0
 AIR_DENSITY_KG_M3 = 1.204
 AIR_HEAT_CAPACITY_J_KG_K = 1005.0
 HEATER_CONVECTIVE_FRACTION = 0.70
+STEFAN_BOLTZMANN_W_M2_K4 = 5.670374419e-8
+EXTERIOR_SOLAR_ABSORPTANCE_FRACTION = 0.23
+EXTERIOR_LONGWAVE_EMISSIVITY_FRACTION = 0.90
+EXTERIOR_SURFACE_HEAT_TRANSFER_COEFFICIENT_W_M2_K = 25.0
 
 # Official air-body aggregation from the Annex 71 experimental specification.
 ZONE_ROOM_AREAS_M2: dict[str, dict[str, float]] = {
@@ -136,6 +140,7 @@ class Annex71ZoneObservation:
     internal_gain_w: float
     ventilation_supply_temperature_c: float
     ventilation_supply_flow_m3_s: float
+    ventilation_exhaust_flow_m3_s: float
 
 
 @dataclass(frozen=True)
@@ -149,6 +154,7 @@ class Annex71Interval:
     wind_direction_deg: float
     diffuse_horizontal_radiation_w_m2: float
     global_horizontal_radiation_w_m2: float
+    downwelling_longwave_radiation_w_m2: float | None
     rain: bool
     zones: tuple[Annex71ZoneObservation, ...]
     cellar_temperature_c: float = 10.0
@@ -392,6 +398,10 @@ def _zone_observations(
         internal = _sum_room_values(full1, rooms, ROOM_INTERNAL_GAIN_FIELD)
         if zone_id == "ground_airbody":
             flow_m3_h = _optional_finite(full1.get("n2_Vent_living_SUA_VFR"))
+            exhaust_flow_m3_h = sum(
+                _optional_finite(full1.get(f"n2_Vent_{room}_EHA_VFR"))
+                for room in ("bath", "dining")
+            )
             supply_temperature = _optional_finite(
                 full1.get("n2_Vent_living_SUA_AT"), temperature
             )
@@ -401,6 +411,10 @@ def _zone_observations(
                 for room in ("child1", "child2")
             ]
             flow_m3_h = sum(child_flows)
+            exhaust_flow_m3_h = sum(
+                _optional_finite(full1.get(f"n2_Vent_{room}_EHA_VFR"))
+                for room in ("child1", "child2")
+            )
             if flow_m3_h > 0.0:
                 supply_temperature = (
                     sum(
@@ -418,6 +432,7 @@ def _zone_observations(
                 supply_temperature = temperature
         else:
             flow_m3_h = 0.0
+            exhaust_flow_m3_h = 0.0
             supply_temperature = temperature
         observations.append(
             Annex71ZoneObservation(
@@ -428,6 +443,9 @@ def _zone_observations(
                 internal_gain_w=max(0.0, internal),
                 ventilation_supply_temperature_c=supply_temperature,
                 ventilation_supply_flow_m3_s=max(0.0, flow_m3_h) / 3600.0,
+                ventilation_exhaust_flow_m3_s=(
+                    max(0.0, exhaust_flow_m3_h) / 3600.0
+                ),
             )
         )
     return tuple(sorted(observations, key=lambda item: item.zone_id))
@@ -541,6 +559,13 @@ def load_annex71_intervals(
                 global_horizontal_radiation_w_m2=max(
                     0.0,
                     _finite(weather_row.get("Radiation_Global"), "Radiation_Global"),
+                ),
+                downwelling_longwave_radiation_w_m2=max(
+                    0.0,
+                    _finite(
+                        weather_row.get("RadiationIR_global"),
+                        "RadiationIR_global",
+                    ),
                 ),
                 rain=_optional_finite(weather_row.get("Rain_Normal")) > 0.0,
                 zones=_zone_observations(
@@ -693,6 +718,9 @@ def _surface(
     airflow_discharge_coefficient: float = 0.0,
     airflow_assumed_velocity_m_s: float = 0.0,
     thermal_bridge_conductance_w_k: float = 0.0,
+    exterior_solar_absorptance_fraction: float | None = None,
+    exterior_longwave_emissivity_fraction: float | None = None,
+    exterior_surface_heat_transfer_coefficient_w_m2_k: float | None = None,
     openings: Sequence[dict[str, Any]] = (),
 ) -> dict[str, Any]:
     return {
@@ -710,6 +738,11 @@ def _surface(
         "area_m2": area_m2,
         "thermal_transmittance_w_m2_k": u_value,
         "thermal_bridge_conductance_w_k": thermal_bridge_conductance_w_k,
+        "exterior_solar_absorptance_fraction": exterior_solar_absorptance_fraction,
+        "exterior_longwave_emissivity_fraction": exterior_longwave_emissivity_fraction,
+        "exterior_surface_heat_transfer_coefficient_w_m2_k": (
+            exterior_surface_heat_transfer_coefficient_w_m2_k
+        ),
         "heat_capacity_j_k": capacity_j_k,
         "azimuth_deg": azimuth_deg,
         "tilt_deg": tilt_deg,
@@ -910,6 +943,21 @@ def _published_exterior_surface(
         openings=openings,
         external_boundary_id=external_boundary_id,
         thermal_bridge_conductance_w_k=thermal_bridge_conductance_w_k,
+        exterior_solar_absorptance_fraction=(
+            EXTERIOR_SOLAR_ABSORPTANCE_FRACTION
+            if external_boundary_id == "outdoor_air"
+            else None
+        ),
+        exterior_longwave_emissivity_fraction=(
+            EXTERIOR_LONGWAVE_EMISSIVITY_FRACTION
+            if external_boundary_id == "outdoor_air"
+            else None
+        ),
+        exterior_surface_heat_transfer_coefficient_w_m2_k=(
+            EXTERIOR_SURFACE_HEAT_TRANSFER_COEFFICIENT_W_M2_K
+            if external_boundary_id == "outdoor_air"
+            else None
+        ),
     )
 
 
@@ -1172,19 +1220,41 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
             CONTAM_LARGE_OPENING_DISCHARGE_COEFFICIENT,
             0.0,
         ),
-        "attic_airbody": (
-            GROUND_CEILING_AREA_M2 - TRAP_DOOR_AREA_M2,
-            TRAP_DOOR_AREA_M2,
-            1.0,
-            0.0,
-            0.0,
-            "prescribed_velocity",
-            0.60,
-            0.10,
-        ),
     }
+
+    # The published 81.69 m2 ceiling is the sum of the three lower-airbody
+    # footprints, not the footprint of the aggregated ground airbody alone.
+    # Preserve that topology explicitly so every lower airbody exchanges heat
+    # with the attic through the ceiling physically above it.
+    lower_zone_ids = ("ground_airbody", "kitchen_airbody", "sleeping_airbody")
+
+    def add_ceiling_pair(lower_zone_id: str, upper_zone_id: str) -> None:
+        floor_area_m2 = sum(ZONE_ROOM_AREAS_M2[lower_zone_id].values())
+        opening_area_m2 = TRAP_DOOR_AREA_M2 if lower_zone_id == "ground_airbody" else 0.0
+        result.append(
+            _published_interzone_surface(
+                zone_id,
+                upper_zone_id if zone_id == lower_zone_id else lower_zone_id,
+                solid_area_m2=floor_area_m2 - opening_area_m2,
+                construction="ceiling",
+                azimuth_deg=180.0 if zone_id == lower_zone_id else 0.0,
+                airflow_opening_area_m2=opening_area_m2,
+                airflow_open_fraction=1.0 if opening_area_m2 else 0.0,
+                airflow_model="prescribed_velocity" if opening_area_m2 else "none",
+                airflow_discharge_coefficient=0.60 if opening_area_m2 else 0.0,
+                airflow_assumed_velocity_m_s=0.10 if opening_area_m2 else 0.0,
+                tilt_deg=0.0,
+                thermal_bridge_conductance_w_k=(
+                    GROUND_ATTIC_THERMAL_BRIDGE_CONDUCTANCE_W_K
+                    * floor_area_m2
+                    / GROUND_CEILING_AREA_M2
+                ),
+            )
+        )
+
     if zone_id == "ground_airbody":
-        for other_zone_id in ("attic_airbody", "kitchen_airbody", "sleeping_airbody"):
+        add_ceiling_pair("ground_airbody", "attic_airbody")
+        for other_zone_id in ("kitchen_airbody", "sleeping_airbody"):
             (
                 solid_area,
                 opening_area,
@@ -1200,9 +1270,7 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
                     zone_id,
                     other_zone_id,
                     solid_area_m2=solid_area,
-                    construction=(
-                        "ceiling" if other_zone_id == "attic_airbody" else "internal_partition"
-                    ),
+                    construction="internal_partition",
                     azimuth_deg=180.0,
                     airflow_opening_area_m2=opening_area,
                     airflow_open_fraction=opening_fraction,
@@ -1211,14 +1279,10 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
                     airflow_discharge_coefficient=discharge_coefficient,
                     airflow_assumed_velocity_m_s=assumed_velocity,
                     tilt_deg=tilt_deg,
-                    thermal_bridge_conductance_w_k=(
-                        GROUND_ATTIC_THERMAL_BRIDGE_CONDUCTANCE_W_K
-                        if other_zone_id == "attic_airbody"
-                        else 0.0
-                    ),
+                    thermal_bridge_conductance_w_k=0.0,
                 )
             )
-    else:
+    elif zone_id in ("kitchen_airbody", "sleeping_airbody"):
         (
             solid_area,
             opening_area,
@@ -1234,7 +1298,7 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
                 zone_id,
                 "ground_airbody",
                 solid_area_m2=solid_area,
-                construction=("ceiling" if zone_id == "attic_airbody" else "internal_partition"),
+                construction="internal_partition",
                 azimuth_deg=0.0,
                 airflow_opening_area_m2=opening_area,
                 airflow_open_fraction=opening_fraction,
@@ -1243,13 +1307,13 @@ def _published_component_surfaces(zone_id: str) -> list[dict[str, Any]]:
                 airflow_discharge_coefficient=discharge_coefficient,
                 airflow_assumed_velocity_m_s=assumed_velocity,
                 tilt_deg=tilt_deg,
-                thermal_bridge_conductance_w_k=(
-                    GROUND_ATTIC_THERMAL_BRIDGE_CONDUCTANCE_W_K
-                    if zone_id == "attic_airbody"
-                    else 0.0
-                ),
+                thermal_bridge_conductance_w_k=0.0,
             )
         )
+        add_ceiling_pair(zone_id, "attic_airbody")
+    else:
+        for lower_zone_id in lower_zone_ids:
+            add_ceiling_pair(lower_zone_id, "attic_airbody")
     return result
 
 
@@ -1346,7 +1410,17 @@ def _weather_state(
         "timestep_index": timestep_index,
         "timestamp": timestamp,
         "outdoor_temperature_c": record.outdoor_temperature_c,
-        "sky_temperature_c": record.outdoor_temperature_c,
+        "sky_temperature_c": (
+            (
+                record.downwelling_longwave_radiation_w_m2
+                / STEFAN_BOLTZMANN_W_M2_K4
+            )
+            ** 0.25
+            - 273.15
+            if record.downwelling_longwave_radiation_w_m2 is not None
+            and record.downwelling_longwave_radiation_w_m2 > 0.0
+            else record.outdoor_temperature_c
+        ),
         "relative_humidity_fraction": record.relative_humidity_fraction,
         "atmospheric_pressure_pa": record.atmospheric_pressure_pa,
         "outdoor_co2_ppm": record.outdoor_co2_ppm,
@@ -1386,7 +1460,11 @@ def build_canonical_scenario(
     }
     maximum_ventilation = {
         zone_id: max(
-            item.zone(zone_id).ventilation_supply_flow_m3_s for item in records
+            max(
+                item.zone(zone_id).ventilation_supply_flow_m3_s,
+                item.zone(zone_id).ventilation_exhaust_flow_m3_s,
+            )
+            for item in records
         )
         + 1.0e-6
         for zone_id in ZONE_VOLUMES_M3
@@ -1604,6 +1682,9 @@ def build_annex71_step_input(
                     observation.ventilation_supply_temperature_c
                     if observation.ventilation_supply_flow_m3_s > 0.0
                     else None
+                ),
+                ventilation_exhaust_volume_flow_m3_s=(
+                    observation.ventilation_exhaust_flow_m3_s
                 ),
                 lights_on=False,
                 lighting_power_w=0.0,

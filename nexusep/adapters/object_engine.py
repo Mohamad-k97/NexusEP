@@ -370,6 +370,15 @@ class ObjectEngineAdapter:
                     thermal_bridge_conductance_w_k=connection.get(
                         "thermal_bridge_conductance_w_k", 0.0
                     ),
+                    exterior_solar_absorptance_fraction=connection.get(
+                        "exterior_solar_absorptance_fraction"
+                    ),
+                    exterior_longwave_emissivity_fraction=connection.get(
+                        "exterior_longwave_emissivity_fraction"
+                    ),
+                    exterior_surface_heat_transfer_coefficient_w_m2_k=connection.get(
+                        "exterior_surface_heat_transfer_coefficient_w_m2_k"
+                    ),
                 )
             else:
                 boundary_connections[connection["connection_id"]] = BoundaryConnection(
@@ -525,6 +534,11 @@ class ObjectEngineAdapter:
                 ventilation_flow_m3_h=item.ventilation_volume_flow_m3_s * 3600.0,
                 ventilation_supply_temperature_c=(
                     item.ventilation_supply_temperature_c
+                ),
+                ventilation_exhaust_flow_m3_h=(
+                    item.ventilation_exhaust_volume_flow_m3_s * 3600.0
+                    if item.ventilation_exhaust_volume_flow_m3_s is not None
+                    else None
                 ),
                 lights_on=item.lights_on,
                 lighting_power_w=item.lighting_power_w,

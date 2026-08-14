@@ -698,6 +698,7 @@ class MechanicalVentilationInput:
 
     zone_id: str
     ventilation_flow_m3_h: float = 0.0
+    ventilation_exhaust_flow_m3_h: float | None = None
     source: str = "ZoneControlCommand"
 
     def __post_init__(self) -> None:
@@ -709,6 +710,19 @@ class MechanicalVentilationInput:
             "ventilation_flow_m3_h",
             self.zone_id,
         )
+        if self.ventilation_exhaust_flow_m3_h is not None:
+            self.ventilation_exhaust_flow_m3_h = _non_negative_float(
+                self.ventilation_exhaust_flow_m3_h,
+                "ventilation_exhaust_flow_m3_h",
+                self.zone_id,
+            )
+
+    def effective_exhaust_flow_m3_h(self) -> float:
+        """Return explicit exhaust flow, or balanced supply for legacy commands."""
+
+        if self.ventilation_exhaust_flow_m3_h is None:
+            return self.ventilation_flow_m3_h
+        return self.ventilation_exhaust_flow_m3_h
 
     def ventilation_flow_m3_s(self) -> float:
         return self.ventilation_flow_m3_h / 3600.0
@@ -727,6 +741,7 @@ class MechanicalVentilationInput:
             "zone_id": self.zone_id,
             "ventilation_flow_m3_h": self.ventilation_flow_m3_h,
             "ventilation_flow_m3_s": self.ventilation_flow_m3_s(),
+            "ventilation_exhaust_flow_m3_h": self.effective_exhaust_flow_m3_h(),
             "is_active": self.is_active(),
             "source": self.source,
         }
@@ -1183,6 +1198,7 @@ class ZoneOutdoorAirflowRecord:
 
     infiltration_flow_m3_h: float = 0.0
     mechanical_ventilation_flow_m3_h: float = 0.0
+    mechanical_exhaust_flow_m3_h: float | None = None
     window_airflow_m3_h: float = 0.0
 
     outdoor_supply_m3_h: float = 0.0
@@ -1208,6 +1224,13 @@ class ZoneOutdoorAirflowRecord:
             "mechanical_ventilation_flow_m3_h",
             self.zone_id,
         )
+        if self.mechanical_exhaust_flow_m3_h is None:
+            self.mechanical_exhaust_flow_m3_h = self.mechanical_ventilation_flow_m3_h
+        self.mechanical_exhaust_flow_m3_h = _non_negative_float(
+            self.mechanical_exhaust_flow_m3_h,
+            "mechanical_exhaust_flow_m3_h",
+            self.zone_id,
+        )
 
         self.window_airflow_m3_h = _non_negative_float(
             self.window_airflow_m3_h,
@@ -1229,10 +1252,18 @@ class ZoneOutdoorAirflowRecord:
         )
 
         if self.outdoor_supply_m3_h <= 0.0:
-            self.outdoor_supply_m3_h = self.mixing_exchange_m3_h
+            self.outdoor_supply_m3_h = (
+                self.infiltration_flow_m3_h
+                + self.mechanical_ventilation_flow_m3_h
+                + self.window_airflow_m3_h
+            )
 
         if self.outdoor_exhaust_m3_h <= 0.0:
-            self.outdoor_exhaust_m3_h = self.mixing_exchange_m3_h
+            self.outdoor_exhaust_m3_h = (
+                self.infiltration_flow_m3_h
+                + self.mechanical_exhaust_flow_m3_h
+                + self.window_airflow_m3_h
+            )
 
         self.outdoor_supply_m3_h = _non_negative_float(
             self.outdoor_supply_m3_h,
@@ -1319,6 +1350,7 @@ class ZoneOutdoorAirflowRecord:
             "zone_id": self.zone_id,
             "infiltration_flow_m3_h": self.infiltration_flow_m3_h,
             "mechanical_ventilation_flow_m3_h": self.mechanical_ventilation_flow_m3_h,
+            "mechanical_exhaust_flow_m3_h": self.mechanical_exhaust_flow_m3_h,
             "window_airflow_m3_h": self.window_airflow_m3_h,
             "outdoor_supply_m3_h": self.outdoor_supply_m3_h,
             "outdoor_exhaust_m3_h": self.outdoor_exhaust_m3_h,
@@ -3870,6 +3902,7 @@ def make_zone_outdoor_airflow_record(
     zone_parameters: ZoneAirflowParameters,
     window_airflow_m3_h: float = 0.0,
     mechanical_ventilation_flow_m3_h: Optional[float] = None,
+    mechanical_exhaust_flow_m3_h: Optional[float] = None,
 ) -> ZoneOutdoorAirflowRecord:
     """
     Assemble outdoor airflow for one zone.
@@ -3901,6 +3934,7 @@ def make_zone_outdoor_airflow_record(
         zone_id=zone_parameters.zone_id,
         infiltration_flow_m3_h=zone_parameters.default_infiltration_flow_m3_h,
         mechanical_ventilation_flow_m3_h=mechanical_ventilation_flow_m3_h,
+        mechanical_exhaust_flow_m3_h=mechanical_exhaust_flow_m3_h,
         window_airflow_m3_h=window_airflow_m3_h,
         source=OUTDOOR_AIRFLOW_MIXING_MODE,
     )
@@ -3946,18 +3980,20 @@ def make_building_outdoor_airflow_result(
 
     for zone_id, parameters in building_airflow_parameters.zone_parameters.items():
         mechanical_ventilation_flow_m3_h = None
+        mechanical_exhaust_flow_m3_h = None
 
         if airflow_control_inputs is not None:
-            mechanical_ventilation_flow_m3_h = (
-                airflow_control_inputs
-                .get_mechanical_ventilation_for_zone(zone_id)
-                .ventilation_flow_m3_h
+            mechanical_input = airflow_control_inputs.get_mechanical_ventilation_for_zone(
+                zone_id
             )
+            mechanical_ventilation_flow_m3_h = mechanical_input.ventilation_flow_m3_h
+            mechanical_exhaust_flow_m3_h = mechanical_input.effective_exhaust_flow_m3_h()
 
         zone_records[zone_id] = make_zone_outdoor_airflow_record(
             zone_parameters=parameters,
             window_airflow_m3_h=window_airflow_by_zone.get(zone_id, 0.0),
             mechanical_ventilation_flow_m3_h=mechanical_ventilation_flow_m3_h,
+            mechanical_exhaust_flow_m3_h=mechanical_exhaust_flow_m3_h,
         )
 
     return BuildingOutdoorAirflowResult(

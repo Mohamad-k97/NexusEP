@@ -61,6 +61,15 @@ class ArrayEngineAdapter:
         validate_compiled_graph(compiled_graph)
         if compiled_graph["scenario_id"] != scenario.scenario_id:
             raise ValueError("compiled graph belongs to a different scenario")
+        if any(
+            connection.get("exterior_solar_absorptance_fraction") is not None
+            for connection in cast(
+                list[dict[str, Any]], compiled_graph["connections"]
+            )
+        ):
+            raise BackendAdapterError(
+                "array engine does not yet support opaque sol-air boundary terms"
+            )
         self.scenario = scenario
         self.compiled_graph = compiled_graph
         self.id_registry = copy.deepcopy(compiled_graph["id_registry"])
@@ -496,6 +505,18 @@ class ArrayEngineAdapter:
             system_i = registry.system_id(carrier)
             dynamic = state.dynamic.system_state[system_i]
             control = controls[zone_id]
+            if (
+                control.ventilation_exhaust_volume_flow_m3_s is not None
+                and abs(
+                    control.ventilation_exhaust_volume_flow_m3_s
+                    - control.ventilation_volume_flow_m3_s
+                )
+                > 1.0e-12
+            ):
+                raise BackendAdapterError(
+                    "array engine does not yet support distinct mechanical "
+                    "supply and exhaust flows"
+                )
             dynamic[array_schema.SYSTEM_HVAC_MODE] = registry.hvac_mode_id(
                 "heating"
                 if control.heating_on

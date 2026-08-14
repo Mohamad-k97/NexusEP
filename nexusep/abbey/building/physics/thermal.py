@@ -22,6 +22,7 @@ Boundary/source dependencies:
 """
 
 import copy
+import math
 from dataclasses import dataclass, field, replace
 from typing import Any, Dict, List, Optional
 
@@ -118,6 +119,7 @@ THERMAL_SOLAR_GAIN_SOURCE_WINDOW_BOUNDARY = (
 THERMAL_SOLAR_GAIN_SOURCE_PLANE_OF_ARRAY = (
     "NREL_SPA_position + isotropic_plane_of_array + WindowBoundaryResult"
 )
+STEFAN_BOLTZMANN_W_M2_K4 = 5.670374419e-8
 
 THERMAL_VENTILATION_SOURCE_AIRFLOW_NETWORK = (
     "BuildingAirflowNetwork"
@@ -1667,6 +1669,7 @@ class ZoneVentilationAirflowInputs:
 
     infiltration_airflow_m3_h: float = 0.0
     mechanical_ventilation_flow_m3_h: float = 0.0
+    mechanical_exhaust_flow_m3_h: float | None = None
 
     window_opening_airflow_m3_h: float = 0.0
     interzone_airflow_m3_h: float = 0.0
@@ -1686,6 +1689,13 @@ class ZoneVentilationAirflowInputs:
         self.mechanical_ventilation_flow_m3_h = _non_negative_float(
             self.mechanical_ventilation_flow_m3_h,
             "mechanical_ventilation_flow_m3_h",
+            self.zone_id,
+        )
+        if self.mechanical_exhaust_flow_m3_h is None:
+            self.mechanical_exhaust_flow_m3_h = self.mechanical_ventilation_flow_m3_h
+        self.mechanical_exhaust_flow_m3_h = _non_negative_float(
+            self.mechanical_exhaust_flow_m3_h,
+            "mechanical_exhaust_flow_m3_h",
             self.zone_id,
         )
 
@@ -1711,7 +1721,7 @@ class ZoneVentilationAirflowInputs:
 
         return (
             self.infiltration_airflow_m3_h
-            + self.mechanical_ventilation_flow_m3_h
+            + self.mechanical_exhaust_flow_m3_h
             + self.window_opening_airflow_m3_h
         )
 
@@ -1751,6 +1761,7 @@ class ZoneVentilationAirflowInputs:
             "zone_id": self.zone_id,
             "infiltration_airflow_m3_h": self.infiltration_airflow_m3_h,
             "mechanical_ventilation_flow_m3_h": self.mechanical_ventilation_flow_m3_h,
+            "mechanical_exhaust_flow_m3_h": self.mechanical_exhaust_flow_m3_h,
             "window_opening_airflow_m3_h": self.window_opening_airflow_m3_h,
             "interzone_airflow_m3_h": self.interzone_airflow_m3_h,
             "outdoor_airflow_m3_h": self.outdoor_airflow_m3_h(),
@@ -1816,8 +1827,15 @@ class ZoneVentilationHeatExchange:
                 )
 
     def mechanical_conductance_w_k(self) -> float:
+        """Mechanical supply conductance."""
+
         return ventilation_conductance_from_airflow_m3_h(
             self.airflow_inputs.mechanical_ventilation_flow_m3_h
+        )
+
+    def mechanical_exhaust_conductance_w_k(self) -> float:
+        return ventilation_conductance_from_airflow_m3_h(
+            self.airflow_inputs.mechanical_exhaust_flow_m3_h
         )
 
     def effective_supply_temperature_c(self, outdoor_temperature_c: float) -> float:
@@ -1826,10 +1844,11 @@ class ZoneVentilationHeatExchange:
         outdoor_temperature_c = float(outdoor_temperature_c)
         if self.h_ventilation_w_k <= 0.0:
             return outdoor_temperature_c
-        mechanical_h_w_k = min(
-            self.mechanical_conductance_w_k(), self.h_ventilation_w_k
+        mechanical_h_w_k = self.mechanical_conductance_w_k()
+        outdoor_h_w_k = max(
+            0.0,
+            self.h_ventilation_w_k - self.mechanical_exhaust_conductance_w_k(),
         )
-        outdoor_h_w_k = self.h_ventilation_w_k - mechanical_h_w_k
         mechanical_temperature_c = (
             self.mechanical_supply_temperature_c
             if self.mechanical_supply_temperature_c is not None
@@ -1865,6 +1884,9 @@ class ZoneVentilationHeatExchange:
                 self.mechanical_supply_temperature_c
             ),
             "mechanical_conductance_w_k": self.mechanical_conductance_w_k(),
+            "mechanical_exhaust_conductance_w_k": (
+                self.mechanical_exhaust_conductance_w_k()
+            ),
         }
 
 @dataclass
@@ -4627,6 +4649,86 @@ def calculate_solar_gains_for_thermal(
         weather_state=weather_state,
     )
 
+
+def calculate_opaque_boundary_radiative_gains_by_zone_w(
+    physics_graph: Any,
+    weather_state: Any,
+) -> Dict[str, float]:
+    """Calculate source-independent opaque solar and sky-longwave gains.
+
+    The correction is the standard sol-air boundary term passed through the
+    construction conductance::
+
+        q_zone = U A / h_se * (alpha I + epsilon F_sky (L_sky - L_air))
+
+    It is opt-in: a surface must declare absorptance, emissivity, and exterior
+    heat-transfer coefficient.  This avoids hidden defaults changing existing
+    scenarios.  Cellar and other named non-outdoor boundaries are excluded.
+    """
+
+    if physics_graph is None or not hasattr(physics_graph, "boundary_connections"):
+        raise TypeError("physics_graph must provide boundary_connections")
+    if weather_state is None:
+        raise ValueError("weather_state cannot be None")
+
+    outdoor_c = float(_get_attr_or_default(weather_state, "outdoor_temperature_c", 20.0))
+    sky_c = _get_attr_or_default(weather_state, "sky_temperature_c", None)
+    solar_zenith = _get_attr_or_default(weather_state, "solar_zenith_deg", None)
+    solar_azimuth = _get_attr_or_default(weather_state, "solar_azimuth_deg", None)
+    dni = float(_get_attr_or_default(weather_state, "direct_normal_radiation_w_m2", 0.0))
+    dhi = float(_get_attr_or_default(weather_state, "diffuse_horizontal_radiation_w_m2", 0.0))
+    ghi = float(_get_attr_or_default(weather_state, "global_horizontal_radiation_w_m2", 0.0))
+    albedo = float(_get_attr_or_default(weather_state, "ground_albedo_fraction", 0.0))
+    result: Dict[str, float] = {}
+
+    for connection in physics_graph.boundary_connections.values():
+        if bool(_get_attr_or_default(connection, "is_window", False)):
+            continue
+        if str(_get_attr_or_default(connection, "external_boundary_id", "outdoor_air")) != "outdoor_air":
+            continue
+        alpha = _get_attr_or_default(connection, "exterior_solar_absorptance_fraction", None)
+        epsilon = _get_attr_or_default(connection, "exterior_longwave_emissivity_fraction", None)
+        h_se = _get_attr_or_default(
+            connection,
+            "exterior_surface_heat_transfer_coefficient_w_m2_k",
+            None,
+        )
+        if alpha is None or epsilon is None or h_se is None:
+            continue
+        area_m2 = float(_get_attr_or_default(connection, "area_m2", 0.0) or 0.0)
+        u_value = float(_get_attr_or_default(connection, "u_value_w_m2k", 0.0) or 0.0)
+        tilt_deg = float(_get_attr_or_default(connection, "tilt_deg", 90.0) or 0.0)
+        azimuth_deg = float(
+            _get_attr_or_default(connection, "orientation_deg", 0.0) or 0.0
+        )
+        irradiance_w_m2 = 0.0
+        if solar_zenith is not None and solar_azimuth is not None:
+            irradiance_w_m2 = calculate_surface_solar_irradiance(
+                solar_zenith_deg=float(solar_zenith),
+                solar_azimuth_deg=float(solar_azimuth),
+                surface_tilt_deg=tilt_deg,
+                surface_azimuth_deg=azimuth_deg,
+                direct_normal_radiation_w_m2=max(0.0, dni),
+                diffuse_horizontal_radiation_w_m2=max(0.0, dhi),
+                global_horizontal_radiation_w_m2=max(0.0, ghi),
+                ground_albedo_fraction=albedo,
+            ).total_w_m2
+        longwave_w_m2 = 0.0
+        if sky_c is not None:
+            sky_view_factor = 0.5 * (1.0 + math.cos(math.radians(tilt_deg)))
+            longwave_w_m2 = float(epsilon) * sky_view_factor * STEFAN_BOLTZMANN_W_M2_K4 * (
+                (float(sky_c) + 273.15) ** 4 - (outdoor_c + 273.15) ** 4
+            )
+        gain_w = (
+            u_value
+            * area_m2
+            / float(h_se)
+            * (float(alpha) * irradiance_w_m2 + longwave_w_m2)
+        )
+        zone_id = str(_required_attr(connection, "zone_id"))
+        result[zone_id] = result.get(zone_id, 0.0) + gain_w
+    return result
+
 def get_zone_outdoor_airflow_record_from_network(
     airflow_network: Any,
     zone_id: str,
@@ -4687,6 +4789,11 @@ def make_zone_ventilation_airflow_inputs_from_airflow_network(
         "mechanical_ventilation_flow_m3_h",
         0.0,
     )
+    mechanical_exhaust_flow_m3_h = _get_attr_or_default(
+        record,
+        "mechanical_exhaust_flow_m3_h",
+        mechanical_ventilation_flow_m3_h,
+    )
 
     window_airflow_m3_h = _get_attr_or_default(
         record,
@@ -4698,6 +4805,7 @@ def make_zone_ventilation_airflow_inputs_from_airflow_network(
         zone_id=zone_id,
         infiltration_airflow_m3_h=infiltration_flow_m3_h,
         mechanical_ventilation_flow_m3_h=mechanical_ventilation_flow_m3_h,
+        mechanical_exhaust_flow_m3_h=mechanical_exhaust_flow_m3_h,
         window_opening_airflow_m3_h=window_airflow_m3_h,
         interzone_airflow_m3_h=0.0,
         source=THERMAL_VENTILATION_SOURCE_AIRFLOW_NETWORK,

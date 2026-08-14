@@ -79,6 +79,11 @@ class Surface(CanonicalModel):
     thermal_bridge_conductance_w_k: Annotated[
         float, Field(ge=0.0, le=100_000.0, allow_inf_nan=False)
     ] = 0.0
+    exterior_solar_absorptance_fraction: Fraction | None = None
+    exterior_longwave_emissivity_fraction: Fraction | None = None
+    exterior_surface_heat_transfer_coefficient_w_m2_k: Annotated[
+        float, Field(gt=0.0, le=100.0, allow_inf_nan=False)
+    ] | None = None
     heat_capacity_j_k: Annotated[
         float, Field(ge=0.0, le=1_000_000_000_000.0, allow_inf_nan=False)
     ]
@@ -107,6 +112,17 @@ class Surface(CanonicalModel):
                 raise ValueError(
                     "exterior surfaces cannot reference adjacent zones or pairs"
                 )
+            radiative_properties = (
+                self.exterior_solar_absorptance_fraction,
+                self.exterior_longwave_emissivity_fraction,
+                self.exterior_surface_heat_transfer_coefficient_w_m2_k,
+            )
+            if any(value is not None for value in radiative_properties) and not all(
+                value is not None for value in radiative_properties
+            ):
+                raise ValueError(
+                    "exterior radiative properties must be supplied as a complete set"
+                )
             if (
                 self.airflow_opening_area_m2 != 0.0
                 or self.airflow_open_fraction != 0.0
@@ -119,6 +135,17 @@ class Surface(CanonicalModel):
                     "exterior surface airflow openings belong to Opening records"
                 )
         else:
+            if any(
+                value is not None
+                for value in (
+                    self.exterior_solar_absorptance_fraction,
+                    self.exterior_longwave_emissivity_fraction,
+                    self.exterior_surface_heat_transfer_coefficient_w_m2_k,
+                )
+            ):
+                raise ValueError(
+                    "exterior radiative properties are invalid on interzone surfaces"
+                )
             if self.adjacent_zone_id is None or self.paired_surface_id is None:
                 raise ValueError(
                     "interzone surfaces require adjacent_zone_id and paired_surface_id"

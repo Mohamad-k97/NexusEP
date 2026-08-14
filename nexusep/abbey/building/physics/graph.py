@@ -9,6 +9,7 @@ Phase 1, revised:
 No thermal, airflow, daylight, or acoustic equations here.
 """
 
+import math
 from dataclasses import dataclass, field, replace
 from typing import Dict, List, Optional
 
@@ -262,6 +263,9 @@ class BoundaryConnection:
     # Window / facade / solar properties
     u_value_w_m2k: Optional[float] = None
     thermal_bridge_conductance_w_k: float = 0.0
+    exterior_solar_absorptance_fraction: Optional[float] = None
+    exterior_longwave_emissivity_fraction: Optional[float] = None
+    exterior_surface_heat_transfer_coefficient_w_m2_k: Optional[float] = None
     window_u_value_w_m2k: Optional[float] = None
     glazing_transmittance: Optional[float] = None
     window_visible_transmittance: Optional[float] = None
@@ -312,13 +316,29 @@ class BoundaryConnection:
 
         if self.area_m2 is not None:
             self.area_m2 = float(self.area_m2)
-
             if self.area_m2 < 0.0:
                 raise ValueError(
                     "BoundaryConnection '{}' has negative area_m2.".format(
                         self.connection_id
                     )
                 )
+        for field_name in (
+            "exterior_solar_absorptance_fraction",
+            "exterior_longwave_emissivity_fraction",
+        ):
+            value = getattr(self, field_name)
+            if value is not None:
+                value = float(value)
+                if not 0.0 <= value <= 1.0:
+                    raise ValueError(field_name + " must be in [0, 1].")
+                setattr(self, field_name, value)
+        if self.exterior_surface_heat_transfer_coefficient_w_m2_k is not None:
+            value = float(self.exterior_surface_heat_transfer_coefficient_w_m2_k)
+            if value <= 0.0 or not math.isfinite(value):
+                raise ValueError(
+                    "exterior_surface_heat_transfer_coefficient_w_m2_k must be positive."
+                )
+            self.exterior_surface_heat_transfer_coefficient_w_m2_k = value
 
         if self.orientation_deg is not None:
             self.orientation_deg = normalize_orientation_deg(self.orientation_deg)

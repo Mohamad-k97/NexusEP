@@ -57,6 +57,7 @@ def _record(
         wind_direction_deg=0.0,
         diffuse_horizontal_radiation_w_m2=solar_w_m2 * 0.25,
         global_horizontal_radiation_w_m2=solar_w_m2,
+        downwelling_longwave_radiation_w_m2=None,
         rain=False,
         zones=tuple(
             Annex71ZoneObservation(
@@ -67,6 +68,7 @@ def _record(
                 internal_gain_w=internal_gain_w,
                 ventilation_supply_temperature_c=10.0,
                 ventilation_supply_flow_m3_s=0.0,
+                ventilation_exhaust_flow_m3_s=0.0,
             )
             for zone_id in ZONE_IDS
         ),
@@ -106,7 +108,9 @@ def test_observation_constrained_energy_audit_closes_steady_no_gain_case() -> No
 
     assert len(audit.records) == 8
     assert audit.summary["whole_building"]["unexplained_gain_rmse_w"] <= 1.0e-9
-    assert all(abs(item.unexplained_air_node_gain_w) <= 1.0e-9 for item in audit.records)
+    assert all(
+        abs(item.unexplained_air_node_gain_w) <= 1.0e-9 for item in audit.records
+    )
 
 
 def test_source_row_counterfactual_preserves_targets_and_common_period() -> None:
@@ -172,9 +176,12 @@ def test_roof_window_uses_published_thirty_degree_tilt() -> None:
         surface.tilt_deg == pytest.approx(90.0)
         for surface in attic.surfaces
         if surface is not roof_surface
-        and surface.surface_id not in {
+        and surface.surface_id
+        not in {
             "attic_north_roof",
             "attic_airbody_to_ground_airbody",
+            "attic_airbody_to_kitchen_airbody",
+            "attic_airbody_to_sleeping_airbody",
         }
     )
     attic_floor = next(
@@ -183,6 +190,32 @@ def test_roof_window_uses_published_thirty_degree_tilt() -> None:
         if surface.surface_id == "attic_airbody_to_ground_airbody"
     )
     assert attic_floor.tilt_deg == pytest.approx(0.0)
+
+
+def test_published_ceiling_topology_tracks_each_lower_airbody_footprint() -> None:
+    timestamp = datetime(2018, 12, 20, 1, tzinfo=ZoneInfo("Europe/Berlin"))
+    _scenario, graph = build_canonical_scenario((_record(timestamp, 20.0),))
+
+    ceiling_connections = {
+        frozenset((item["source_node_id"], item["target_node_id"])): item
+        for item in graph["connections"]
+        if item["boundary_type"] == "interzone"
+        and "attic_airbody" in {item["source_node_id"], item["target_node_id"]}
+    }
+    assert set(ceiling_connections) == {
+        frozenset(("ground_airbody", "attic_airbody")),
+        frozenset(("kitchen_airbody", "attic_airbody")),
+        frozenset(("sleeping_airbody", "attic_airbody")),
+    }
+    assert ceiling_connections[frozenset(("kitchen_airbody", "attic_airbody"))][
+        "gross_area_m2"
+    ] == pytest.approx(7.44)
+    assert ceiling_connections[frozenset(("sleeping_airbody", "attic_airbody"))][
+        "gross_area_m2"
+    ] == pytest.approx(11.19)
+    assert sum(
+        item["gross_area_m2"] for item in ceiling_connections.values()
+    ) == pytest.approx(81.69 - 0.57 * 1.39)
 
 
 def test_published_component_model_exposes_cellar_fabric_and_dynamic_blind() -> None:
@@ -213,11 +246,14 @@ def test_published_component_model_exposes_cellar_fabric_and_dynamic_blind() -> 
         connection["external_boundary_id"] == "cellar_air"
         for connection in graph["connections"]
     )
-    assert sum(
-        float(connection["thermal_bridge_conductance_w_k"])
-        for connection in graph["connections"]
-        if connection["connection_type"] == "surface"
-    ) > 50.0
+    assert (
+        sum(
+            float(connection["thermal_bridge_conductance_w_k"])
+            for connection in graph["connections"]
+            if connection["connection_type"] == "surface"
+        )
+        > 50.0
+    )
 
 
 def test_object_adapter_couples_all_canonical_opaque_mass_to_zone_air() -> None:
@@ -231,16 +267,13 @@ def test_object_adapter_couples_all_canonical_opaque_mass_to_zone_air() -> None:
         if zone.zone_id == "kitchen_airbody"
     )
     expected_area_m2 = sum(
-        surface.area_m2
-        - sum(opening.area_m2 for opening in surface.openings)
+        surface.area_m2 - sum(opening.area_m2 for opening in surface.openings)
         for surface in kitchen.surfaces
     )
     native_zone = adapter.building_model.all_zone_models()[kitchen.zone_id]
     parameters = make_zone_thermal_parameters(native_zone)
 
-    assert native_zone.effective_thermal_mass_area_m2 == pytest.approx(
-        expected_area_m2
-    )
+    assert native_zone.effective_thermal_mass_area_m2 == pytest.approx(expected_area_m2)
     assert parameters.effective_mass_area_m2 == pytest.approx(expected_area_m2)
     assert parameters.effective_mass_area_m2 > (
         native_zone.floor_area_m2 + native_zone.internal_wall_area_m2
@@ -299,9 +332,7 @@ def test_measured_window_and_door_positions_reach_native_controls() -> None:
         kitchen_door_opening_fraction=0.0,
         attic_door_opening_fraction=0.25,
     )
-    scenario, graph = build_canonical_scenario(
-        (operated,), initial_record=initial
-    )
+    scenario, graph = build_canonical_scenario((operated,), initial_record=initial)
     prior = tuple(
         PriorZonePhysicalState(
             zone_id=zone.zone_id,
@@ -335,12 +366,9 @@ def test_measured_window_and_door_positions_reach_native_controls() -> None:
         if connection["boundary_type"] == "interzone"
         and "ground_airbody_to_attic_airbody" in connection["surface_ids"]
     )
-    assert door_controls[attic_connection]["opening_fraction"] == pytest.approx(
-        0.25
-    )
+    assert door_controls[attic_connection]["opening_fraction"] == pytest.approx(0.25)
     graph_connections = {
-        connection["connection_id"]: connection
-        for connection in graph["connections"]
+        connection["connection_id"]: connection for connection in graph["connections"]
     }
     assert graph_connections[kitchen_connection]["airflow_model"] == (
         "two_opening_buoyancy"

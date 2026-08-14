@@ -120,6 +120,7 @@ class ZoneControlCommand(CanonicalModel):
     ventilation_supply_temperature_c: Annotated[
         float, Field(ge=-100.0, le=100.0, allow_inf_nan=False)
     ] | None = None
+    ventilation_exhaust_volume_flow_m3_s: NonnegativeFloat | None = None
     lights_on: bool
     lighting_power_w: NonnegativeFloat
     window_opening_fraction: Fraction
@@ -414,6 +415,14 @@ def validate_step_input_for_scenario(
         if control.ventilation_volume_flow_m3_s > maximum_ventilation + 1.0e-12:
             raise CanonicalStepContractError(
                 f"zone {zone.zone_id} ventilation command exceeds available capacity"
+            )
+        if (
+            control.ventilation_exhaust_volume_flow_m3_s is not None
+            and control.ventilation_exhaust_volume_flow_m3_s
+            > maximum_ventilation + 1.0e-12
+        ):
+            raise CanonicalStepContractError(
+                f"zone {zone.zone_id} ventilation exhaust command exceeds available capacity"
             )
         maximum_lighting = available_capacity("lighting", "max_lighting_power_w")
         if control.lighting_power_w > maximum_lighting + 1.0e-12:

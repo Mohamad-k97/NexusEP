@@ -145,6 +145,19 @@ def test_one_zone_outdoor_exchange_balances_supply_and_exhaust() -> None:
     assert all(path["source_components"] for path in paths)
 
 
+def test_explicit_mechanical_exhaust_is_preserved_for_energy_and_audit() -> None:
+    record = ZoneOutdoorAirflowRecord(
+        zone_id="west",
+        infiltration_flow_m3_h=10.0,
+        mechanical_ventilation_flow_m3_h=40.0,
+        mechanical_exhaust_flow_m3_h=45.0,
+    )
+
+    assert record.outdoor_supply_m3_h == pytest.approx(50.0)
+    assert record.outdoor_exhaust_m3_h == pytest.approx(55.0)
+    assert record.net_outdoor_exchange_m3_h == pytest.approx(-5.0)
+
+
 def test_one_zone_supply_exhaust_imbalance_is_detected_and_quantified() -> None:
     network = BuildingAirflowNetwork(
         outdoor_airflows_by_zone={

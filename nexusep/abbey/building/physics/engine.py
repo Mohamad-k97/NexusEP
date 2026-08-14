@@ -716,6 +716,35 @@ def run_building_physics_step(
                 zone_system_specs=zone_system_specs,
             )
 
+            if physics_graph is not None:
+                from nexusep.abbey.building.physics.thermal import (
+                    ThermalGainSplit,
+                    ZoneThermalGainSource,
+                    calculate_opaque_boundary_radiative_gains_by_zone_w,
+                )
+
+                opaque_boundary_gains = (
+                    calculate_opaque_boundary_radiative_gains_by_zone_w(
+                        physics_graph,
+                        weather_state,
+                    )
+                )
+                for zone_id, gain_w in opaque_boundary_gains.items():
+                    if gain_w == 0.0:
+                        continue
+                    thermal_gains.get_zone_gains(zone_id).add_source(
+                        ZoneThermalGainSource(
+                            zone_id=zone_id,
+                            source_type="opaque_boundary_radiation",
+                            gain_w=gain_w,
+                            split=ThermalGainSplit(
+                                convective_fraction=0.0,
+                                radiative_fraction=1.0,
+                            ),
+                            source="canonical_exterior_surface_radiative_properties",
+                        )
+                    )
+
             physics_inputs["thermal_gains"] = thermal_gains
 
         # ------------------------------------------------------------
@@ -2880,6 +2909,7 @@ def _add_ventilation_commands_to_airflow_control_inputs(
         command = zone_control_commands.get(zone_id)
 
         flow_m3_h = 0.0
+        exhaust_flow_m3_h = None
 
         if command is not None:
             flow_m3_h = float(
@@ -2889,10 +2919,18 @@ def _add_ventilation_commands_to_airflow_control_inputs(
                     0.0,
                 )
             )
+            raw_exhaust_flow = _get_attr_or_key(
+                command,
+                "ventilation_exhaust_flow_m3_h",
+                None,
+            )
+            if raw_exhaust_flow is not None:
+                exhaust_flow_m3_h = float(raw_exhaust_flow)
 
         mechanical_ventilation_by_zone[zone_id] = MechanicalVentilationInput(
             zone_id=zone_id,
             ventilation_flow_m3_h=flow_m3_h,
+            ventilation_exhaust_flow_m3_h=exhaust_flow_m3_h,
             source="ZoneControlCommand.ventilation_flow_m3_h",
         )
 

@@ -327,6 +327,7 @@ class ZoneControlCommand:
 
     ventilation_flow_m3_h: float = 0.0
     ventilation_supply_temperature_c: float | None = None
+    ventilation_exhaust_flow_m3_h: float | None = None
 
     lights_on: bool = False
     lighting_power_w: float = 0.0
@@ -351,6 +352,12 @@ class ZoneControlCommand:
         )
         _check_fraction(self.window_opening_fraction, "window_opening_fraction", self.zone_id)
         _check_nonnegative(self.ventilation_flow_m3_h, "ventilation_flow_m3_h", self.zone_id)
+        if self.ventilation_exhaust_flow_m3_h is not None:
+            _check_nonnegative(
+                self.ventilation_exhaust_flow_m3_h,
+                "ventilation_exhaust_flow_m3_h",
+                self.zone_id,
+            )
         _check_nonnegative(self.lighting_power_w, "lighting_power_w", self.zone_id)
         if self.ventilation_supply_temperature_c is not None:
             self.ventilation_supply_temperature_c = float(
@@ -383,6 +390,7 @@ class ZoneControlCommand:
             "ventilation_supply_temperature_c": (
                 self.ventilation_supply_temperature_c
             ),
+            "ventilation_exhaust_flow_m3_h": self.ventilation_exhaust_flow_m3_h,
             "lights_on": self.lights_on,
             "lighting_power_w": self.lighting_power_w,
             "window_open": self.window_open,
@@ -479,6 +487,8 @@ def constrain_zone_control_command_to_system_spec(
     # Mechanical ventilation availability.
     if (not system_spec.has_ventilation) or float(system_spec.ventilation_flow_m3_h) <= 0.0:
         set_field("ventilation_flow_m3_h", 0.0, "ventilation_not_available")
+        if command.ventilation_exhaust_flow_m3_h is not None:
+            set_field("ventilation_exhaust_flow_m3_h", 0.0, "ventilation_not_available")
     else:
         flow = float(command.ventilation_flow_m3_h)
 
@@ -489,6 +499,16 @@ def constrain_zone_control_command_to_system_spec(
             flow = float(system_spec.ventilation_flow_m3_h)
 
         set_field("ventilation_flow_m3_h", flow, "ventilation_flow_clipped_to_capacity")
+        if command.ventilation_exhaust_flow_m3_h is not None:
+            exhaust_flow = min(
+                float(command.ventilation_exhaust_flow_m3_h),
+                float(system_spec.ventilation_flow_m3_h),
+            )
+            set_field(
+                "ventilation_exhaust_flow_m3_h",
+                exhaust_flow,
+                "ventilation_exhaust_flow_clipped_to_capacity",
+            )
 
     # Lighting availability.
     if (not system_spec.has_lighting) or float(system_spec.lighting_power_w) <= 0.0:

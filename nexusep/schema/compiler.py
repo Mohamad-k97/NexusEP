@@ -768,6 +768,21 @@ def compile_physics_graph(scenario: dict[str, Any]) -> dict[str, Any]:
                 "thermal_bridge_conductance_w_k": float(
                     surface.get("thermal_bridge_conductance_w_k", 0.0)
                 ),
+                **(
+                    {
+                        "exterior_solar_absorptance_fraction": surface[
+                            "exterior_solar_absorptance_fraction"
+                        ],
+                        "exterior_longwave_emissivity_fraction": surface[
+                            "exterior_longwave_emissivity_fraction"
+                        ],
+                        "exterior_surface_heat_transfer_coefficient_w_m2_k": surface[
+                            "exterior_surface_heat_transfer_coefficient_w_m2_k"
+                        ],
+                    }
+                    if surface.get("exterior_solar_absorptance_fraction") is not None
+                    else {}
+                ),
                 "azimuth_deg": float(surface["azimuth_deg"]),
                 "tilt_deg": float(surface["tilt_deg"]),
                 "openable_area_m2": None,

@@ -1,0 +1,25 @@
+{
+  "protocol_version": "1.5.0",
+  "supersedes": "data/validation/governance/annex71_extended_holdout_v1_4.json",
+  "amended_on": "2026-08-14",
+  "amendment_status": "post_unsealing_target_independent_boundary_contract_corrections",
+  "validation_category": "post_unsealing_corrected_holdout_diagnostic",
+  "reason": "A source audit found three model-input defects that do not depend on measured room-temperature residuals: the published 81.69 m2 lower-to-attic ceiling was assigned wholly to the aggregated ground airbody instead of the three lower-room footprints; measured mechanical supply and exhaust channels were collapsed into one balanced flow; and the measured RadiationIR_global sky forcing was discarded while opaque exterior radiative exchange was absent. Protocol 1.5 freezes the source-derived topology, distinct supply/exhaust enthalpy terms, and explicit opt-in sol-air boundary contract before rerunning the Extended diagnostic.",
+  "unchanged_from_v1_4": [
+    "fixed-CET time correction",
+    "published component capacities and U-values",
+    "window, kitchen-door, attic-hatch, and blind source schedules",
+    "air-to-mass conductance coefficient",
+    "warm-up",
+    "all numerical acceptance thresholds",
+    "missing-data acceptance",
+    "no post-hoc fitting"
+  ],
+  "corrected_boundary_mapping": {
+    "ceiling_topology": "The published 81.69 m2 lower ceiling is partitioned by the source-plan footprints: 63.06 m2 ground, 7.44 m2 kitchen, and 11.19 m2 sleeping; the 0.7923 m2 trap door is subtracted only from the ground-to-attic opaque area.",
+    "mechanical_ventilation": "SUA supply flow and temperature form the incoming enthalpy term; EHA exhaust flow forms the outgoing zone-air enthalpy term. Omitted exhaust retains the legacy balanced-flow behavior.",
+    "opaque_radiative_boundary": "Outdoor opaque surfaces use an opt-in sol-air term with source-reported solar absorptance 0.23, source construction Rse 0.04 m2K/W (hse 25 W/m2K), declared longwave emissivity assumption 0.90, measured RadiationIR_global converted to effective sky temperature, and isotropic plane-of-array irradiance.",
+    "array_backend": "Distinct supply/exhaust and opaque sol-air terms are rejected explicitly until implemented; they are not silently ignored."
+  },
+  "scientific_label": "Results under v1.5 remain post-unsealing corrected diagnostics. The immutable first holdout result remains published and rejected. This amendment cannot restore a blind-validation claim."
+}
