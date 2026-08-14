@@ -1,0 +1,24 @@
+{
+  "protocol_version": "1.5.1",
+  "supersedes": "data/validation/governance/annex71_extended_holdout_v1_5.json",
+  "amended_on": "2026-08-14",
+  "amendment_status": "post_unsealing_weather_boundary_handoff_correction",
+  "validation_category": "post_unsealing_corrected_holdout_diagnostic",
+  "reason": "The protocol-1.5 run exposed that CanonicalWeather.sky_temperature_c was not copied into the object engine WeatherState. The radiative-boundary solver therefore received solar position and shortwave irradiance but no sky temperature, and skipped its longwave term. Protocol 1.5.1 freezes the missing typed weather handoff before rerun.",
+  "unchanged_from_v1_5": [
+    "source-derived ceiling topology",
+    "distinct SUA supply and EHA exhaust terms",
+    "opaque sol-air equation and declared surface properties",
+    "all source schedules and physical parameters",
+    "warm-up",
+    "all numerical acceptance thresholds",
+    "missing-data acceptance",
+    "no post-hoc fitting"
+  ],
+  "corrected_handoff": {
+    "source": "CanonicalWeather.sky_temperature_c",
+    "target": "object WeatherState.sky_temperature_c",
+    "verification": "an end-to-end integration test requires a colder measured sky to cool every Annex 71 airbody relative to a sky at outdoor-air temperature"
+  },
+  "scientific_label": "Results remain post-unsealing corrected diagnostics. Protocol 1.5 v6 is retained as rejected evidence of the incomplete handoff; neither v6 nor this rerun can restore a blind-validation claim."
+}

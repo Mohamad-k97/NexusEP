@@ -6,6 +6,7 @@ Phase 3.1:
 
 """
 
+import math
 from dataclasses import dataclass, replace
 from datetime import datetime as DateTime, timedelta, timezone
 from typing import Any, Dict, Optional, List
@@ -167,6 +168,7 @@ class WeatherState:
     datetime: Any
 
     outdoor_temperature_c: float = 20.0
+    sky_temperature_c: Optional[float] = None
 
     wind_speed_m_s: float = 0.0
     wind_direction_deg: float = 0.0
@@ -196,6 +198,10 @@ class WeatherState:
         self.datetime = _normalize_datetime(self.datetime)
 
         self.outdoor_temperature_c = float(self.outdoor_temperature_c)
+        if self.sky_temperature_c is not None:
+            self.sky_temperature_c = float(self.sky_temperature_c)
+            if not math.isfinite(self.sky_temperature_c):
+                raise ValueError("sky_temperature_c must be finite")
 
         self.wind_speed_m_s = _non_negative_float(
             self.wind_speed_m_s,
@@ -278,6 +284,7 @@ class WeatherState:
         return {
             "datetime": self.datetime.isoformat(),
             "outdoor_temperature_c": self.outdoor_temperature_c,
+            "sky_temperature_c": self.sky_temperature_c,
             "wind_speed_m_s": self.wind_speed_m_s,
             "wind_direction_deg": self.wind_direction_deg,
             "direct_normal_radiation_w_m2": self.direct_normal_radiation_w_m2,

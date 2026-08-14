@@ -770,6 +770,7 @@ class ObjectEngineAdapter:
         object_weather = ObjectWeatherState(
             datetime=weather.timestamp,
             outdoor_temperature_c=weather.outdoor_temperature_c,
+            sky_temperature_c=weather.sky_temperature_c,
             wind_speed_m_s=weather.wind_speed_m_s,
             wind_direction_deg=weather.wind_direction_deg,
             direct_normal_radiation_w_m2=weather.direct_normal_radiation_w_m2,

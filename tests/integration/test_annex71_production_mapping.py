@@ -19,6 +19,7 @@ from nexusep.schema.timestep import (
     validate_step_input_for_scenario,
 )
 from nexusep.validation_data.annex71 import (
+    STEFAN_BOLTZMANN_W_M2_K4,
     Annex71Interval,
     Annex71ZoneObservation,
     build_annex71_step_input,
@@ -321,6 +322,38 @@ def test_named_cellar_boundary_is_required_and_changes_the_solution() -> None:
     missing = step.model_copy(update={"external_boundary_states": ()})
     with pytest.raises(CanonicalStepContractError, match="external boundary state"):
         validate_step_input_for_scenario(missing, scenario, graph)
+
+
+def test_measured_sky_temperature_reaches_opaque_boundary_solver() -> None:
+    start = datetime(2018, 12, 20, 0, tzinfo=ZoneInfo("Europe/Berlin"))
+    air_temperature_k = 10.0 + 273.15
+    cold_sky_temperature_k = 0.0 + 273.15
+    neutral = tuple(
+        replace(
+            _record(start + timedelta(hours=index), 20.0),
+            downwelling_longwave_radiation_w_m2=(
+                STEFAN_BOLTZMANN_W_M2_K4 * air_temperature_k**4
+            ),
+        )
+        for index in range(3)
+    )
+    cold_sky = tuple(
+        replace(
+            item,
+            downwelling_longwave_radiation_w_m2=(
+                STEFAN_BOLTZMANN_W_M2_K4 * cold_sky_temperature_k**4
+            ),
+        )
+        for item in neutral
+    )
+
+    neutral_result = run_object_scenario(neutral)
+    cold_result = run_object_scenario(cold_sky)
+    assert all(
+        cold_result.simulated_temperature_c[zone_id][-1]
+        < neutral_result.simulated_temperature_c[zone_id][-1]
+        for zone_id in ZONE_IDS
+    )
 
 
 def test_measured_window_and_door_positions_reach_native_controls() -> None:

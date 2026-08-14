@@ -1,0 +1,42 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "annex71-boundary-runtime-error-v6",
+  "title": "Annex 71 boundary-contract runtime and error diagnostic",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-14",
+  "targeted_models": [
+    "THERMAL-1"
+  ],
+  "source_ids": [
+    "iea-ebc-annex71-twin-houses-2020"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_annex71_boundary_runtime_error.py",
+      "sha256": "85c644ea2e26b7b2b4afee4ac0e8b40446c3224682bbceeb0e7273690ed91340",
+      "command": "uv run python scripts/validation_data/run_annex71_boundary_runtime_error.py"
+    }
+  ],
+  "report_path": "docs/validation/results/annex71_boundary_runtime_error_v6.md",
+  "result_artifacts": [
+    {
+      "file_id": "annex71-boundary-runtime-error-v6",
+      "path": "data/validation/fixtures/annex71-twin-houses/boundary-runtime-error-v6.json",
+      "sha256": "a2d08cd21ad70c89d39ae17dd3c4fd22f1d29589c53031afa45a88f0f49b6040",
+      "byte_size": 24158
+    }
+  ],
+  "numerical_tolerances": {
+    "pooled_temperature_rmse_c": "less than or equal to 1.0 degC",
+    "pooled_absolute_temperature_bias_c": "less than or equal to 0.5 degC",
+    "per_air_body_temperature_rmse_c": "less than or equal to 1.5 degC",
+    "thermal_balance_residual_w": "less than or equal to 1e-7 W",
+    "missing_scored_inputs": "zero rows"
+  },
+  "known_deviations": [
+    "This is a protocol-1.5 post-unsealing corrected diagnostic, not pristine blind-validation evidence.",
+    "The canonical sky temperature was not copied to native object WeatherState, so v6 skipped opaque longwave exchange while retaining shortwave absorption.",
+    "Pooled RMSE, pooled bias, per-zone RMSE, and four-row input completeness fail; thermal conservation, no-fallback, and deterministic-repeat checks pass.",
+    "The incomplete handoff is retained here as rejected evidence and corrected only in a separately versioned run."
+  ]
+}
