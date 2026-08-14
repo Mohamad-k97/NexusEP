@@ -1,7 +1,7 @@
 # NIST CONTAM comparative-validation scope
 
-Validation category: **comparative validation planning**; **no comparative
-validation result is claimed**.
+Validation category: **verification and narrowly scoped comparative
+validation**. No general pressure-network comparison is claimed.
 
 Model claims in scope: **AIRFLOW-1**, **CO2-1**.
 
@@ -32,6 +32,7 @@ The common reduced-order subset is deliberately small:
 
 - fixed outdoor or mechanical volumetric flows;
 - fixed reciprocal interzone mixing rates;
+- the centered-neutral-plane vertical two-opening buoyancy equation;
 - zone volumes and initial well-mixed trace-contaminant concentrations;
 - prescribed outdoor concentration and zone generation;
 - transient concentration response using a matched implicit integration
@@ -49,12 +50,12 @@ power-law element. NexusEP can represent only the imposed-flow part of that
 case. The reported 115.342 Pa pressure drop is outside the current model and
 must not be presented as a NexusEP comparison target.
 
-## What cannot be compared honestly yet
+## Comparative result and remaining blocks
 
 | NIST capability / case | NexusEP status | Decision |
 |---|---|---|
 | Power-law crack pressure drop | No pressure unknowns or path pressure law | blocked |
-| AIRNET Appendix B.6 buoyancy doorway: 18/22 °C, 0.8 × 2.0 m, `Cd=0.78` | Fixed symmetric mixing only | do not compare the reported approximately 0.259 kg/s streams |
+| AIRNET Appendix B.6 buoyancy doorway: 18/22 °C, 0.8 × 2.0 m, `Cd=0.78` | Typed two-opening model returns 0.259145 kg/s | passed against the rounded approximately 0.259 kg/s opposing streams (`0.001 kg/s` absolute tolerance) |
 | Wind and stack pressure | Local capped wind-opening approximation only | blocked |
 | Fans, ducts, recirculation, filters, reactions, sorption | Not in the supported airflow/CO₂ contract | excluded |
 | One-dimensional contaminant convection/diffusion | One well-mixed value per zone | excluded |

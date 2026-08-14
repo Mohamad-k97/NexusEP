@@ -46,6 +46,7 @@ Each test declares `VALIDATION_CATEGORY = "verification"`.
 | AIRNET Appendix B.7.1 fixed-flow subset | The imposed 1.0 kg/s maps to 3000 m³/h at the diagnostic density; pressure drop remains unsolved | exact unit conversion only |
 | Two-zone equal exchange | Reciprocal directed paths and zero net flow | `1e-9 m³/h` |
 | NIST two-opening equation 69 | Calculated mass flow equals the published centered-neutral-plane equation | `1e-12` relative |
+| AIRNET Appendix B.6 doorway | 18/22 degC, 0.8 x 2.0 m, `Cd=0.78` gives 0.259145 kg/s against the reported approximately 0.259 kg/s opposing streams | `0.001 kg/s` absolute (source is rounded) |
 | Equal-temperature and reversed-temperature doorway | Equal temperature gives zero buoyancy flow; swapping zone temperatures preserves exchange magnitude | exact zero / `1e-12` relative |
 | Two-zone CO₂, unequal volumes | High zone decreases, low zone increases, `sum(V*C)` is conserved | `1e-9 ppm·m³` absolute |
 | CO₂ timestep convergence | Backward-Euler result approaches the closed-form exchange solution monotonically | Finest tested step `0.25 min`, west-zone error `< 0.4 ppm` after one hour |
@@ -61,7 +62,7 @@ Command:
 uv run pytest -q tests/unit/test_airflow_analytical.py
 ```
 
-Current result: **13 passed**.
+Current result: **14 passed**.
 
 ## Scope and gates
 

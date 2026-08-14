@@ -2,12 +2,12 @@
 
 Validation category: **verification and validation-protocol audit**.
 
-Assessment date: **2026-08-13**.
+Assessment date: **2026-08-14**.
 
 ## Outcome
 
 The rejected scientific alternatives exposed two different classes of issue.
-Sixteen implementation, preprocessing, and contract defects were repairable.
+Seventeen implementation, preprocessing, and contract defects were repairable.
 The controlled-thermal rejection remains an evidence/model-scope failure;
 changing bounds or tolerances merely to make it green would invalidate the
 claim. The aggregate-only occupant rejection is retained, while a new
@@ -31,6 +31,7 @@ respondent-level alternative passes in its narrower schedule-prior scope.
 | ATUS diary clock shifted four hours | ATUS diaries cover 04:00 to 04:00, while NexusEP schedules use a midnight day. | Rotate complete diaries to 00:00--24:00, splitting the wraparound episode without changing duration, and preserve day-type conditioning. | Synthetic ZIP and full microdata regressions prove contiguous 1,440-minute coverage and deterministic weekday selection. |
 | Mechanical supply heat misclassified as a generic gain | The Annex mapper converted supply-air heat to a generic source. The generic bridge split it 70/30 between air and mass, although ventilation heat acts directly on the air node. | Add a typed mechanical supply-temperature command and keep mechanical, infiltration, and window conductances distinct in the solver. | Regressions prove supply temperature applies only to mechanical airflow; infiltration remains at outdoor temperature. |
 | Heater radiant share discarded | The documented 70/30 heater split was sent through a control path that treated all delivered heat as convective. | Add typed heating/cooling convective fractions and construct explicit air/mass thermal gains. Preserve `1.0` as the compatibility default. | A 500 W, 70% convective command reaches the solver as exactly 350 W air and 150 W mass gain. |
+| Fixed vertical-door mixing and ignored attic-door state | Vertical internal openings used an implicit 0.10 m/s exchange and the Extended `n2_attic_door_pos` channel was discarded. | Add typed opening model/height/discharge/velocity fields; implement NIST TN 1887r1 equation 69 from current temperatures and pressure for vertical doors; map both measured door states. Keep the horizontal hatch on an explicit compatibility path because no pressure network or verified horizontal correlation exists. | The analytical equation, zero-temperature-difference case, reciprocity, and schema constraints pass. V5 lowers kitchen RMSE by 0.114 degC and maximum error by 0.783 degC without fitting, but the empirical gate remains rejected. |
 
 The regenerated Phase 2.16 parity report contains 181 exact matches, 4
 tolerance matches, 23 expected model differences, no missing features, no
@@ -42,12 +43,13 @@ larger tolerance.
 
 The Annex 71 diagnostic remains **blocked and rejected with alternative**.
 The former helper and legacy-effective results remain available for
-provenance. The v4 replacement maps four official air bodies, component
+provenance. The v5 replacement maps four official air bodies, component
 properties, thermal bridges, measured cellar/weather forcing, blind/window/
-door schedules, and graph-derived RC area through the canonical object
-adapter. It is deterministic, uses no fallback, and conserves heat to
-1.471e-9 W. The 4,896-step Extended run has pooled RMSE 2.663 degC, bias
-+2.316 degC, MAE 2.358 degC, and maximum absolute error 8.565 degC. Those
+door schedules, graph-derived RC area, and typed vertical-opening exchange
+through the canonical object adapter. It is deterministic, uses no fallback,
+and conserves heat to 1.537e-9 W. The 4,896-step Extended run has pooled RMSE
+2.626 degC, bias +2.295 degC, MAE 2.337 degC, and maximum absolute error
+7.783 degC. Those
 values fail the frozen thresholds, and four missing outdoor-CO2 rows
 independently fail input completeness. Post-unsealing amendments mean the
 result is not blind evidence.
@@ -60,11 +62,12 @@ calibration. A frozen cross-period structural diagnostic rejects one-hour
 source shifts, alternate heater splits, +/-2 degC initial mass states, and
 floor-area capacity allocation as material explanations. The official
 supplement exposed real roof-tilt, component-fabric, cellar, and blind mapping
-defects, which are now corrected without residual fitting. V4 shows that those
-repairs do not remove the positive free-run bias. The largest errors occur in
+defects, which are now corrected without residual fitting. V5 shows that those
+repairs and the vertical-door correction do not remove the positive free-run bias. The largest errors occur in
 the kitchen during roughly 1.8 kW heat pulses with the internal door open,
-leaving the one-mass-node fabric representation and prescribed symmetric
-large-opening mixing as the strongest model-form limitations.
+while pooled RMSE grows from 1.525 degC in the first scored week to 3.466 degC
+in the last. The one-mass-node fabric representation and longer-timescale
+boundary/forcing uncertainty are now the strongest model-form limitations.
 
 The old ATUS aggregate alternative remains **blocked and rejected with
 alternative**. It was not tuned away. A separate official-microdata
@@ -80,8 +83,9 @@ passes 1,725 respondent-isolated holdouts: sleep-fraction quantile MAE
   Annex 58/71 outcome before claiming blind validation.
 - Replace the single zone-mass representation with a verified layer/surface
   state formulation before claiming transient fabric credibility.
-- Implement and verify a pressure/buoyancy large-opening airflow formulation
-  before using the Annex door cycle for empirical airflow or thermal claims.
+- Implement a whole-building pressure network and verify the horizontal attic
+  hatch before making general pressure-driven airflow claims; the vertical
+  centered-neutral-plane equation is now analytically verified.
 - Propagate source measurement uncertainty and replace the generic closed-blind
   optical factor with registered optical data before another empirical fit.
 - Add demographic/household conditioning and condition-dependent stochastic
@@ -97,6 +101,7 @@ uv run python scripts/validation_data/run_annex71_production_transfer.py
 uv run python scripts/validation_data/run_annex71_energy_path_audit.py
 uv run python scripts/validation_data/run_annex71_structural_diagnostics.py
 uv run python scripts/validation_data/run_annex71_physical_runtime_error.py
+uv run python scripts/validation_data/run_annex71_large_opening_runtime_error.py
 uv run python scripts/validation_data/run_atus_population_validation.py
 uv run pytest -q
 ```

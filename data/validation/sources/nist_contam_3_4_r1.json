@@ -37,7 +37,7 @@
     "by_variable": {}
   },
   "known_gaps": [
-    "CONTAM supports pressure, wind, buoyancy, fans, ducts, and directional flow paths that the NexusEP prescribed-flow model does not solve.",
+    "NexusEP now implements the documented centered-neutral-plane two-opening buoyancy equation for vertical internal openings, but CONTAM additionally supports coupled pressure, wind, fans, ducts, shifted neutral planes, and directional flow paths that NexusEP does not solve.",
     "No CONTAM project result is registered in this phase, so no comparative-validation result is claimed.",
     "A future comparison must align volumes, prescribed flows, source terms, initial concentrations, and integration settings before calibration is considered."
   ],

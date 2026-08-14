@@ -1,0 +1,43 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "annex71-large-opening-runtime-error-v5",
+  "title": "Annex 71 typed large-opening runtime and error diagnostic",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-14",
+  "targeted_models": [
+    "THERMAL-1"
+  ],
+  "source_ids": [
+    "iea-ebc-annex71-twin-houses-2020"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_annex71_large_opening_runtime_error.py",
+      "sha256": "af89f28b99c79bcf538bd5e2d5b64d1a3bd8433a2edc8afae83eb56a0971fefa",
+      "command": "uv run python scripts/validation_data/run_annex71_large_opening_runtime_error.py"
+    }
+  ],
+  "report_path": "docs/validation/results/annex71_large_opening_runtime_error_v5.md",
+  "result_artifacts": [
+    {
+      "file_id": "annex71-large-opening-runtime-error-v5",
+      "path": "data/validation/fixtures/annex71-twin-houses/large-opening-runtime-error-v5.json",
+      "sha256": "995b198359f9251230a60b490c7a8fd1eef4a145a87f3078dc7e5895666de93e",
+      "byte_size": 23902
+    }
+  ],
+  "numerical_tolerances": {
+    "pooled_temperature_rmse_c": "less than or equal to 1.0 degC",
+    "pooled_absolute_temperature_bias_c": "less than or equal to 0.5 degC",
+    "per_air_body_temperature_rmse_c": "less than or equal to 1.5 degC",
+    "thermal_balance_residual_w": "less than or equal to 1e-7 W",
+    "missing_scored_inputs": "zero rows"
+  },
+  "known_deviations": [
+    "This is a protocol-1.4 post-unsealing corrected diagnostic, not pristine blind-validation evidence.",
+    "The vertical-door equation is analytically verified against NIST TN 1887r1 equation 69, but the result is not a matched CONTAM executable comparison.",
+    "The horizontal attic trap door remains an explicit 0.10 m/s prescribed-velocity compatibility path because no whole-building pressure solve or verified horizontal-opening model exists.",
+    "Pooled RMSE, pooled bias, per-zone RMSE, and four-row input completeness fail; thermal conservation, no-fallback, and deterministic-repeat checks pass.",
+    "No parameter or acceptance threshold was changed after observing the target result."
+  ]
+}

@@ -46,6 +46,9 @@ Validation category: **verification** (scope governance only).
 - [Annex 71 component-resolved runtime/error diagnostic](results/annex71_physical_runtime_error_v4.md)
   records the fixed-CET Extended run, deterministic timing, temperature error,
   conservation result, and remaining model-form rejection under protocol 1.3.
+- `results/annex71_large_opening_runtime_error_v5.md` records the protocol-1.4
+  vertical two-opening correction, measured attic-door mapping, runtime,
+  deterministic repeat, conservation, and the still-rejected temperature gate.
 - [ATUS aggregate sleep alternative](results/atus_aggregate_sleep_alternative_v1.md)
   compares repaired object-runner output with the survey aggregate and records
   the remaining duration and distribution gaps.

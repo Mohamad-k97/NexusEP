@@ -244,6 +244,27 @@ def test_nist_two_opening_buoyancy_equation_69_is_implemented_directly() -> None
     )
 
 
+def test_airnet_appendix_b6_buoyancy_doorway_matches_reported_streams() -> None:
+    # NISTIR 89-4072 Appendix B.6: two zones at 18/22 degC connected by a
+    # 0.8 m x 2.0 m opening with Cd=0.78. AIRNET reports approximately
+    # 0.259 kg/s in each direction.
+    pressure_pa = 101_325.0
+    density_18 = dry_air_density_kg_m3(18.0, pressure_pa)
+    density_22 = dry_air_density_kg_m3(22.0, pressure_pa)
+    reference_density = 0.5 * (density_18 + density_22)
+    volume_flow_m3_s = two_opening_buoyancy_exchange_m3_s(
+        opening_area_m2=0.8 * 2.0,
+        opening_height_m=2.0,
+        discharge_coefficient=0.78,
+        zone_a_air_density_kg_m3=density_18,
+        zone_b_air_density_kg_m3=density_22,
+    )
+
+    assert volume_flow_m3_s * reference_density == pytest.approx(
+        0.259, abs=0.001
+    )
+
+
 def test_two_opening_buoyancy_is_zero_at_equal_temperature_and_reciprocal() -> None:
     connection = ZoneConnection(
         connection_id="west-east-door",

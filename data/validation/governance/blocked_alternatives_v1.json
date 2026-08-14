@@ -1,7 +1,7 @@
 {
   "governance_version": "1.0.0",
   "validation_category": "verification_and_validation_status_reporting",
-  "assessed_on": "2026-08-13",
+  "assessed_on": "2026-08-14",
   "policy": "The original Phase 4 requirement remains blocked unless an alternative tests the same claim and passes the predeclared criteria. A runnable but failing or scientifically narrower substitute is recorded as rejected, never promoted to a pass.",
   "evaluations": [
     {
@@ -9,11 +9,13 @@
       "original_requirement": "A controlled thermal dataset is validated blindly.",
       "original_status": "blocked",
       "alternative_name": "IEA EBC Annex 71 Twin House component-resolved object-engine diagnostic",
-      "alternative_scope": "The four published N2 air bodies, published component properties and thermal bridges, measured cellar and weather forcing, opening schedules, deterministic graph, and object production adapter are exercised. Post-unsealing corrections are documented under holdout protocol 1.3, so this is diagnostic and not pristine blind validation.",
+      "alternative_scope": "The four published N2 air bodies, published component properties and thermal bridges, measured cellar and weather forcing, opening schedules, deterministic graph, typed vertical large-opening model, and object production adapter are exercised. Post-unsealing corrections are documented through holdout protocol 1.4, so this is diagnostic and not pristine blind validation.",
       "equivalent_claim": false,
       "execution_status": "rejected",
-      "test_command": "uv run python scripts/validation_data/run_annex71_physical_runtime_error.py",
+      "test_command": "uv run python scripts/validation_data/run_annex71_large_opening_runtime_error.py",
       "evidence_paths": [
+        "data/validation/fixtures/annex71-twin-houses/large-opening-runtime-error-v5.json",
+        "docs/validation/results/annex71_large_opening_runtime_error_v5.md",
         "data/validation/fixtures/annex71-twin-houses/physical-runtime-error-v4.json",
         "docs/validation/results/annex71_physical_runtime_error_v4.md",
         "data/validation/fixtures/annex71-twin-houses/production-transfer-result-v1.json",
@@ -23,7 +25,7 @@
         "data/validation/fixtures/annex71-twin-houses/thermal-transfer-result-v1.json",
         "docs/validation/results/annex71_thermal_transfer_v1.md"
       ],
-      "rejection_or_limit": "The former helper rejection is preserved. The component-resolved replacement fixes boundary, fabric, opening-control, fixed-CET, and RC mass-area mapping defects without residual fitting. It is deterministic and conservative but fails pooled RMSE, bias, per-zone RMSE, and input-completeness gates. The kitchen error remains concentrated around large heat pulses and an open internal door, exposing the reduced one-mass-node and prescribed-opening model forms. Post-unsealing repairs also prevent a blind-validation claim.",
+      "rejection_or_limit": "The former helper and v4 rejections are preserved. The v5 replacement fixes the vertical-door model and measured attic-door state without residual fitting. It is deterministic and conservative and lowers Extended pooled RMSE from 2.663 to 2.626 degC and maximum error from 8.565 to 7.783 degC, but still fails pooled RMSE, bias, per-zone RMSE, and input-completeness gates. Kitchen RMSE remains 3.623 degC and positive drift grows across the period, exposing the one-mass-node fabric form and remaining boundary/forcing uncertainty rather than another hidden software shortcut. Post-unsealing repairs also prevent a blind-validation claim.",
       "alternative_classification": "blocked and rejected with alternative"
     },
     {
@@ -71,6 +73,8 @@
       "execution_status": "rejected",
       "test_command": "uv run python scripts/validation_data/run_annex71_production_transfer.py; uv run python scripts/validation_data/run_annex71_energy_path_audit.py",
       "evidence_paths": [
+        "data/validation/fixtures/annex71-twin-houses/large-opening-runtime-error-v5.json",
+        "docs/validation/results/annex71_large_opening_runtime_error_v5.md",
         "data/validation/fixtures/annex71-twin-houses/physical-runtime-error-v4.json",
         "docs/validation/results/annex71_physical_runtime_error_v4.md",
         "data/validation/fixtures/annex71-twin-houses/production-transfer-result-v1.json",
@@ -80,7 +84,7 @@
         "data/validation/fixtures/annex71-twin-houses/thermal-transfer-result-v1.json",
         "docs/validation/results/annex71_thermal_transfer_v1.md"
       ],
-      "rejection_or_limit": "The production engine is exercised and the known boundary, fabric, opening-control, and RC mapping defects are fixed. The legacy calibration remains bound-seeking, while the component-resolved run still fails frozen error thresholds. The path audit and v4 result reject a single fitted-capacity or conductance explanation. The run is a post-unsealing diagnostic, not unseen-parameter validation.",
+      "rejection_or_limit": "The production engine is exercised and the known boundary, opening-control, RC mapping, and vertical-door defects are fixed. The legacy calibration remains bound-seeking, while the protocol-1.4 v5 run still fails frozen error thresholds. The path audit and v4/v5 results reject a single fitted-capacity, conductance, or doorway coefficient explanation. The run is a post-unsealing diagnostic, not unseen-parameter validation.",
       "alternative_classification": "blocked and rejected with alternative"
     }
   ]

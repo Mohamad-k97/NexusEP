@@ -67,7 +67,7 @@
     "The official supplementary archive is checksum-registered and supplies plans, construction properties, a measurement-channel list, shading geometry, and supporting material.",
     "A source audit found that the Extended Experiment retains 02:00 through 02:50 on 31 March 2019; fixed CET is required to avoid duplicate UTC instants.",
     "The source-determined 30-degree attic roof-window tilt is now mapped explicitly.",
-    "The supported object path now carries per-opening state, published component properties, thermal bridges, and a measured cellar boundary, but still collapses construction layers to one mass node per air body and uses prescribed rather than pressure-driven large-opening exchange.",
+    "The supported object path now carries per-opening state, published component properties, thermal bridges, a measured cellar boundary, and a verified vertical two-opening buoyancy equation. It still collapses construction layers to one mass node per air body, has no whole-building pressure solve, and retains prescribed exchange for the horizontal attic hatch.",
     "Four outdoor-CO2 rows are missing within the Extended primary interval. Carry-forward is allowed only for the thermal diagnostic and independently fails its strict no-missing-input gate.",
     "All registered empirical thermal results remain rejected; the registered energy-path and runtime/error audits are diagnostic and none may be used as evidence for a passing blind-validation claim."
   ],
@@ -170,6 +170,26 @@
           "path": "data/validation/fixtures/annex71-twin-houses/physical-runtime-error-v4.json",
           "sha256": "f699f5149d1f778484ef1b2ec5b715e09ea9fd3f323e91b0dcf35ffb6bdecb3a",
           "byte_size": 23397
+        }
+      ]
+    },
+    {
+      "step_id": "run-typed-large-opening-runtime-error-diagnostic",
+      "description": "Run the protocol-1.4 source and model correction: map the measured attic-door state, use the NIST centered-neutral-plane two-opening equation for vertical doors, retain the horizontal hatch as an explicit compatibility path, and publish deterministic runtime, conservation, and temperature-error evidence without fitting.",
+      "script_path": "scripts/validation_data/run_annex71_large_opening_runtime_error.py",
+      "script_sha256": "af89f28b99c79bcf538bd5e2d5b64d1a3bd8433a2edc8afae83eb56a0971fefa",
+      "command": "uv run python scripts/validation_data/run_annex71_large_opening_runtime_error.py",
+      "input_raw_file_ids": [
+        "annex71-main-experiment-zip",
+        "annex71-additional-documents-zip",
+        "annex71-extended-experiment-zip"
+      ],
+      "output_fixtures": [
+        {
+          "file_id": "annex71-large-opening-runtime-error-v5",
+          "path": "data/validation/fixtures/annex71-twin-houses/large-opening-runtime-error-v5.json",
+          "sha256": "995b198359f9251230a60b490c7a8fd1eef4a145a87f3078dc7e5895666de93e",
+          "byte_size": 23902
         }
       ]
     }
