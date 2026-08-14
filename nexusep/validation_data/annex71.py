@@ -155,6 +155,10 @@ class Annex71Interval:
     diffuse_horizontal_radiation_w_m2: float
     global_horizontal_radiation_w_m2: float
     downwelling_longwave_radiation_w_m2: float | None
+    north_vertical_radiation_w_m2: float | None
+    east_vertical_radiation_w_m2: float | None
+    south_vertical_radiation_w_m2: float | None
+    west_vertical_radiation_w_m2: float | None
     rain: bool
     zones: tuple[Annex71ZoneObservation, ...]
     cellar_temperature_c: float = 10.0
@@ -566,6 +570,22 @@ def load_annex71_intervals(
                         weather_row.get("RadiationIR_global"),
                         "RadiationIR_global",
                     ),
+                ),
+                north_vertical_radiation_w_m2=max(
+                    0.0,
+                    _finite(weather_row.get("Radiation_North"), "Radiation_North"),
+                ),
+                east_vertical_radiation_w_m2=max(
+                    0.0,
+                    _finite(weather_row.get("Radiation_East"), "Radiation_East"),
+                ),
+                south_vertical_radiation_w_m2=max(
+                    0.0,
+                    _finite(weather_row.get("Radiation_South"), "Radiation_South"),
+                ),
+                west_vertical_radiation_w_m2=max(
+                    0.0,
+                    _finite(weather_row.get("Radiation_West"), "Radiation_West"),
                 ),
                 rain=_optional_finite(weather_row.get("Rain_Normal")) > 0.0,
                 zones=_zone_observations(
@@ -1429,6 +1449,10 @@ def _weather_state(
         "direct_normal_radiation_w_m2": direct_normal,
         "diffuse_horizontal_radiation_w_m2": record.diffuse_horizontal_radiation_w_m2,
         "global_horizontal_radiation_w_m2": record.global_horizontal_radiation_w_m2,
+        "north_vertical_radiation_w_m2": record.north_vertical_radiation_w_m2,
+        "east_vertical_radiation_w_m2": record.east_vertical_radiation_w_m2,
+        "south_vertical_radiation_w_m2": record.south_vertical_radiation_w_m2,
+        "west_vertical_radiation_w_m2": record.west_vertical_radiation_w_m2,
         "outdoor_illuminance_lux": 0.0,
         "rain": record.rain,
     }

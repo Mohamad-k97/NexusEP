@@ -59,6 +59,10 @@ def _record(
         diffuse_horizontal_radiation_w_m2=solar_w_m2 * 0.25,
         global_horizontal_radiation_w_m2=solar_w_m2,
         downwelling_longwave_radiation_w_m2=None,
+        north_vertical_radiation_w_m2=None,
+        east_vertical_radiation_w_m2=None,
+        south_vertical_radiation_w_m2=None,
+        west_vertical_radiation_w_m2=None,
         rain=False,
         zones=tuple(
             Annex71ZoneObservation(

@@ -64,6 +64,18 @@ class WeatherState(CanonicalModel):
     global_horizontal_radiation_w_m2: Annotated[
         float, Field(ge=0.0, le=2_000.0, allow_inf_nan=False)
     ]
+    north_vertical_radiation_w_m2: Annotated[
+        float, Field(ge=0.0, le=2_000.0, allow_inf_nan=False)
+    ] | None = None
+    east_vertical_radiation_w_m2: Annotated[
+        float, Field(ge=0.0, le=2_000.0, allow_inf_nan=False)
+    ] | None = None
+    south_vertical_radiation_w_m2: Annotated[
+        float, Field(ge=0.0, le=2_000.0, allow_inf_nan=False)
+    ] | None = None
+    west_vertical_radiation_w_m2: Annotated[
+        float, Field(ge=0.0, le=2_000.0, allow_inf_nan=False)
+    ] | None = None
     outdoor_co2_ppm: Annotated[float, Field(ge=0.0, le=100_000.0, allow_inf_nan=False)]
     sky_temperature_c: (
         Annotated[float, Field(ge=-100.0, le=100.0, allow_inf_nan=False)] | None

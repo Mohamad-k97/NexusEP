@@ -119,6 +119,9 @@ THERMAL_SOLAR_GAIN_SOURCE_WINDOW_BOUNDARY = (
 THERMAL_SOLAR_GAIN_SOURCE_PLANE_OF_ARRAY = (
     "NREL_SPA_position + isotropic_plane_of_array + WindowBoundaryResult"
 )
+THERMAL_SOLAR_GAIN_SOURCE_MEASURED_VERTICAL_PLANE = (
+    "measured_cardinal_vertical_plane + WindowBoundaryResult"
+)
 STEFAN_BOLTZMANN_W_M2_K4 = 5.670374419e-8
 
 THERMAL_VENTILATION_SOURCE_AIRFLOW_NETWORK = (
@@ -4510,6 +4513,33 @@ def update_zone_thermal_state_semi_implicit(
         dt_seconds=dt_seconds,
     )
 
+def _measured_vertical_irradiance_w_m2(
+    weather_state: Any,
+    *,
+    surface_tilt_deg: float,
+    surface_azimuth_deg: float,
+) -> float | None:
+    """Return an exact measured cardinal-plane value when available."""
+
+    if abs(float(surface_tilt_deg) - 90.0) > 1.0e-9:
+        return None
+    azimuth = float(surface_azimuth_deg) % 360.0
+    fields = {
+        0.0: "north_vertical_radiation_w_m2",
+        90.0: "east_vertical_radiation_w_m2",
+        180.0: "south_vertical_radiation_w_m2",
+        270.0: "west_vertical_radiation_w_m2",
+    }
+    for cardinal, field_name in fields.items():
+        difference = abs((azimuth - cardinal + 180.0) % 360.0 - 180.0)
+        if difference <= 1.0e-9:
+            value = _get_attr_or_default(weather_state, field_name, None)
+            if value is None:
+                return None
+            return _non_negative_float(value, field_name, "weather")
+    return None
+
+
 def calculate_window_boundary_solar_gains(
     window_boundary_result: Any,
     weather_state: Any,
@@ -4579,7 +4609,20 @@ def calculate_window_boundary_solar_gains(
         if window_result.area_m2 <= 0.0:
             continue
 
-        if has_solar_position:
+        measured_vertical_w_m2 = _measured_vertical_irradiance_w_m2(
+            weather_state,
+            surface_tilt_deg=window_result.tilt_deg,
+            surface_azimuth_deg=window_result.orientation_deg,
+        )
+        if measured_vertical_w_m2 is not None:
+            solar_gain_w = (
+                measured_vertical_w_m2
+                * window_result.area_m2
+                * window_result.effective_solar_transmittance
+            )
+            effective_solar_factor = 1.0
+            source = THERMAL_SOLAR_GAIN_SOURCE_MEASURED_VERTICAL_PLANE
+        elif has_solar_position:
             irradiance = calculate_surface_solar_irradiance(
                 solar_zenith_deg=float(solar_zenith_deg),
                 solar_azimuth_deg=float(solar_azimuth_deg),
@@ -4702,7 +4745,14 @@ def calculate_opaque_boundary_radiative_gains_by_zone_w(
             _get_attr_or_default(connection, "orientation_deg", 0.0) or 0.0
         )
         irradiance_w_m2 = 0.0
-        if solar_zenith is not None and solar_azimuth is not None:
+        measured_vertical_w_m2 = _measured_vertical_irradiance_w_m2(
+            weather_state,
+            surface_tilt_deg=tilt_deg,
+            surface_azimuth_deg=azimuth_deg,
+        )
+        if measured_vertical_w_m2 is not None:
+            irradiance_w_m2 = measured_vertical_w_m2
+        elif solar_zenith is not None and solar_azimuth is not None:
             irradiance_w_m2 = calculate_surface_solar_irradiance(
                 solar_zenith_deg=float(solar_zenith),
                 solar_azimuth_deg=float(solar_azimuth),

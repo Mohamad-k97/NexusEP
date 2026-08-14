@@ -62,6 +62,21 @@ class ArrayEngineAdapter:
         if compiled_graph["scenario_id"] != scenario.scenario_id:
             raise ValueError("compiled graph belongs to a different scenario")
         if any(
+            any(
+                getattr(weather, field_name) is not None
+                for field_name in (
+                    "north_vertical_radiation_w_m2",
+                    "east_vertical_radiation_w_m2",
+                    "south_vertical_radiation_w_m2",
+                    "west_vertical_radiation_w_m2",
+                )
+            )
+            for weather in scenario.weather_series
+        ):
+            raise BackendAdapterError(
+                "array engine does not yet support measured vertical-plane radiation"
+            )
+        if any(
             connection.get("exterior_solar_absorptance_fraction") is not None
             for connection in cast(
                 list[dict[str, Any]], compiled_graph["connections"]

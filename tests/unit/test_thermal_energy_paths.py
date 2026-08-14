@@ -106,6 +106,34 @@ def test_opaque_boundary_longwave_loss_uses_declared_surface_properties() -> Non
     ] == pytest.approx(expected_w)
 
 
+def test_measured_cardinal_plane_overrides_reconstructed_surface_radiation() -> None:
+    boundary = BoundaryConnection(
+        connection_id="south-wall",
+        zone_id="zone-a",
+        connection_type="external_wall",
+        area_m2=10.0,
+        orientation_deg=180.0,
+        tilt_deg=90.0,
+        u_value_w_m2k=0.2,
+        exterior_solar_absorptance_fraction=1.0,
+        exterior_longwave_emissivity_fraction=0.0,
+        exterior_surface_heat_transfer_coefficient_w_m2_k=10.0,
+    )
+    graph = SimpleNamespace(boundary_connections={"south-wall": boundary})
+    weather = SimpleNamespace(
+        outdoor_temperature_c=20.0,
+        sky_temperature_c=20.0,
+        south_vertical_radiation_w_m2=100.0,
+        direct_normal_radiation_w_m2=0.0,
+        diffuse_horizontal_radiation_w_m2=0.0,
+        global_horizontal_radiation_w_m2=0.0,
+    )
+
+    assert calculate_opaque_boundary_radiative_gains_by_zone_w(
+        graph, weather
+    )["zone-a"] == pytest.approx(20.0)
+
+
 def test_hvac_command_preserves_explicit_convective_radiative_split() -> None:
     command = ZoneControlCommand(
         zone_id="zone-a",

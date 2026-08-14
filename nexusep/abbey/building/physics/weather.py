@@ -176,6 +176,10 @@ class WeatherState:
     direct_normal_radiation_w_m2: float = 0.0
     diffuse_horizontal_radiation_w_m2: float = 0.0
     global_horizontal_radiation_w_m2: float = 0.0
+    north_vertical_radiation_w_m2: Optional[float] = None
+    east_vertical_radiation_w_m2: Optional[float] = None
+    south_vertical_radiation_w_m2: Optional[float] = None
+    west_vertical_radiation_w_m2: Optional[float] = None
 
     outdoor_illuminance_lux: float = 0.0
     sky_condition: str = "unknown"
@@ -273,6 +277,15 @@ class WeatherState:
         self.ground_albedo_fraction = _clamp(
             self.ground_albedo_fraction, 0.0, 1.0
         )
+        for field_name in (
+            "north_vertical_radiation_w_m2",
+            "east_vertical_radiation_w_m2",
+            "south_vertical_radiation_w_m2",
+            "west_vertical_radiation_w_m2",
+        ):
+            value = getattr(self, field_name)
+            if value is not None:
+                setattr(self, field_name, _non_negative_float(value, field_name))
 
     def copy(self, **updates: Any) -> "WeatherState":
         if not updates:
@@ -290,6 +303,10 @@ class WeatherState:
             "direct_normal_radiation_w_m2": self.direct_normal_radiation_w_m2,
             "diffuse_horizontal_radiation_w_m2": self.diffuse_horizontal_radiation_w_m2,
             "global_horizontal_radiation_w_m2": self.global_horizontal_radiation_w_m2,
+            "north_vertical_radiation_w_m2": self.north_vertical_radiation_w_m2,
+            "east_vertical_radiation_w_m2": self.east_vertical_radiation_w_m2,
+            "south_vertical_radiation_w_m2": self.south_vertical_radiation_w_m2,
+            "west_vertical_radiation_w_m2": self.west_vertical_radiation_w_m2,
             "outdoor_illuminance_lux": self.outdoor_illuminance_lux,
             "sky_condition": self.sky_condition,
             "outdoor_co2_ppm": self.outdoor_co2_ppm,

@@ -1,0 +1,26 @@
+{
+  "protocol_version": "1.6.0",
+  "supersedes": "data/validation/governance/annex71_extended_holdout_v1_5_1.json",
+  "amended_on": "2026-08-14",
+  "amendment_status": "post_unsealing_measured_vertical_radiation_forcing_correction",
+  "validation_category": "post_unsealing_corrected_holdout_diagnostic",
+  "reason": "The official weather workbook contains measured Radiation_North, Radiation_East, Radiation_South, and Radiation_West channels. The object engine previously discarded them and reconstructed all vertical-plane forcing with an isotropic model from GHI, DHI, and calculated solar position. Protocol 1.6 freezes typed optional cardinal-plane forcing and uses a measured plane only for an exactly matching vertical cardinal surface. Nonvertical surfaces continue through the analytical plane-of-array path.",
+  "unchanged_from_v1_5_1": [
+    "source-derived ceiling topology",
+    "distinct SUA supply and EHA exhaust terms",
+    "opaque sol-air equation and declared surface properties",
+    "sky-temperature handoff",
+    "all source schedules and physical parameters",
+    "warm-up",
+    "all numerical acceptance thresholds",
+    "missing-data acceptance",
+    "no post-hoc fitting"
+  ],
+  "corrected_forcing": {
+    "vertical_cardinal_surfaces": "use the matching measured Radiation_North/East/South/West value",
+    "roof_and_noncardinal_surfaces": "retain NREL-SPA position plus isotropic plane-of-array calculation",
+    "missing_measured_plane": "retain analytical plane-of-array fallback",
+    "array_backend": "reject measured vertical-plane forcing until equivalent kernels exist"
+  },
+  "scientific_label": "Results remain post-unsealing corrected diagnostics and cannot restore a blind-validation claim."
+}
