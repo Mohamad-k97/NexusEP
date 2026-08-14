@@ -1,0 +1,43 @@
+{
+  "manifest_version": "1.0.0",
+  "result_id": "annex71-sky-boundary-runtime-error-v7",
+  "title": "Annex 71 sky-boundary runtime and error diagnostic",
+  "validation_category": "empirical_validation",
+  "created_on": "2026-08-14",
+  "targeted_models": [
+    "THERMAL-1"
+  ],
+  "source_ids": [
+    "iea-ebc-annex71-twin-houses-2020"
+  ],
+  "analysis_code": [
+    {
+      "path": "scripts/validation_data/run_annex71_sky_boundary_runtime_error.py",
+      "sha256": "0482aeaf524b7ef40ce194ab199e6a003eb4ad2fdd67c28de8e1c2c5bd28bdb0",
+      "command": "uv run python scripts/validation_data/run_annex71_sky_boundary_runtime_error.py"
+    }
+  ],
+  "report_path": "docs/validation/results/annex71_sky_boundary_runtime_error_v7.md",
+  "result_artifacts": [
+    {
+      "file_id": "annex71-sky-boundary-runtime-error-v7",
+      "path": "data/validation/fixtures/annex71-twin-houses/sky-boundary-runtime-error-v7.json",
+      "sha256": "e1cc2dfc6d02bfa2641c5150d94087d4b05291e35050263365e0b40c107fb96c",
+      "byte_size": 24079
+    }
+  ],
+  "numerical_tolerances": {
+    "pooled_temperature_rmse_c": "less than or equal to 1.0 degC",
+    "pooled_absolute_temperature_bias_c": "less than or equal to 0.5 degC",
+    "per_air_body_temperature_rmse_c": "less than or equal to 1.5 degC",
+    "thermal_balance_residual_w": "less than or equal to 1e-7 W",
+    "missing_scored_inputs": "zero rows"
+  },
+  "known_deviations": [
+    "This is a protocol-1.5.1 post-unsealing corrected diagnostic, not pristine blind-validation evidence.",
+    "The corrected longwave handoff improves Extended RMSE from 2.729 to 2.483 degC and bias from +2.401 to +2.131 degC, but the temperature gate remains rejected.",
+    "Attic RMSE passes its 1.5 degC threshold; ground, kitchen, and sleeping airbodies do not.",
+    "Four missing outdoor-CO2 rows independently fail the frozen no-missing-input check.",
+    "Thermal conservation, no-fallback, and deterministic-repeat checks pass."
+  ]
+}

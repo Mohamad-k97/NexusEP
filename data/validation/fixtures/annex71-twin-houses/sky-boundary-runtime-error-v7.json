@@ -1,0 +1,677 @@
+{
+  "report_version": "7.0.0",
+  "created_on": "2026-08-14T14:58:12.976231+01:00",
+  "validation_category": {
+    "main": "post_hoc_empirical_diagnostic",
+    "extended": "post_unsealing_holdout_diagnostic_under_protocol_1_5_1"
+  },
+  "blocked_gate_classification": "blocked and rejected with alternative",
+  "protocols": [
+    "data/validation/governance/annex71_extended_holdout_v1.json",
+    "data/validation/governance/annex71_extended_holdout_v1_1.json",
+    "data/validation/governance/annex71_extended_holdout_v1_2.json",
+    "data/validation/governance/annex71_extended_holdout_v1_3.json",
+    "data/validation/governance/annex71_extended_holdout_v1_5.json",
+    "data/validation/governance/annex71_extended_holdout_v1_5_1.json"
+  ],
+  "software": {
+    "commit_sha": "8a65c939103e331d100a8797b27a49b4ae42d57a",
+    "branch": "codex/annex71-boundary-fabric",
+    "dirty_paths": [
+      "M nexusep/data/abbey/config/abbey_config.jsonc",
+      "?? tmp/"
+    ],
+    "python": "3.12.2 (tags/v3.12.2:6abddd9, Feb  6 2024, 21:26:36) [MSC v.1937 64 bit (AMD64)]",
+    "implementation": "CPython",
+    "platform": "Windows-11-10.0.26200-SP0",
+    "processor": "Intel64 Family 6 Model 186 Stepping 3, GenuineIntel",
+    "physical_cores": 10,
+    "logical_cores": 12,
+    "ram_gib": 15.692092895507812,
+    "packages": {
+      "numpy": "2.4.6",
+      "pandas": "3.0.5",
+      "pydantic": "2.13.4",
+      "psutil": "7.2.2",
+      "pytest": "9.1.1"
+    }
+  },
+  "source": {
+    "source_id": "iea-ebc-annex71-twin-houses-2020",
+    "extended_archive_sha256": "73183bda3bed2caa0e6099d6aa1c40edfed29e0e81678c29ab3ebea9722355e9",
+    "extended_archive_bytes": 53674589,
+    "timezone": "Etc/GMT-1 fixed UTC+1/CET",
+    "source_quality_flags": [
+      {
+        "timestamp": "2019-03-18T18:10:00+01:00",
+        "flags": [
+          "earlier conflicting duplicate source row dropped before scored period"
+        ]
+      }
+    ]
+  },
+  "main_experiment_posthoc": {
+    "source_resolution_minutes": 60,
+    "period_start": "2018-12-19T10:00:00+01:00",
+    "period_end_exclusive": "2019-02-01T10:00:00+01:00",
+    "load_runtime_seconds": 5.319416300044395,
+    "runtime": {
+      "runtime_seconds": 30.66654300002847,
+      "timesteps": 1056,
+      "timesteps_per_second": 34.43492147122745,
+      "seconds_per_timestep": 0.02904028693184514,
+      "rss_before_mb": 282.34375,
+      "rss_after_mb": 283.0,
+      "process_peak_working_set_mb": 357.3046875
+    },
+    "metrics": {
+      "warmup_timesteps": 24,
+      "by_zone": {
+        "attic_airbody": {
+          "count": 1032,
+          "bias_c": 0.31941833557433463,
+          "mae_c": 0.7449250927810138,
+          "rmse_c": 1.0319987177715062,
+          "maximum_abs_error_c": 3.5274408640483514,
+          "correlation": 0.7745398471870033
+        },
+        "ground_airbody": {
+          "count": 1032,
+          "bias_c": 1.1973113421847161,
+          "mae_c": 1.2446259345881492,
+          "rmse_c": 1.3725048200833276,
+          "maximum_abs_error_c": 2.844550566040539,
+          "correlation": 0.6993120931197095
+        },
+        "kitchen_airbody": {
+          "count": 1032,
+          "bias_c": 2.1456526754645866,
+          "mae_c": 2.1767232058158132,
+          "rmse_c": 2.316930410456994,
+          "maximum_abs_error_c": 4.422645313726399,
+          "correlation": 0.6818012615815846
+        },
+        "sleeping_airbody": {
+          "count": 1032,
+          "bias_c": 0.7075868054297293,
+          "mae_c": 0.7506784120372731,
+          "rmse_c": 1.0510022158122179,
+          "maximum_abs_error_c": 6.1439677382164355,
+          "correlation": 0.20286220856346884
+        }
+      },
+      "pooled": {
+        "count": 4128,
+        "bias_c": 1.0924922896633416,
+        "mae_c": 1.229238161305562,
+        "rmse_c": 1.5347282348331746,
+        "maximum_abs_error_c": 6.1439677382164355
+      }
+    },
+    "maximum_abs_thermal_balance_residual_w": 2.2465940219262848e-10,
+    "fallback_used": false,
+    "graph_sha256": "20c249124686470ebe5abbd641d455294e69d095b4d0f79456022d7af55da1b2"
+  },
+  "extended_primary_holdout": {
+    "source_resolution_minutes": 10,
+    "period_start": "2019-03-22T10:30:00+01:00",
+    "period_end_exclusive": "2019-04-25T10:30:00+01:00",
+    "warmup_hours": 24,
+    "load_runtime_seconds": 38.3006105000386,
+    "runtime": {
+      "runtime_seconds": 135.63604599994142,
+      "timesteps": 4896,
+      "timesteps_per_second": 36.096599277172345,
+      "seconds_per_timestep": 0.02770344076796189,
+      "rss_before_mb": 283.0,
+      "rss_after_mb": 283.84765625,
+      "process_peak_working_set_mb": 357.3046875
+    },
+    "metrics": {
+      "warmup_timesteps": 144,
+      "by_zone": {
+        "attic_airbody": {
+          "count": 4752,
+          "bias_c": 1.0128288903630605,
+          "mae_c": 1.2059161792920636,
+          "rmse_c": 1.4469039398193553,
+          "maximum_abs_error_c": 3.569496829060437,
+          "correlation": 0.6802003678085824
+        },
+        "ground_airbody": {
+          "count": 4752,
+          "bias_c": 2.5302660579352274,
+          "mae_c": 2.530562022490814,
+          "rmse_c": 2.663093836399133,
+          "maximum_abs_error_c": 4.3817171478327985,
+          "correlation": 0.7993884315298683
+        },
+        "kitchen_airbody": {
+          "count": 4752,
+          "bias_c": 3.332829784942969,
+          "mae_c": 3.332829784942969,
+          "rmse_c": 3.4707592071122693,
+          "maximum_abs_error_c": 7.430516599498535,
+          "correlation": 0.7512063429523002
+        },
+        "sleeping_airbody": {
+          "count": 4752,
+          "bias_c": 1.6478612101190102,
+          "mae_c": 1.6561046261062893,
+          "rmse_c": 1.8534506544938845,
+          "maximum_abs_error_c": 3.53833129503089,
+          "correlation": 0.5232691924073075
+        }
+      },
+      "pooled": {
+        "count": 19008,
+        "bias_c": 2.130946485840067,
+        "mae_c": 2.181353153208034,
+        "rmse_c": 2.4832966292274783,
+        "maximum_abs_error_c": 7.430516599498535
+      }
+    },
+    "diagnostics": {
+      "day_definition": "08:00 <= fixed-CET interval-end timestamp < 20:00",
+      "day": {
+        "by_zone": {
+          "attic_airbody": {
+            "count": 2376,
+            "bias_c": 1.1566762013651706,
+            "mae_c": 1.3002033738854237,
+            "rmse_c": 1.499462913153618,
+            "maximum_abs_error_c": 3.1520641637732183,
+            "correlation": 0.77289253441012
+          },
+          "ground_airbody": {
+            "count": 2376,
+            "bias_c": 2.392064719975899,
+            "mae_c": 2.392656649087073,
+            "rmse_c": 2.5475037698133582,
+            "maximum_abs_error_c": 4.3817171478327985,
+            "correlation": 0.76302890258239
+          },
+          "kitchen_airbody": {
+            "count": 2376,
+            "bias_c": 3.402505573112877,
+            "mae_c": 3.402505573112877,
+            "rmse_c": 3.5481239684787265,
+            "maximum_abs_error_c": 7.430516599498535,
+            "correlation": 0.7411138773741639
+          },
+          "sleeping_airbody": {
+            "count": 2376,
+            "bias_c": 1.8997033780104975,
+            "mae_c": 1.901663529443159,
+            "rmse_c": 2.0636552789282865,
+            "maximum_abs_error_c": 3.53833129503089,
+            "correlation": 0.6429316836718137
+          }
+        },
+        "pooled": {
+          "count": 9504,
+          "bias_c": 2.2127374681161114,
+          "mae_c": 2.249257281382133,
+          "rmse_c": 2.5291313375879776,
+          "maximum_abs_error_c": 7.430516599498535
+        }
+      },
+      "night": {
+        "by_zone": {
+          "attic_airbody": {
+            "count": 2376,
+            "bias_c": 0.8689815793609502,
+            "mae_c": 1.1116289846987037,
+            "rmse_c": 1.3923623789108963,
+            "maximum_abs_error_c": 3.569496829060437,
+            "correlation": 0.5412062842823405
+          },
+          "ground_airbody": {
+            "count": 2376,
+            "bias_c": 2.668467395894555,
+            "mae_c": 2.668467395894555,
+            "rmse_c": 2.773871321045883,
+            "maximum_abs_error_c": 4.2184516784333645,
+            "correlation": 0.818062934924858
+          },
+          "kitchen_airbody": {
+            "count": 2376,
+            "bias_c": 3.263153996773062,
+            "mae_c": 3.263153996773062,
+            "rmse_c": 3.391630176156585,
+            "maximum_abs_error_c": 7.087071587609987,
+            "correlation": 0.7382282780601317
+          },
+          "sleeping_airbody": {
+            "count": 2376,
+            "bias_c": 1.3960190422275234,
+            "mae_c": 1.4105457227694198,
+            "rmse_c": 1.616132898940874,
+            "maximum_abs_error_c": 3.2796848219220003,
+            "correlation": 0.47611965700870523
+          }
+        },
+        "pooled": {
+          "count": 9504,
+          "bias_c": 2.0491555035640228,
+          "mae_c": 2.1134490250339355,
+          "rmse_c": 2.4365998798932,
+          "maximum_abs_error_c": 7.087071587609987
+        }
+      },
+      "first_scored_week": {
+        "by_zone": {
+          "attic_airbody": {
+            "count": 1008,
+            "bias_c": -0.23359203155575187,
+            "mae_c": 0.5825300757163026,
+            "rmse_c": 0.7074459763413169,
+            "maximum_abs_error_c": 1.782464370391967,
+            "correlation": 0.4341277255177571
+          },
+          "ground_airbody": {
+            "count": 1008,
+            "bias_c": 1.375635184240303,
+            "mae_c": 1.3770304457166407,
+            "rmse_c": 1.472286043193848,
+            "maximum_abs_error_c": 3.071763004004808,
+            "correlation": 0.8771919231261122
+          },
+          "kitchen_airbody": {
+            "count": 1008,
+            "bias_c": 2.108188728902678,
+            "mae_c": 2.108188728902678,
+            "rmse_c": 2.2537672495441825,
+            "maximum_abs_error_c": 5.642175836511871,
+            "correlation": 0.5591955592909145
+          },
+          "sleeping_airbody": {
+            "count": 1008,
+            "bias_c": 0.499190761636106,
+            "mae_c": 0.53805257986185,
+            "rmse_c": 0.6696793910346868,
+            "maximum_abs_error_c": 1.7275856812607806,
+            "correlation": 0.31075243159715754
+          }
+        },
+        "pooled": {
+          "count": 4032,
+          "bias_c": 0.9373556608058337,
+          "mae_c": 1.1514504575493678,
+          "rmse_c": 1.4314366301306753,
+          "maximum_abs_error_c": 5.642175836511871
+        }
+      },
+      "last_scored_week": {
+        "by_zone": {
+          "attic_airbody": {
+            "count": 1008,
+            "bias_c": 2.203799408089852,
+            "mae_c": 2.203799408089852,
+            "rmse_c": 2.2700349332948813,
+            "maximum_abs_error_c": 3.569496829060437,
+            "correlation": 0.7993250815947711
+          },
+          "ground_airbody": {
+            "count": 1008,
+            "bias_c": 3.549204663490658,
+            "mae_c": 3.549204663490658,
+            "rmse_c": 3.565163489057116,
+            "maximum_abs_error_c": 4.3817171478327985,
+            "correlation": 0.9400288420137022
+          },
+          "kitchen_airbody": {
+            "count": 1008,
+            "bias_c": 4.274807174028158,
+            "mae_c": 4.274807174028158,
+            "rmse_c": 4.3101048614462885,
+            "maximum_abs_error_c": 7.430516599498535,
+            "correlation": 0.8396482196584361
+          },
+          "sleeping_airbody": {
+            "count": 1008,
+            "bias_c": 2.57950324498223,
+            "mae_c": 2.57950324498223,
+            "rmse_c": 2.636029712878541,
+            "maximum_abs_error_c": 3.53833129503089,
+            "correlation": 0.6270977819761819
+          }
+        },
+        "pooled": {
+          "count": 4032,
+          "bias_c": 3.1518286226477246,
+          "mae_c": 3.1518286226477246,
+          "rmse_c": 3.2935203759019944,
+          "maximum_abs_error_c": 7.430516599498535
+        }
+      },
+      "ten_largest_absolute_errors": [
+        {
+          "timestamp": "2019-04-23T08:30:00+01:00",
+          "zone_id": "kitchen_airbody",
+          "measured_c": 22.7,
+          "simulated_c": 30.130516599498534,
+          "error_c": 7.430516599498535,
+          "heating_power_w": 0.0,
+          "internal_gain_w": 1770.0,
+          "global_horizontal_radiation_w_m2": 313.1,
+          "kitchen_door_opening_fraction": 1.0,
+          "child1_window_opening_fraction": 1.0
+        },
+        {
+          "timestamp": "2019-04-19T08:00:00+01:00",
+          "zone_id": "kitchen_airbody",
+          "measured_c": 21.6,
+          "simulated_c": 28.76822909012162,
+          "error_c": 7.168229090121617,
+          "heating_power_w": 0.0,
+          "internal_gain_w": 1850.0,
+          "global_horizontal_radiation_w_m2": 399.2,
+          "kitchen_door_opening_fraction": 1.0,
+          "child1_window_opening_fraction": 1.0
+        },
+        {
+          "timestamp": "2019-04-16T22:00:00+01:00",
+          "zone_id": "kitchen_airbody",
+          "measured_c": 21.4,
+          "simulated_c": 28.487071587609986,
+          "error_c": 7.087071587609987,
+          "heating_power_w": 0.0,
+          "internal_gain_w": 1810.0,
+          "global_horizontal_radiation_w_m2": 0.0,
+          "kitchen_door_opening_fraction": 1.0,
+          "child1_window_opening_fraction": 0.0
+        },
+        {
+          "timestamp": "2019-04-03T07:00:00+01:00",
+          "zone_id": "kitchen_airbody",
+          "measured_c": 21.5,
+          "simulated_c": 28.005125260535227,
+          "error_c": 6.505125260535227,
+          "heating_power_w": 0.0,
+          "internal_gain_w": 1790.0,
+          "global_horizontal_radiation_w_m2": 55.6,
+          "kitchen_door_opening_fraction": 1.0,
+          "child1_window_opening_fraction": 1.0
+        },
+        {
+          "timestamp": "2019-04-20T19:40:00+01:00",
+          "zone_id": "kitchen_airbody",
+          "measured_c": 22.9,
+          "simulated_c": 29.371169291018948,
+          "error_c": 6.471169291018949,
+          "heating_power_w": 0.0,
+          "internal_gain_w": 1430.0,
+          "global_horizontal_radiation_w_m2": 0.0,
+          "kitchen_door_opening_fraction": 1.0,
+          "child1_window_opening_fraction": 0.0
+        },
+        {
+          "timestamp": "2019-04-20T07:10:00+01:00",
+          "zone_id": "kitchen_airbody",
+          "measured_c": 21.3,
+          "simulated_c": 27.692174860681316,
+          "error_c": 6.392174860681315,
+          "heating_power_w": 0.0,
+          "internal_gain_w": 1060.0,
+          "global_horizontal_radiation_w_m2": 252.8,
+          "kitchen_door_opening_fraction": 1.0,
+          "child1_window_opening_fraction": 0.0
+        },
+        {
+          "timestamp": "2019-04-09T10:20:00+01:00",
+          "zone_id": "kitchen_airbody",
+          "measured_c": 21.5,
+          "simulated_c": 27.83456246674079,
+          "error_c": 6.334562466740788,
+          "heating_power_w": 0.0,
+          "internal_gain_w": 1830.0,
+          "global_horizontal_radiation_w_m2": 373.5,
+          "kitchen_door_opening_fraction": 1.0,
+          "child1_window_opening_fraction": 1.0
+        },
+        {
+          "timestamp": "2019-04-10T14:50:00+01:00",
+          "zone_id": "kitchen_airbody",
+          "measured_c": 21.6,
+          "simulated_c": 27.931014412074322,
+          "error_c": 6.331014412074321,
+          "heating_power_w": 0.0,
+          "internal_gain_w": 1780.0,
+          "global_horizontal_radiation_w_m2": 49.2,
+          "kitchen_door_opening_fraction": 1.0,
+          "child1_window_opening_fraction": 0.0
+        },
+        {
+          "timestamp": "2019-04-23T08:50:00+01:00",
+          "zone_id": "kitchen_airbody",
+          "measured_c": 22.599999999999998,
+          "simulated_c": 28.83145150044276,
+          "error_c": 6.231451500442763,
+          "heating_power_w": 0.0,
+          "internal_gain_w": 1080.0,
+          "global_horizontal_radiation_w_m2": 351.8,
+          "kitchen_door_opening_fraction": 1.0,
+          "child1_window_opening_fraction": 1.0
+        },
+        {
+          "timestamp": "2019-04-19T07:20:00+01:00",
+          "zone_id": "kitchen_airbody",
+          "measured_c": 21.3,
+          "simulated_c": 27.483255532091754,
+          "error_c": 6.183255532091753,
+          "heating_power_w": 0.0,
+          "internal_gain_w": 1120.0,
+          "global_horizontal_radiation_w_m2": 273.7,
+          "kitchen_door_opening_fraction": 1.0,
+          "child1_window_opening_fraction": 1.0
+        }
+      ]
+    },
+    "maximum_abs_thermal_balance_residual_w": 1.6063381735875737e-09,
+    "fallback_used": false,
+    "graph_sha256": "2c488cb6e06a57ae5328e485eea842fa530870039aeb813cdfaeb7cb2ae2d127",
+    "missing_scored_input_rows": 4,
+    "acceptance": {
+      "pooled_temperature_rmse_c_max": 1.0,
+      "pooled_absolute_temperature_bias_c_max": 0.5,
+      "per_air_body_temperature_rmse_c_max": 1.5,
+      "maximum_thermal_balance_residual_w": 1e-07,
+      "fallback_permitted": false,
+      "missing_scored_intervals_permitted": 0
+    },
+    "gate": {
+      "checks": {
+        "pooled_rmse": false,
+        "pooled_bias": false,
+        "per_zone_rmse": false,
+        "thermal_balance": true,
+        "no_fallback": true,
+        "no_missing_scored_inputs": false
+      },
+      "passed": false
+    }
+  },
+  "repeatability_benchmark": {
+    "sample_hours": 72,
+    "measured_repetitions": 2,
+    "runtime_seconds": [
+      11.304712200071663,
+      11.281507499981672
+    ],
+    "median_runtime_seconds": 11.293109850026667,
+    "runtime_range_seconds": [
+      11.281507499981672,
+      11.304712200071663
+    ],
+    "output_sha256": [
+      "43f7d87d8d4ab5a2d6ee457c90cfd6fa808e095a72390043c936c9286105aae6",
+      "43f7d87d8d4ab5a2d6ee457c90cfd6fa808e095a72390043c936c9286105aae6"
+    ],
+    "deterministic": true
+  },
+  "profile": {
+    "sample_hours": 12,
+    "sort": "cumulative_seconds",
+    "top_functions": [
+      {
+        "function": "run_object_scenario",
+        "file": "annex71.py",
+        "line": 1788,
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "self_seconds": 0.0319838,
+        "cumulative_seconds": 5.0491302000000005
+      },
+      {
+        "function": "run_step",
+        "file": "object_engine.py",
+        "line": 750,
+        "primitive_calls": 72,
+        "total_calls": 72,
+        "self_seconds": 0.038838000000000004,
+        "cumulative_seconds": 3.8283828000000004
+      },
+      {
+        "function": "calculate_solar_position",
+        "file": "solar.py",
+        "line": 127,
+        "primitive_calls": 144,
+        "total_calls": 144,
+        "self_seconds": 0.015071300000000001,
+        "cumulative_seconds": 2.2447455
+      },
+      {
+        "function": "run_building_physics_step",
+        "file": "engine.py",
+        "line": 394,
+        "primitive_calls": 72,
+        "total_calls": 72,
+        "self_seconds": 0.055107100000000006,
+        "cumulative_seconds": 2.1334261000000003
+      },
+      {
+        "function": "spa_python",
+        "file": "solarposition.py",
+        "line": 281,
+        "primitive_calls": 144,
+        "total_calls": 144,
+        "self_seconds": 0.0098203,
+        "cumulative_seconds": 1.9645845000000002
+      },
+      {
+        "function": "solar_position",
+        "file": "spa.py",
+        "line": 1029,
+        "primitive_calls": 144,
+        "total_calls": 144,
+        "self_seconds": 0.0031221,
+        "cumulative_seconds": 1.4956102
+      },
+      {
+        "function": "solar_position_numpy",
+        "file": "spa.py",
+        "line": 969,
+        "primitive_calls": 144,
+        "total_calls": 144,
+        "self_seconds": 0.020876000000000002,
+        "cumulative_seconds": 1.4892480000000001
+      },
+      {
+        "function": "build_canonical_scenario",
+        "file": "annex71.py",
+        "line": 1437,
+        "primitive_calls": 1,
+        "total_calls": 1,
+        "self_seconds": 0.0022696,
+        "cumulative_seconds": 1.0719809
+      },
+      {
+        "function": "_weather_state",
+        "file": "annex71.py",
+        "line": 1379,
+        "primitive_calls": 72,
+        "total_calls": 72,
+        "self_seconds": 0.005370300000000001,
+        "cumulative_seconds": 1.033925
+      },
+      {
+        "function": "longitude_obliquity_nutation",
+        "file": "spa.py",
+        "line": 557,
+        "primitive_calls": 144,
+        "total_calls": 144,
+        "self_seconds": 0.6973441,
+        "cumulative_seconds": 0.6973441
+      },
+      {
+        "function": "sum_mult_cos_add_mult",
+        "file": "spa.py",
+        "line": 456,
+        "primitive_calls": 1872,
+        "total_calls": 1872,
+        "self_seconds": 0.6069222000000001,
+        "cumulative_seconds": 0.6069222000000001
+      },
+      {
+        "function": "heliocentric_longitude",
+        "file": "spa.py",
+        "line": 464,
+        "primitive_calls": 144,
+        "total_calls": 144,
+        "self_seconds": 0.013812600000000001,
+        "cumulative_seconds": 0.40933440000000004
+      },
+      {
+        "function": "_make_engine_zone_records",
+        "file": "engine.py",
+        "line": 1611,
+        "primitive_calls": 72,
+        "total_calls": 72,
+        "self_seconds": 0.07053150000000001,
+        "cumulative_seconds": 0.36086510000000005
+      },
+      {
+        "function": "calculate_building_window_boundary_result",
+        "file": "windows.py",
+        "line": 4132,
+        "primitive_calls": 72,
+        "total_calls": 72,
+        "self_seconds": 0.0020625,
+        "cumulative_seconds": 0.32547780000000004
+      },
+      {
+        "function": "__init__",
+        "file": "frame.py",
+        "line": 702,
+        "primitive_calls": 144,
+        "total_calls": 144,
+        "self_seconds": 0.0028159,
+        "cumulative_seconds": 0.25641050000000004
+      }
+    ]
+  },
+  "known_limitations": [
+    "The Extended result is not pristine blind evidence because source-loader corrections were required after target unsealing.",
+    "Four missing outdoor-CO2 input rows were carried forward for thermal-only execution and fail the strict no-missing-input gate.",
+    "One conflicting duplicate source row before the score period is dropped and reported.",
+    "The two-node reduced-order model collapses all construction layers into one mass node per air body.",
+    "Graph-derived opaque area now couples that mass node to zone air, but the transfer coefficient is still a single reduced-order value.",
+    "Open-door exchange is prescribed symmetric mixing rather than a pressure-network solution.",
+    "Closed-blind solar attenuation uses the declared generic object-engine multiplier, not a fitted optical model.",
+    "Exterior longwave emissivity 0.90 is a declared physical assumption, not a measured or fitted parameter.",
+    "The array backend rejects the new boundary terms until equivalent kernels exist."
+  ],
+  "boundary_contract_change": {
+    "ceiling_topology": "three source-plan footprint links to attic",
+    "mechanical_ventilation": "distinct measured SUA supply and EHA exhaust enthalpy terms",
+    "sky_forcing": "RadiationIR_global converted to effective sky temperature",
+    "opaque_boundary": "explicit opt-in sol-air term; no residual-derived parameter",
+    "parameter_fitting": "none"
+  },
+  "weather_boundary_handoff": {
+    "source": "CanonicalWeather.sky_temperature_c",
+    "target": "object WeatherState.sky_temperature_c",
+    "parameter_fitting": "none"
+  }
+}
